@@ -1525,7 +1525,7 @@ function fRenderMercato(){
 
 function fPropoiAlCapitano(i){
   const c=F.mktF.cavalli[i];
-  const val=(F.intesa/100+F.esperienza*2)*rf(0.8,1.2);
+  const val=(F.intesa/10+F.esperienza*2)*rf(0.8,1.2);
   const soglia=c.valore/100;
   const el=R('FMKT_ESITO_'+i);
   if(val>=soglia){
