@@ -719,7 +719,7 @@ function meteoHTML(meteo){
 function showSceltaCavallo(){
   if(!G.cav&&(!G.stalla||!G.stalla.length)){alert('Serve almeno un cavallo per correre!');return;}
   if(!G.fan){alert('Per il Palio serve un fantino!');return;}
-  G._meteo=sorteggiometeo?sorteggiometeo():sorteggiMeteo();
+  G._meteo=sorteggiMeteo?sorteggiometeo():sorteggiMeteo();
   if(!G.stalla||G.stalla.length<=1){G.cavSelIdx=0;G.cav=G.stalla[0];applicaMeteoACav(G.cav,G._meteo);showVigilia();return;}
   R('NAV').style.display='none';
   let html=`<div style="text-align:center;margin-bottom:14px">
@@ -2052,12 +2052,12 @@ function fShowSceltaStrategia(fase){
       <div class="card" style="cursor:pointer;text-align:center" onclick="fEseguiCorsa('vendi')">
         <div style="font-size:28px;margin-bottom:6px">🤫</div>
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:#E05555;margin-bottom:6px">Vendersi</div>
-        <div style="font-size:11px;color:rgba(201,168,76,.5);line-height:1.6">Arrivi ultimo<br>+10 amicizia rivali<br>+15 intesa capitani avv.<br>−25 intesa tuo capitano<br>−50 sostegno contradaioli</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);line-height:1.6">Freni il cavallo<br>+10 amicizia rivali<br>+15 intesa capitani avv.<br>−25 intesa tuo capitano<br>−50 sostegno contradaioli</div>
       </div>
       <div class="card" style="cursor:pointer;text-align:center" onclick="fEseguiCorsa('gareggia')">
         <div style="font-size:28px;margin-bottom:6px">⚡</div>
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:#5DBB63;margin-bottom:6px">Gareggiare alla morte</div>
-        <div style="font-size:11px;color:rgba(201,168,76,.5);line-height:1.6">+1 Velocità cavallo<br>−5 amicizia rivali<br>−10 intesa capitani avv.<br>+10 intesa tuo capitano<br>+15 sostegno contradaioli</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);line-height:1.6">Il cavallo sembra un fulmine<br>−5 amicizia rivali<br>−10 intesa capitani avv.<br>+10 intesa tuo capitano<br>+15 sostegno contradaioli</div>
       </div>
     </div>
   </div>`);
