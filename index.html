@@ -359,8 +359,8 @@ const CDB={
   SantAmbrogio: {nemica:"Legnarello",   bonus:"RACCOLTA_FONDI",    desc:"Raccolta fondi 300 oro",         budget:3000,morale:60},
   SantErasmo:   {nemica:"SanDomenico",  bonus:"ALLEVAMENTO_TOP",   desc:"Cavalli −20% di costo",          budget:3000,morale:60}
 };
-const NF=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Tremante","Brigante","Bighino","Cittino","Richi Dimo"];
-const NC=["Fulmine","Tempesta","Vento","Spirit","Dardo","Ombra","Abbagliante","Guerriero","Woody","Pannocchia","Star","Odi et Amo"];
+const NF=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
+const NC=["Fulmine","Tempesta","Vento","Spirit","Dardo","Ombra","Abbagliante","Guerriero","Woody","Pannocchia","Star","Odi et Amo","Carilbom","El Rey","Farabundo","El Marador","Anacleto","Selvaggio","Eretica","Fegone","Fox Royale","Fenice","Ambra","Chimera","Frankie","Cristallo","Eclettico","Wakanda"];
 const MESI=["Gennaio","Febbraio","Marzo","Aprile","Maggio"];
 let G=null,MKT=null,PB=null,PT="SCHERZO",MosInt=null,Mos={};
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
@@ -2254,29 +2254,29 @@ function fRiassegnaRivali(){
 // ═══════════════════════════════════════════
 const TUT_CAP=[
   {title:"Benvenuto nel Tutorial Capitano!",text:"Sei il Capitano di una contrada di Legnano. Il tuo obiettivo è vincere il Palio gestendo cavalli, fantini, finanze e alleanze politiche.",btn:"Iniziamo →"},
-  {title:"📅 Schermata Mese",text:"Ogni anno è diviso in 5 mesi (Gennaio–Maggio). Ogni mese puoi compiere azioni: organizzare una raccolta fondi, una cena in maniero, rinforzare la stalla o allenare il cavallo. Ogni azione è usabile una volta al mese.",btn:"Avanti →"},
+  {title:"📅 Schermata Mese",text:"Ogni anno di gioco è diviso in 5 mesi (Gennaio–Maggio). Ogni mese puoi compiere azioni: organizzare una raccolta fondi, una cena in maniero, rinforzare la stalla o allenare il cavallo. Ogni azione è utilizzabile solo una volta al mese.",btn:"Avanti →"},
   {title:"💰 Raccolta Fondi",text:"La raccolta fondi ti dà oro extra (+200, oppure +300 se sei SantAmbrogio). Attenzione: costa -5 morale. Usala quando hai bisogno di liquidità ma il morale è alto.",btn:"Avanti →"},
   {title:"🍷 Cena in Maniero",text:"La cena costa 100 oro ma dà +15 morale. Il morale influenza la sfilata e il comportamento generale della contrada. Tienilo alto!",btn:"Avanti →"},
   {title:"🛡️ Rinforza la Stalla",text:"Spendendo 300 oro aumenti la difesa della stalla (+2, max 5). Una difesa alta riduce la probabilità di subire sabotaggi nemici ogni mese.",btn:"Avanti →"},
-  {title:"🛒 Mercato",text:"Nel mercato puoi acquistare cavalli e ingaggiare fantini. Ogni mese il mercato si aggiorna con nuovi soggetti. Ogni cavallo ha 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza, Nervosismo (più è basso meglio è).",btn:"Avanti →"},
+  {title:"🛒 Mercato",text:"Nel mercato puoi acquistare cavalli e ingaggiare fantini. Ogni mese il mercato si aggiorna con nuovi fantini e cavalli. Ogni cavallo ha 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza, Nervosismo.",btn:"Avanti →"},
   {title:"🐎 Stalla e Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli con 3 tipi di sessione: Forza pura (+1 Vel, +1 Ner), Controllo e ritmo (+1 Acc, -1 Ner), Fondo e curve (+1 Ten, +1 Res). Ogni anno i cavalli invecchiano perdendo 1 punto max in Acc e Res.",btn:"Avanti →"},
   {title:"⚔️ Politica",text:"La sezione Politica ti permette di fare Scherzi (-15 morale avversario), Imboscate (+nervosismo cavallo nemico) e Accordi (+25 amicizia, 300 oro). L'amicizia influenza il nervosismo del cavallo in gara. Attenzione: se vieni scoperto paghi 300 oro e -10 morale!",btn:"Avanti →"},
-  {title:"🌙 Maggio: Vigilia e Sfilata",text:"A maggio si svolge il Palio! Prima la cena propiziatoria (1000 oro, +15 morale + raccolta), poi la sfilata (investi oro per un punteggio più alto). Il punteggio sfilata è calcolato su morale, investimento e fortuna.",btn:"Avanti →"},
-  {title:"🏁 La Mossa",text:"Prima di correre c'è il minigioco della Mossa: una barra animata con una zona verde. Tocca la barra quando il cursore è nella zona verde per una partenza ottimale. Partenza ottimale = ×1.15 velocità, falsa = ×0.1!",btn:"Avanti →"},
+  {title:"🌙 Maggio: Vigilia e Sfilata",text:"A maggio si svolge il Palio! Prima la cena propiziatoria (1000 oro, +15 morale + raccolta), poi la sfilata (investi oro per un punteggio più alto). Il punteggio sfilata è calcolato in base a morale, investimento e fortuna.",btn:"Avanti →"},
+  {title:"🏁 La Mossa",text:"Prima di correre c'è il minigioco della Mossa: una barra animata con una zona verde. Tocca la barra quando il cursore è nella zona verde per una partenza ottimale.",btn:"Avanti →"},
   {title:"🏇 Le Batterie e la Finale",text:"Il Palio si svolge in due batterie da 4 contrade (4 giri). Le prime 2 di ogni batteria vanno in finale (5 giri). Se vinci: +100 morale e trofeo. Se perdi in finale: -50 morale. Se eliminato in batteria: -75 morale.",btn:"Ho capito! Torna alla home →"},
 ];
 
 const TUT_FNT=[
-  {title:"Benvenuto nel Tutorial Fantino!",text:"Sei un fantino di professione. Il tuo obiettivo è costruire la carriera gara dopo gara, migliorare le tue statistiche e vincere il Palio.",btn:"Iniziamo →"},
-  {title:"📅 Statistiche Fantino",text:"Il tuo fantino ha 4 statistiche: Bravura (vince corse addestramento), Esperienza (vince il Palio), Gestione Mossa (prestazione nel minigioco), Empatia (calcolata dal sostegno dei contradaioli). Partono tutte da 1.",btn:"Avanti →"},
-  {title:"💬 Dialoga col Capitano",text:"Puoi chiedere un aumento di stipendio (calcolato sulla media delle tue statistiche ×100 oro). Attenzione: costa -5 intesa e -10 sostegno. Puoi anche assumere un veterinario se hai già vinto con questa contrada: riduce -1 stanchezza/mese a tutti i cavalli.",btn:"Avanti →"},
+  {title:"Benvenuto nel Tutorial Fantino!",text:"Sei un fantino del Palio. Il tuo obiettivo è costruire una carriera vincente gara dopo gara, migliorare le tue statistiche e vincere il Palio.",btn:"Iniziamo →"},
+  {title:"📅 Statistiche Fantino",text:"Il tuo fantino ha 4 statistiche: Bravura, Esperienza, Gestione Mossa, Empatia. Partono tutte da 1.",btn:"Avanti →"},
+  {title:"💬 Dialoga col Capitano",text:"Puoi chiedere un aumento di stipendio (calcolato sulla media delle tue statistiche). Attenzione: costa -5 intesa e -10 sostegno. Puoi anche assumere un veterinario se hai già vinto con questa contrada: riduce -1 stanchezza/mese a tutti i cavalli.",btn:"Avanti →"},
   {title:"🏁 Corsa di Addestramento",text:"Una volta al mese puoi partecipare a una corsa di addestramento: scegli un cavallo e gioca il minigioco della Mossa. Se vinci: +1 Bravura. Il cavallo usato prende +1 stanchezza e +1 intesa col fantino. I cavalli non scelti: -1 stanchezza.",btn:"Avanti →"},
-  {title:"🐎 Stalla",text:"La stalla è divisa in due: cavalli della contrada (puoi allenarli gratis 1/mese) e cavalli personali (alleni con 300 oro). Ogni cavallo mostra STAN (stanchezza 0-3 verde) e INT (intesa col fantino 0-3 azzurro). Stanchezza 3 = il cavallo non può correre!",btn:"Avanti →"},
-  {title:"🛒 Mercato",text:"Al mercato puoi proporre un cavallo al capitano (formula basata su intesa + esperienza) oppure acquistarlo con i tuoi soldi per la stalla personale. I cavalli personali possono essere venduti alla metà del prezzo.",btn:"Avanti →"},
+  {title:"🐎 Stalla",text:"La stalla è divisa in due: cavalli della contrada (puoi allenarli gratis 1/mese) e cavalli personali (puoi allenarli con 300 oro). Ogni cavallo mostra STAN (stanchezza 0-3 verde) e INT (intesa col fantino 0-3 azzurro). Stanchezza 3 = il cavallo non può correre!",btn:"Avanti →"},
+  {title:"🛒 Mercato",text:"Al mercato puoi proporre un cavallo al capitano (formula basata su intesa e esperienza) oppure acquistarlo con i tuoi soldi per la stalla personale. I cavalli personali possono essere venduti alla metà del prezzo d'acquisto.",btn:"Avanti →"},
   {title:"⚔️ Politica Fantini",text:"In politica vedi le statistiche tue e dei fantini avversari (ognuno assegnato a una contrada). Puoi spendere 100 oro per +5 amicizia con un fantino (max 3 al mese). Alta amicizia = zona verde più ampia nel minigioco Mossa!",btn:"Avanti →"},
   {title:"🌧️ Meteo e Scelta Cavallo",text:"A maggio prima di correre si sorteggia il meteo: Pioggia (-1 Ten curva temporaneo), Nuvoloso (nessun effetto), Sole cocente (-1 Resistenza temporaneo). Scegli il cavallo sapendo il meteo!",btn:"Avanti →"},
-  {title:"⚖️ Vendersi o Gareggiare",text:"Prima di ogni corsa scegli la strategia: Gareggiare alla morte (+1 Vel cavallo, +intesa capitano, +sostegno) oppure Vendersi (arrivi ultimo, +amicizia rivali, +intesa capitani avversari, -intesa tuo capitano, -sostegno).",btn:"Avanti →"},
-  {title:"🏆 Fine Anno",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) o cambiarla (intesa con l'altra ≥60). I cavalli personali restano, quelli di contrada si azzerano. Il budget si mantiene. Buona fortuna!",btn:"Ho capito! Torna alla home →"},
+  {title:"⚖️ Vendersi o Gareggiare",text:"Prima di ogni corsa scegli la strategia: Gareggiare alla morte (+1 Vel cavallo, +intesa capitano, +sostegno) oppure Vendersi (freni il cavallo, +amicizia rivali, +intesa capitani avversari, -intesa tuo capitano, -sostegno).",btn:"Avanti →"},
+  {title:"🏆 Fine Anno",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) o cambiarla (intesa con l'altra ≥60). I cavalli personali restano, quelli di contrada lasciano la stalla. Il budget personale si mantiene. Buona fortuna, diventa il fantino più vincente!",btn:"Ho capito! Torna alla home →"},
 ];
 
 let _tutIdx=0,_tutDati=null;
