@@ -1661,7 +1661,7 @@ function fEstraiImprevisto(){
   } else if(tipo==='infortunato'&&tuttoCav.length){
     const cv=tuttoCav[rnd(0,tuttoCav.length-1)];
     cv._infortunato=true;
-    msg='🤕 '+cv.nome+' è infortunato! Non può allenarsi né correre questo mese.';
+    msg='🤕 '+cv.nome+' è infortunato! Non può correre questo mese.';
   } else if(tipo==='amici'){
     const nomiRiv=Object.keys(F.rivali);
     const scelto=nomiRiv[rnd(0,nomiRiv.length-1)];
@@ -2294,7 +2294,7 @@ function fTentaAccordo(nomeFant, amicizia, fase){
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:30px">📰</div>
-        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-top:4px">La Gazzetta del Palio</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-top:4px">Gazzetta del Palio</div>
         <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Notizie dal paddock · Anno ${F.anno}</div>
       </div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
@@ -2405,7 +2405,7 @@ function fShowRaceInterattiva(partecipanti, gpg, giri, vinto, playerIn, pos, fas
     <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px">Puoi usare UN SOLO tasto durante la gara. Opzionale — clicca in qualsiasi momento.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="RACE_TASTI">
       <button class="btn race-action-btn" onclick="fRaceAction('nerbo')" style="text-align:left;padding:10px;font-size:12px">
-        <div style="font-weight:700;color:#E05555">🪤 Usa Nerbo</div>
+        <div style="font-weight:700;color:#E05555">🪄 Usa Nerbo</div>
         <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Acc +1 · Res −1</div>
       </button>
       <button class="btn race-action-btn" onclick="fRaceAction('curva')" style="text-align:left;padding:10px;font-size:12px">
@@ -2440,7 +2440,7 @@ function fRaceAction(tipo){
   const d=window._fRaceData;
 
   if(tipo==='nerbo'){
-    msg='🪤 Hai usato il nerbo! Accelerazione +1, Resistenza −1';
+    msg='🪄 Hai usato il nerbo! Accelerazione +1, Resistenza −1';
     if(F.cavScelta){F.cavScelta.acc=clamp(F.cavScelta.acc+1,1,5);F.cavScelta.res=clamp(F.cavScelta.res-1,1,5);}
     fAddLog('Nerbo usato in gara: Acc +1, Res −1','inf');
   } else if(tipo==='curva'){
@@ -2514,7 +2514,7 @@ function fShowRaceInterattivaAdd(partecipanti, gpg, pos, vinto, cavIdx){
     <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px">Puoi usare UN SOLO tasto. Opzionale — clicca in qualsiasi momento durante la corsa.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="RACE_TASTI">
       <button class="btn race-action-btn" onclick="fRaceActionAdd('nerbo')" style="text-align:left;padding:10px;font-size:12px">
-        <div style="font-weight:700;color:#E05555">🪤 Usa Nerbo</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Acc +1 · Res −1</div>
+        <div style="font-weight:700;color:#E05555">🪄 Usa Nerbo</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Acc +1 · Res −1</div>
       </button>
       <button class="btn race-action-btn" onclick="fRaceActionAdd('curva')" style="text-align:left;padding:10px;font-size:12px">
         <div style="font-weight:700;color:#378ADD">🔄 Curva Stretta</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel +1 · Ten −1</div>
@@ -2541,7 +2541,7 @@ function fRaceActionAdd(tipo){
   const d=window._fAddRaceData;
   const cav=F._addestramentoCav&&d?F._addestramentoCav[d.cavIdx]:null;
   if(tipo==='nerbo'){
-    msg='🪤 Nerbo! Acc +1, Res −1';
+    msg='🪄 Nerbo! Acc +1, Res −1';
     if(cav){cav.acc=clamp(cav.acc+1,1,5);cav.res=clamp(cav.res-1,1,5);}
   } else if(tipo==='curva'){
     msg='🔄 Curva stretta! Vel +1, Ten −1';
@@ -2741,28 +2741,28 @@ const TUT_CAP=[
   {title:"🍷 Cena in Maniero",text:"La cena costa 100 oro ma dà +15 morale. Il morale influenza la sfilata di maggio e il bonus fantino. Tienilo alto! Organizzare la cena ogni mese per 5 mesi di fila sblocca un obiettivo speciale.",btn:"Avanti →"},
   {title:"🛡️ Rinforza la Stalla",text:"Spendendo 300 oro aumenti la difesa della stalla (+2, max 5). Una difesa alta riduce la probabilità di subire sabotaggi e imboscate da parte delle contrade nemiche ogni mese.",btn:"Avanti →"},
   {title:"🛒 Mercato",text:"Nel mercato compri cavalli e ingaggi fantini. I cavalli hanno 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza e Nervosismo. I fantini hanno 4 attributi: Bravura, Esperienza, Gestione Mossa ed Empatia. Il tuo Prestigio sblocca offerte migliori!",btn:"Avanti →"},
-  {title:"🐎 Stalla e Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli una volta al mese con 3 tipi di sessione: Forza pura (+1 Vel, +1 Ner), Controllo e ritmo (+1 Acc, −1 Ner), Fondo e curve (+1 Ten, +1 Res). Ogni anno i cavalli invecchiano e perdono un punto massimo in Acc e Res. Vendili prima che perdano troppo valore!",btn:"Avanti →"},
+  {title:"🐎 Stalla e Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli una volta al mese con 3 tipi di sessione: Forza pura (+1 Vel, +1 Ner), Controllo e ritmo (+1 Acc, −1 Ner), Fondo e curve (+1 Ten, +1 Res). Ogni anno i cavalli invecchiano e perdono un punto massimo in Acc e Res!",btn:"Avanti →"},
   {title:"⚔️ Politica",text:"La sezione Politica ti permette di fare Scherzi (−15 morale avversario), Imboscate (+nervosismo cavallo nemico) e Accordi (+25 amicizia, −300 oro). L'amicizia con le altre contrade riduce il nervosismo del tuo cavallo in gara. Attenzione: se vieni scoperto paghi 300 oro e −10 morale!",btn:"Avanti →"},
   {title:"⭐ Prestigio",text:"Il tuo Prestigio cresce con le vittorie e gli obiettivi completati. Un Prestigio alto porta cavalli e fantini migliori al mercato e aumenta le probabilità che il fantino accetti i tuoi ordini pre-gara. Tienilo d'occhio!",btn:"Avanti →"},
   {title:"🌙 Maggio: Vigilia e Sfilata",text:"A maggio si svolge il Palio! Prima arriva la cena propiziatoria (1.000 oro, +15 morale), poi la sfilata (investi oro per un punteggio più alto). Il punteggio sfilata dipende da morale, investimento e fortuna. Poi si entra in pista.",btn:"Avanti →"},
   {title:"🎯 Strategie e Accordi pre-gara",text:"Prima di ogni batteria scegli una strategia di gara: Tenersi per l'ultimo giro (Vel −1, Res +2), Alla morte (Vel +2, Res −1), Patti con un'altra contrada (−300 oro) o attaccare la contrada nemica. Il fantino potrebbe non ubbidire se l'intesa con te è bassa!",btn:"Avanti →"},
   {title:"🏁 La Mossa",text:"Prima di ogni corsa gioca il minigioco della Mossa: una barra animata con una zona verde. Tocca la barra quando il cursore è nella zona verde per una partenza a fionda. Più alta è la Gestione Mossa del fantino, più ampia sarà la zona verde.",btn:"Avanti →"},
-  {title:"🏇 Batterie, Finale e Vittoria",text:"Il Palio si svolge in due batterie da 4 contrade (4 giri ciascuna). Le prime 2 di ogni batteria vanno in finale (5 giri). Vinci la finale: +100 morale, trofeo e Prestigio. Perdi in finale: −50 morale. Eliminato in batteria: −75 morale. Vinci tre anni di fila per diventare leggendario!",btn:"Ho capito! Torna alla home →"},
+  {title:"🏇 Batterie, Finale e Vittoria",text:"Il Palio si svolge in due batterie da 4 contrade (4 giri ciascuna). Le prime 2 di ogni batteria vanno in finale (5 giri). Vinci la finale: +100 morale, trofeo e Prestigio. Perdi in finale: −50 morale. Eliminato in batteria: −75 morale. Vinci quattro anni di fila per diventare leggendario!",btn:"Ho capito! Torna alla home →"},
 ];
 
 const TUT_FNT=[
   {title:"Benvenuto nel Tutorial Fantino!",text:"Sei un fantino del Palio di Legnano. Il tuo obiettivo è costruire una carriera vincente, migliorare le tue statistiche, guadagnarti la fiducia del Capitano e conquistare il drappellone. Ogni scelta conta!",btn:"Iniziamo →"},
-  {title:"📊 Le tue 4 Statistiche",text:"Il tuo fantino ha 4 statistiche che crescono nel tempo: Bravura (tecnica di gara), Esperienza (anni in sella), Gestione Mossa (quanto sei bravo alla partenza) ed Empatia (legame con i cavalli). Partono tutte da 1 — costruisci la tua carriera passo dopo passo.",btn:"Avanti →"},
+  {title:"📊 Le tue 4 Statistiche",text:"Il tuo fantino ha 4 statistiche che crescono nel tempo: Bravura, Esperienza, Gestione Mossa ed Empatia. Partono tutte da 1 — costruisci la tua carriera passo dopo passo.",btn:"Avanti →"},
   {title:"🤝 Intesa e Sostegno",text:"Due valori fondamentali: Intesa con il Capitano (0–100) e Sostegno dei Contradaioli (0–100). Alta intesa = stipendio migliore e ordini più affidabili. Alto sostegno = i contradaioli ti difendono e ti premiano. Crollano se deludi in gara o tradisci.",btn:"Avanti →"},
-  {title:"💬 Dialoga col Capitano",text:"Dal tab Mese puoi chiedere un aumento di stipendio (calcolato sulla media delle tue statistiche, costa −5 intesa e −10 sostegno) e, se hai già vinto almeno una volta con questa contrada, assumere un veterinario: riduce −1 stanchezza al mese a tutti i cavalli.",btn:"Avanti →"},
+  {title:"💬 Dialoga col Capitano",text:"Dal menù Mese puoi chiedere un aumento di stipendio (calcolato sulla media delle tue statistiche, costa −5 intesa e −10 sostegno) e, se hai già vinto almeno una volta con questa contrada, assumere un veterinario: riduce −1 stanchezza al mese a tutti i cavalli.",btn:"Avanti →"},
   {title:"🏁 Corsa di Addestramento",text:"Una volta al mese puoi correre una gara di addestramento: scegli un cavallo, gioca il minigioco della Mossa e osserva la gara animata. Se vinci: +1 Bravura. Il cavallo scelto prende +1 stanchezza e +1 intesa col fantino. Gli altri cavalli perdono −1 stanchezza.",btn:"Avanti →"},
-  {title:"🎮 Azioni durante la Gara",text:"Sia nell'addestramento sia nelle batterie del Palio, i tasti d'azione appaiono direttamente nella schermata della gara animata. Puoi usarne UNO SOLO per gara, quando vuoi: 🪤 Usa Nerbo (Acc +1, Res −1), 🔄 Curva Stretta (Vel +1, Ten −1), 🛡️ Tieniti per ultimo (Vel −1, Res +1), 👕 Tira Giubba alla nemica (sorpasso!), 🛑 Frena il Cavallo (Vel −1, intesa capitani rivali +10). Osserva la gara e scegli il momento giusto.",btn:"Avanti →"},
+  {title:"🎮 Azioni durante la Gara",text:"Sia nell'addestramento sia nelle batterie del Palio, i tasti d'azione appaiono direttamente nella schermata della gara animata. Puoi usarne UNO SOLO per gara, quando vuoi: 🪄 Usa Nerbo (Acc +1, Res −1), 🔄 Curva Stretta (Vel +1, Ten −1), 🛡️ Tieniti per ultimo (Vel −1, Res +1), 👕 Tira Giubba alla nemica (sorpasso!), 🛑 Frena il Cavallo (Vel −1, intesa capitani rivali +10). Osserva la gara e scegli il momento giusto.",btn:"Avanti →"},
   {title:"🐎 La Stalla",text:"La stalla è divisa in due sezioni: cavalli della contrada (puoi allenarli gratis una volta al mese) e cavalli personali (allenamento costa 300 oro). Ogni cavallo mostra STAN (stanchezza 0–3, verde = ok) e INT (intesa col fantino 0–3, azzurro). Stanchezza 3 = non può correre!",btn:"Avanti →"},
-  {title:"🛒 Mercato",text:"Al mercato puoi proporre un cavallo al Capitano (la probabilità dipende dalla tua intesa ed esperienza) oppure acquistarlo di tasca tua per la stalla personale. I cavalli personali si possono rivendere alla metà del prezzo d'acquisto. I cavalli invecchiano: vendili prima che perdano valore.",btn:"Avanti →"},
+  {title:"🛒 Mercato",text:"Al mercato puoi proporre un cavallo al Capitano (la probabilità dipende dalla tua intesa ed esperienza) oppure acquistarlo di tasca tua per la stalla personale. I cavalli personali si possono rivendere alla metà del prezzo d'acquisto. I cavalli invecchiano dopo due anni in scuderia.",btn:"Avanti →"},
   {title:"⚔️ Politica Fantini",text:"In politica vedi te stesso e i fantini avversari (ognuno assegnato a una contrada rivale). Spendi 100 oro per +5 amicizia con un fantino (max 3 volte al mese). Alta amicizia = zona verde più ampia nel minigioco Mossa! Puoi anche tentare un Tradimento (una volta l'anno) per ottenere oro e intesa con un capitano rivale.",btn:"Avanti →"},
   {title:"🌧️ Meteo e Scelta Cavallo",text:"A maggio si sorteggia il meteo prima della corsa: Pioggia (−1 Tenuta curva temporaneo), Nuvoloso (nessun effetto), Sole cocente (−1 Resistenza temporaneo). Scegli il cavallo più adatto al meteo! Il Capitano ha una preferenza: seguirla migliora la tua intesa.",btn:"Avanti →"},
   {title:"🎯 Obiettivo del Capitano",text:"Prima di ogni batteria il Capitano ti dà un obiettivo segreto (Qualificati / Vinci / Elimina la nemica). Se lo raggiungi: Intesa +20. Se fallisci: Intesa −20. Puoi anche stringere accordi pre-gara con altri fantini (−300 oro) per farti lasciare spazio in pista.",btn:"Avanti →"},
-  {title:"🏆 Fine Anno e Carriera",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) oppure cambiarla (intesa con l'altra ≥60). I cavalli personali restano con te, quelli di contrada vengono rilasciati. Il budget personale si mantiene. Se l'intesa crolla e nessuna contrada ti vuole, passi un anno da svincolato. Buona fortuna, diventa il fantino più vincente del Palio!",btn:"Ho capito! Torna alla home →"},
+  {title:"🏆 Fine Anno e Carriera",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) oppure cambiarla (intesa con l'altra ≥60). I cavalli personali restano con te, quelli di contrada vengono rilasciati. Il budget personale si mantiene. Se l'intesa crolla e nessuna contrada ti vuole, passi un anno da svincolato. Buona fortuna, diventa il fantino più vincente della storia del Palio!",btn:"Ho capito! Torna alla home →"},
 ];
 
 let _tutIdx=0,_tutDati=null;
@@ -3179,23 +3179,23 @@ function notiziaMesePalio(){
   if(r<0.20){
     const ct=rndArr(contrade);
     titolo='⚠ Colpo Basso!';
-    testo=`La contrada di <strong>${ct}</strong> è accusata di uno scherzo ai danni di una rivale. I contradaioli negano tutto, ma la città mormora.`;
+    testo=`La contrada di <strong>${ct}</strong> è accusata di aver fatto uno scherzo ai danni di una rivale. I contradaioli negano tutto, ma la città mormora.`;
   } else if(r<0.40){
     const ct=rndArr(contrade);
     titolo='🐎 Gran Destriero!';
-    testo=`Si vocifera che <strong>${ct}</strong> abbia portato in stalla un cavallo di straordinarie qualità. I bookmaker li quotano favoriti.`;
+    testo=`Si vocifera che <strong>${ct}</strong> abbia portato in stalla un cavallo di straordinarie qualità. I bookmaker li quotano favoriti per il Palio.`;
   } else if(r<0.60){
     const ct=rndArr(contrade);
     titolo='👑 Il Favorito';
-    testo=`I contradaioli sussurrano: il favorito per questa edizione del Palio sembra essere <strong>${ct}</strong>. Ma il Palio riserva sempre sorprese.`;
+    testo=`I contradaioli sussurrano: il favorito per questa edizione del Palio sembra essere <strong>${ct}</strong>. Ma il Palio potrebbe riservare sempre sorprese.`;
   } else if(r<0.75){
     const ct=rndArr(contrade);
     titolo='🤝 Patto Segreto?';
-    testo=`Si vocifera di un accordo nell'ombra. <strong>${ct}</strong> e un'altra contrada sembrano aver stretto un patto. Le alleanze cambiano le sorti del Palio.`;
+    testo=`Si vocifera di un accordo nell'ombra. <strong>${ct}</strong> e un'altra contrada sembrano aver stretto un patto segreto. Le alleanze cambiano le sorti del Palio.`;
   } else {
     const ct=rndArr(contrade);
     titolo='📢 Tensione in Città';
-    testo=`Le rivalità si infiammano. <strong>${ct}</strong> ha rafforzato la propria stalla e si dice voglia il drappellone ad ogni costo.`;
+    testo=`Le rivalità si infiammano. <strong>${ct}</strong> ha rafforzato la propria stalla e si dice voglia il crocione ad ogni costo.`;
   }
   return {titolo,testo};
 }
@@ -3211,7 +3211,7 @@ function mostraGazzetta(onClose){
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:30px">📰</div>
-        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">La Gazzetta del Palio</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
         <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">${mese} ${G.anno}</div>
       </div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
@@ -3342,7 +3342,7 @@ function mostraEsitoStrategia(msg,colore,tracciato,fantUbbidisce){
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:30px">📰</div>
-        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">La Gazzetta del Palio</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
         <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Prima del Canapo — Anno ${G.anno}</div>
       </div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
