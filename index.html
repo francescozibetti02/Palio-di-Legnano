@@ -780,10 +780,10 @@ function doManiero(tipo){
     const guad=Math.floor(G.morale*2);
     G.oro+=guad;G.manieroVenditaGadget=true;
     addLog('Vendita Gadget al Maniero. +'+guad+' oro','inf');
-    showMev('🎁 Gadget venduti! +'+guad+' oro','grn');
+    showMev('💰 Gadget venduti! +'+guad+' oro','grn');
     // Popup guadagno gadget
     updHUD();salva();
-    mostraPopupGuadagnoManiero('🎁 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada');
+    mostraPopupGuadagnoManiero('💰 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada');
     return;
   } else if(tipo==='evento'){
     if(G.manieroOrganizzaEvento)return;
@@ -791,7 +791,7 @@ function doManiero(tipo){
     G.oro-=200;G.condManiero=clamp(G.condManiero-10,0,100);
     G.morale=clamp(G.morale+15,0,200);G.manieroOrganizzaEvento=true;
     addLog('Organizza Evento al Maniero. −200 oro, −10 condizioni, +15 morale','inf');
-    showMev('🎉 Evento organizzato! −200 oro, −10 condizioni, +15 morale','grn');
+    showMev('🍻 Evento organizzato! −200 oro, −10 condizioni, +15 morale','grn');
     checkObiettivi('evento_maniero');
     if(G.morale>=200)checkObiettivi('morale_200');
   } else if(tipo==='manutenzione'){
@@ -899,7 +899,7 @@ function allena(tipo,idx){
 
 // ── MINIGIOCO ALLENAMENTO ──
 function mostraMinigioco(tipo,idx,costoAll){
-  const MOSSE=['🥕','⚡','💧','🌿','🔥','🌬️'];
+  const MOSSE=['🥕','⚡','🏇','🍏','🍎','🐎'];
   const NMOVES=6;
   const seqLen=5; // 5 pallini
   // Genera sequenza random di 6 mosse usando i 5 pallini come "colori" (3 colori ciascuno con un simbolo)
