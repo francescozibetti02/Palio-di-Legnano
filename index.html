@@ -650,7 +650,7 @@ function renderMazioni(){
   const cond=G.condManiero!==undefined?G.condManiero:60;
   el.innerHTML=`
     <button class="ab" onclick="apriInfoContrade()">
-      <div class="ic">🏰</div><div class="at">Info contrade</div>
+      <div class="ic">🕯️</div><div class="at">Info contrade</div>
       <div class="ac">Fantini e cavalli rivali</div></button>
     <button class="ab" onclick="apriManiero()">
       <div class="ic">🏰</div><div class="at">Maniero</div>
@@ -692,7 +692,7 @@ function apriInfoContrade(){
   let html=`<div id="INFO_CONTRADE_OVERLAY" style="position:fixed;inset:0;background:rgba(15,10,5,.96);z-index:9999;overflow-y:auto;font-family:var(--fn)">
     <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-        <div style="font-size:20px;font-weight:700;color:var(--gold);letter-spacing:1px">🏰 Info Contrade</div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold);letter-spacing:1px">🕯️ Info Contrade</div>
         <button onclick="document.getElementById('INFO_CONTRADE_OVERLAY').remove()" style="background:none;border:1px solid rgba(201,168,76,.3);color:var(--gold);border-radius:6px;padding:6px 14px;font-size:14px;cursor:pointer">✕ Chiudi</button>
       </div>`;
 
@@ -771,11 +771,11 @@ function apriManiero(){
           <div style="font-size:11px;color:rgba(201,168,76,.5)">−100 oro · Guadagno variabile in base a morale e condizioni</div>
         </button>
         <button class="btn w" ${noGadget?'disabled':''} onclick="doManiero('gadget')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
-          <div style="font-weight:700;color:${noGadget?'rgba(201,168,76,.3)':'var(--gold-l)'}">🎁 Vendita Gadget ${noGadget?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-weight:700;color:${noGadget?'rgba(201,168,76,.3)':'var(--gold-l)'}">💰 Vendita Gadget ${noGadget?'<span style="font-size:10px">(già usata)</span>':''}</div>
           <div style="font-size:11px;color:rgba(201,168,76,.5)">Guadagno variabile in base al morale</div>
         </button>
         <button class="btn w" ${noEvento?'disabled':''} onclick="doManiero('evento')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
-          <div style="font-weight:700;color:${noEvento?'rgba(201,168,76,.3)':'var(--gold-l)'}">🎉 Organizza Evento ${noEvento?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-weight:700;color:${noEvento?'rgba(201,168,76,.3)':'var(--gold-l)'}">🍻 Organizza Evento ${noEvento?'<span style="font-size:10px">(già usata)</span>':''}</div>
           <div style="font-size:11px;color:rgba(201,168,76,.5)">−200 oro · Condizioni −10 · Morale +15</div>
         </button>
         <button class="btn w" ${noManu?'disabled':''} onclick="doManiero('manutenzione')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
@@ -2271,7 +2271,7 @@ function avviaUI(){
         <div class="card"><div class="ct">Tipo di azione</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
             <button id="POL_BTN_SCHERZO" class="ab red pol-action-btn" onclick="setPT('SCHERZO')"><div class="ic">🎨</div><div class="at">Scherzo</div><div class="ac">-15 morale avversario</div></button>
-            <button id="POL_BTN_IMBOSCATA" class="ab red pol-action-btn" onclick="setPT('IMBOSCATA')"><div class="ic">🌶️</div><div class="at">Imboscata</div><div class="ac">+nervosismo cavallo</div></button>
+            <button id="POL_BTN_IMBOSCATA" class="ab red pol-action-btn" onclick="setPT('IMBOSCATA')"><div class="ic">🌶️</div><div class="at">Imboscata</div><div class="ac">cerca di scoprire il cavallo</div></button>
             <button id="POL_BTN_ACCORDO" class="ab pol-action-btn" onclick="setPT('ACCORDO')"><div class="ic">🤝</div><div class="at">Accordo</div><div class="ac">+25 amicizia · 300 oro</div></button>
           </div>
           <div id="POL_MSG" style="font-size:13px;color:rgba(201,168,76,.6);margin-top:8px;font-family:var(--fn)"></div>
@@ -3801,17 +3801,17 @@ const TUT_CAP=[
   {title:"Benvenuto nel Tutorial Capitano!",text:"Sei il Capitano di una contrada di Legnano. Il tuo obiettivo è vincere il Palio gestendo cavalli, fantini, finanze, il tuo maniero e le alleanze politiche. Ogni anno ti giochi tutto in una sola gara: le scelte che fai nei 5 mesi precedenti fanno la differenza.",btn:"Iniziamo →"},
   {title:"📅 Il Calendario: 5 Mesi",text:"Ogni anno di gioco va da Gennaio a Maggio. Ogni mese puoi compiere azioni nella schermata Mese: raccolta fondi, cena in maniero, rinforzo stalla e altro ancora. Ogni azione è usabile una sola volta al mese. A Maggio si corre il Palio.",btn:"Avanti →"},
   {title:"💰 Raccolta Fondi",text:"La raccolta fondi ti dà oro extra (+200, oppure +300 se sei SantAmbrogio). Attenzione: costa −5 morale. Usala quando hai bisogno di liquidità ma il morale è alto. Ricorda: il morale conta per la sfilata e per le attività del maniero!",btn:"Avanti →"},
-  {title:"🏰 Il Maniero",text:"Ogni mese puoi aprire il Maniero per svolgere fino a 4 attività (una sola ciascuna): 🍷 Organizza Cena (−100 oro, guadagno variabile in base a morale e condizioni del maniero), 🎁 Vendita Gadget (guadagno legato al morale), 🎉 Organizza Evento (−200 oro, −10 condizioni, +15 morale), 🔨 Manutenzione (+20 condizioni, −500 oro, +5 morale). Le condizioni del maniero degradano di −5 ogni mese: tienile alte per massimizzare i guadagni della cena!",btn:"Avanti →"},
+  {title:"🏰 Il Maniero",text:"Ogni mese puoi aprire il Maniero per svolgere fino a 4 attività (ognuna massimo una sola volta al mese): 🍷 Organizza Cena (−100 oro, guadagno variabile in base a morale e condizioni del maniero), 💰 Vendita Gadget (guadagno legato al morale), 🍻 Organizza Evento (−200 oro, −10 condizioni, +15 morale), 🔨 Manutenzione (+20 condizioni, −500 oro, +5 morale). Le condizioni del maniero degradano di −5 ogni mese: tienile alte per massimizzare i guadagni della cena!",btn:"Avanti →"},
   {title:"🛡️ Rinforza la Stalla",text:"Spendendo 300 oro aumenti la difesa della stalla (+2, max 5). Una difesa alta riduce la probabilità di subire sabotaggi e imboscate da parte delle contrade nemiche ogni mese.",btn:"Avanti →"},
-  {title:"🛒 Mercato",text:"Nel mercato compri cavalli e ingaggi fantini. I cavalli hanno 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza e Nervosismo. I fantini hanno 4 attributi: Bravura, Esperienza, Gestione Mossa ed Empatia. Il tuo Prestigio sblocca offerte migliori!",btn:"Avanti →"},
-  {title:"🐎 Stalla e Minigioco Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli una volta al mese con 3 tipi di sessione: ⚡ Forza pura (+1 Vel, +1 Ner), 🎯 Controllo e ritmo (+1 Acc, −1 Ner), 🏃 Fondo e curve (+1 Ten, +1 Res). Ogni allenamento lancia il minigioco della Mossa: devi toccare la barra animata nella zona verde. Se vinci il minigioco l'allenamento riesce, altrimenti fallisce (ma il costo viene comunque scalato). Ogni anno i cavalli invecchiano e perdono un punto massimo in Acc e Res!",btn:"Avanti →"},
-  {title:"⚔️ Politica — Scherzi e Accordi",text:"La sezione Politica ti permette di fare Scherzi (−15 morale avversario, ma se vieni scoperto −300 oro e −10 morale) e Accordi (+25 amicizia con un'altra contrada, −300 oro). L'amicizia alta riduce il nervosismo del tuo cavallo in gara. Puoi fare al massimo 1 azione politica al mese.",btn:"Avanti →"},
+  {title:"🛒 Mercato",text:"Nel mercato compri cavalli e ingaggi fantini. I cavalli hanno 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza e Nervosismo. I fantini hanno un ingaggio cge varia in base alla media delle statistiche (1 di media = 600 oro), ma devi cercare di ingaggaiarli al minor prezzo per ottimizzare i costi e hanno 4 attributi: Bravura, Esperienza, Gestione Mossa ed Empatia. Il tuo Prestigio sblocca offerte migliori!",btn:"Avanti →"},
+  {title:"🐎 Stalla e Minigioco Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli una volta al mese con 3 tipi di sessione: ⚡ Forza pura (+1 Vel, +1 Ner), 🎯 Controllo e ritmo (+1 Acc, −1 Ner), 🏃 Fondo e curve (+1 Ten, +1 Res). Ogni allenamento lancia il minigioco Allenamento: dricordati la sequenza di simboli che appare sullo schermo. Se vinci il minigioco l'allenamento riesce, altrimenti fallisce (ma il costo viene comunque scalato). Ogni due anni i cavalli invecchiano e perdono un punto massimo in Acc e Res!",btn:"Avanti →"},
+  {title:"⚔️ Politica — Scherzi e Accordi",text:"La sezione Politica ti permette di fare Scherzi (−15 morale avversario, ma se vieni scoperto −300 oro e −10 morale), Imboscata e Accordi (+25 amicizia con un'altra contrada, −300 oro). L'amicizia alta riduce il nervosismo del tuo cavallo in gara. Puoi fare al massimo 1 azione politica al mese.",btn:"Avanti →"},
   {title:"🥷 Politica — Minigioco Imboscata",text:"L'Imboscata ti permette di scoprire il cavallo di una contrada avversaria (velocità, accelerazione, tenuta, resistenza, nervosismo). Aprirà un minigioco labirinto: guida il pallino della tua contrada dalla casella in alto a sinistra fino al ✓ in basso a destra. Attenzione: 3 guardie rosse si teletrasportano ogni 1 secondo in caselle non adiacenti — se ti raggiungono, l'imboscata fallisce (−300 oro, amicizia −10). Se riesci, scopri le statistiche nemiche e guadagni +5 Prestigio!",btn:"Avanti →"},
   {title:"📜 Albo d'Oro",text:"L'Albo d'Oro raccoglie la storia del Palio anno per anno: scopri chi ha vinto ogni edizione e tieni traccia dei tuoi trionfi. Le tue vittorie vengono evidenziate e contribuiscono al tuo Prestigio. Più vinci, più il tuo nome entrerà nella leggenda del Palio di Legnano!",btn:"Avanti →"},
   {title:"⭐ Prestigio",text:"Il tuo Prestigio cresce con le vittorie e gli obiettivi completati. Un Prestigio alto porta cavalli e fantini migliori al mercato, aumenta la probabilità che il fantino accetti i tuoi ordini pre-gara e migliora il bonus di accettazione dei Patti prima della corsa. Tienilo d'occhio!",btn:"Avanti →"},
   {title:"🌙 Maggio: Vigilia e Sfilata",text:"A maggio si svolge il Palio! Prima arriva la cena propiziatoria (1.000 oro, +15 morale), poi la sfilata (investi oro per un punteggio più alto). Il punteggio sfilata dipende da morale, investimento e fortuna. Poi si entra in pista.",btn:"Avanti →"},
   {title:"🎯 Strategie e Accordi pre-gara",text:"Prima di ogni batteria scegli una strategia di gara: 🛡️ Tenersi per l'ultimo giro (Vel −1, Res +2), ⚡ Alla morte (Vel +2, Res −1), 🤝 Patti con un'altra contrada (−300 oro, probabilità accettazione legata all'amicizia + Prestigio) o ⚔️ Contro la nemica (nessuna delle due vince). Il fantino potrebbe non ubbidire se la bravura e l'intesa con te sono basse!",btn:"Avanti →"},
-  {title:"🏁 Il Minigioco della Mossa",text:"Prima di ogni corsa (e di ogni allenamento) gioca il minigioco della Mossa: una barra animata con una zona verde. Tocca la barra quando il cursore è nella zona verde per una partenza a fionda. Più alta è la Gestione Mossa del fantino, più ampia sarà la zona verde. Il successo dà un vantaggio iniziale sulla griglia di partenza!",btn:"Avanti →"},
+  {title:"🏁 Il Minigioco della Mossa",text:"Prima di ogni corsa (batteria e finale) gioca il minigioco della Mossa: una barra animata con una zona verde. Tocca la barra quando il cursore è nella zona verde per una partenza a fionda. Più alta è la Gestione Mossa del fantino, più ampia sarà la zona verde. Il successo dà un vantaggio iniziale sulla griglia di partenza!",btn:"Avanti →"},
   {title:"🏇 Batterie, Finale e Vittoria",text:"Il Palio si svolge in due batterie da 4 contrade (4 giri ciascuna). Le prime 2 di ogni batteria vanno in finale (5 giri). Vinci la finale: +100 morale, trofeo e Prestigio. Perdi in finale: −50 morale. Eliminato in batteria: −75 morale. Vinci quattro anni di fila per diventare leggendario!",btn:"Ho capito! Torna alla home →"},
 ];
 
@@ -4284,16 +4284,16 @@ function mostraGazzetta(onClose){
     const m=eventoMese.msg;
     if(m.includes('Scherzo da parte di')||m.includes('Scherzo nemico')){
       titolo='⚠ Mossa Sleale!';
-      testo=`La contrada di <strong>${G.nemica}</strong> ha ordito uno scherzo contro di noi. I contradaioli sono in fermento e il morale ne ha risentito. Vendetta sarà dolce.`;
+      testo=`La contrada di <strong>${G.nemica}</strong> ha ordito uno scherzo contro di noi. I contradaioli sono in fermento e il morale ne ha risentito. Vendetta sarà a maggio?`;
     } else if(m.includes('Imboscata')||m.includes('nervosismo')){
       titolo='🗡️ Imboscata Notturna!';
-      testo=`Nella notte, qualcuno ha turbato i nostri destrieri nella stalla. Il nervosismo dei cavalli è aumentato. Si sospetta la mano della contrada nemica.`;
+      testo=`Nella notte, qualcuno ha turbato i nostri destrieri nella stalla. Il nervosismo dei cavalli è aumentato. Si sospetta la mano della contrada nemica!`;
     } else if(m.includes('ex contradaiolo')||m.includes('800 oro')){
       titolo='💰 Dono Inatteso!';
       testo=`Un generoso ex contradaiolo ha inviato <strong>800 oro</strong> nelle casse della contrada! Un gesto di fedeltà e amore verso i nostri colori che scalda il cuore.`;
     } else if(m.includes('Multa')||m.includes('cena proibita')||m.includes('600 oro')){
       titolo='📜 Scandalo a Tavola!';
-      testo=`Le autorità del Palio hanno inflitto una <strong>multa di 600 oro</strong> alla nostra contrada per via di una cena non autorizzata. Un duro colpo alle casse contradaiole.`;
+      testo=`Le autorità del Palio hanno inflitto una <strong>multa di 600 oro</strong> alla nostra contrada per via di una cena non autorizzata. Un duro colpo alle casse della contrada.`;
     } else if(m.includes('maniero è crollato')||m.includes('Condizioni maniero a 0')){
       titolo='🏚️ Il Maniero è Crollato!';
       testo=`Tragedia per la nostra contrada: <strong>il maniero è crollato</strong>! Le condizioni sono ridotte a zero. Servirà una costosa opera di manutenzione per ripristinarlo.`;
