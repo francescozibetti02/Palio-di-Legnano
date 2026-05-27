@@ -2100,129 +2100,8 @@ function mostraSchermataCrocione(nomeContrada, coloriContrada, isFantino, onCont
   const overlay=document.createElement('div');
   overlay.style.cssText=`position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;
     background:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),${bgGrad}`;
-  // SVG del Crocione di Ariberto da Intimiano — fedele all'originale medievale
-  // Croce latina in legno scuro con terminazioni a lobi (croce patente/potenziata),
-  // Cristo in oro con aureola, figure laterali, cartiglio INRI, Adamo alla base
-  const crocione=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 320" width="160" height="233">
-    <defs>
-      <linearGradient id="cgwood" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#5C3317"/>
-        <stop offset="50%" stop-color="#3D2009"/>
-        <stop offset="100%" stop-color="#2A1405"/>
-      </linearGradient>
-      <linearGradient id="cggold" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#F5E97A"/>
-        <stop offset="40%" stop-color="#C9A84C"/>
-        <stop offset="100%" stop-color="#8B6914"/>
-      </linearGradient>
-      <linearGradient id="cgchrist" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#E8C870"/>
-        <stop offset="100%" stop-color="#B8922A"/>
-      </linearGradient>
-      <filter id="cglow2">
-        <feGaussianBlur stdDeviation="2.5" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-      <filter id="cshadow">
-        <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,.6)"/>
-      </filter>
-    </defs>
-
-    <!-- === CORPO DELLA CROCE (legno scuro) === -->
-    <!-- Asta verticale principale -->
-    <rect x="87" y="22" width="46" height="278" rx="3" fill="url(#cgwood)" filter="url(#cshadow)"/>
-    <!-- Traversa orizzontale -->
-    <rect x="18" y="82" width="184" height="46" rx="3" fill="url(#cgwood)" filter="url(#cshadow)"/>
-
-    <!-- Bordi dorati sulle aste (bordatura medievale) -->
-    <rect x="87" y="22" width="46" height="278" rx="3" fill="none" stroke="url(#cggold)" stroke-width="1.5" opacity=".6"/>
-    <rect x="18" y="82" width="184" height="46" rx="3" fill="none" stroke="url(#cggold)" stroke-width="1.5" opacity=".6"/>
-
-    <!-- === TERMINAZIONI A LOBI (caratteristica della Croce di Ariberto) === -->
-    <!-- Lobo superiore (3 lobi) -->
-    <circle cx="110" cy="26" r="14" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="91" cy="30" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <circle cx="129" cy="30" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <!-- Lobo sinistro (3 lobi) -->
-    <circle cx="21" cy="105" r="14" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="22" cy="86" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <circle cx="22" cy="124" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <!-- Lobo destro (3 lobi) -->
-    <circle cx="199" cy="105" r="14" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="198" cy="86" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <circle cx="198" cy="124" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <!-- Lobo inferiore (3 lobi) -->
-    <circle cx="110" cy="295" r="14" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="91" cy="291" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-    <circle cx="129" cy="291" r="10" fill="url(#cgwood)" stroke="url(#cggold)" stroke-width="1.2"/>
-
-    <!-- === CARTIGLIO INRI (in cima) === -->
-    <rect x="76" y="38" width="68" height="20" rx="3" fill="#F5F0DC" stroke="url(#cggold)" stroke-width="1"/>
-    <text x="110" y="52" text-anchor="middle" font-size="9" fill="#2A1405" font-family="serif" font-weight="bold" letter-spacing="1">INRI</text>
-
-    <!-- === ANGELI NEI MEDAGLIONI SUPERIORI === -->
-    <!-- Medaglione angelo sx -->
-    <circle cx="75" cy="60" r="12" fill="#4A2800" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="75" cy="54" r="5" fill="url(#cggold)" opacity=".8"/>
-    <rect x="70" y="59" width="10" height="10" rx="2" fill="url(#cggold)" opacity=".7"/>
-    <!-- Medaglione angelo dx -->
-    <circle cx="145" cy="60" r="12" fill="#4A2800" stroke="url(#cggold)" stroke-width="1.5"/>
-    <circle cx="145" cy="54" r="5" fill="url(#cggold)" opacity=".8"/>
-    <rect x="140" y="59" width="10" height="10" rx="2" fill="url(#cggold)" opacity=".7"/>
-
-    <!-- === FIGURA DI CRISTO (dorata, stile romanico) === -->
-    <!-- Corpo Cristo - testa con aureola -->
-    <circle cx="110" cy="96" r="13" fill="#2A1405" stroke="url(#cggold)" stroke-width="1.5"/>
-    <!-- Aureola dorata -->
-    <circle cx="110" cy="96" r="16" fill="none" stroke="url(#cggold)" stroke-width="3" filter="url(#cglow2)"/>
-    <circle cx="110" cy="96" r="13" fill="url(#cgchrist)" opacity=".9"/>
-    <!-- Capelli e volto stilizzato -->
-    <ellipse cx="110" cy="93" rx="8" ry="6" fill="#8B5C1A"/>
-    <circle cx="110" cy="95" r="6" fill="url(#cgchrist)"/>
-    <!-- Corpo Cristo (stilizzato romanico - non realistico) -->
-    <rect x="101" y="108" width="18" height="55" rx="4" fill="url(#cgchrist)"/>
-    <!-- Perizoma -->
-    <rect x="99" y="130" width="22" height="16" rx="3" fill="#E8D070" stroke="rgba(0,0,0,.3)" stroke-width=".5"/>
-    <!-- Braccia aperte -->
-    <rect x="42" y="103" width="68" height="14" rx="5" fill="url(#cgchrist)"/>
-    <rect x="110" y="103" width="68" height="14" rx="5" fill="url(#cgchrist)"/>
-    <!-- Mani -->
-    <circle cx="43" cy="110" r="7" fill="url(#cgchrist)" stroke="url(#cggold)" stroke-width="1"/>
-    <circle cx="177" cy="110" r="7" fill="url(#cgchrist)" stroke="url(#cggold)" stroke-width="1"/>
-    <!-- Chiodi alle mani -->
-    <circle cx="43" cy="110" r="3" fill="#8B6914"/>
-    <circle cx="177" cy="110" r="3" fill="#8B6914"/>
-    <!-- Gambe -->
-    <rect x="102" y="162" width="16" height="60" rx="4" fill="url(#cgchrist)"/>
-    <!-- Chiodo ai piedi -->
-    <circle cx="110" cy="222" r="5" fill="#8B6914" stroke="url(#cggold)" stroke-width="1"/>
-
-    <!-- === FIGURE LATERALI (Madonna e Giovanni, stile medievale) === -->
-    <!-- Figura sinistra (Madonna) -->
-    <rect x="40" y="88" width="26" height="40" rx="5" fill="#3D2009" stroke="url(#cggold)" stroke-width="1"/>
-    <circle cx="53" cy="87" r="9" fill="url(#cgchrist)" opacity=".8"/>
-    <circle cx="53" cy="84" r="7" fill="#4A2800"/>
-    <circle cx="53" cy="87" r="5" fill="url(#cgchrist)" opacity=".9"/>
-    <!-- Aureola Madonna -->
-    <circle cx="53" cy="84" r="11" fill="none" stroke="url(#cggold)" stroke-width="1.5" opacity=".7"/>
-    <!-- Figura destra (Giovanni) -->
-    <rect x="154" y="88" width="26" height="40" rx="5" fill="#3D2009" stroke="url(#cggold)" stroke-width="1"/>
-    <circle cx="167" cy="87" r="9" fill="url(#cgchrist)" opacity=".8"/>
-    <circle cx="167" cy="84" r="7" fill="#4A2800"/>
-    <circle cx="167" cy="87" r="5" fill="url(#cgchrist)" opacity=".9"/>
-    <!-- Aureola Giovanni -->
-    <circle cx="167" cy="84" r="11" fill="none" stroke="url(#cggold)" stroke-width="1.5" opacity=".7"/>
-
-    <!-- === RIQUADRO ADAMO ALLA BASE === -->
-    <rect x="90" y="248" width="40" height="30" rx="3" fill="#3D2009" stroke="url(#cggold)" stroke-width="1"/>
-    <!-- Figura Adamo stilizzata -->
-    <circle cx="110" cy="254" r="5" fill="url(#cgchrist)" opacity=".8"/>
-    <rect x="106" y="258" width="8" height="15" rx="2" fill="url(#cgchrist)" opacity=".7"/>
-
-    <!-- === ISCRIZIONE ALLA BASE (stile Ariberto) === -->
-    <rect x="76" y="234" width="68" height="14" rx="2" fill="#4A2800" stroke="url(#cggold)" stroke-width=".8"/>
-    <text x="110" y="244" text-anchor="middle" font-size="6.5" fill="url(#cggold)" font-family="serif" letter-spacing=".5">ARIBERTUS · EPS</text>
-  </svg>`;
+  // Immagine esterna del Crocione di Ariberto da Intimiano
+  const crocione=`<img src="crocione.png" alt="Crocione di Ariberto da Intimiano" style="width:160px;height:233px;object-fit:contain;display:block"`+`>`;
   overlay.innerHTML=`
     <div style="max-width:340px;width:100%;text-align:center;padding:20px">
       <div style="font-family:var(--fn);font-size:28px;font-weight:900;color:#F5E97A;text-shadow:0 2px 16px rgba(0,0,0,.8);letter-spacing:1px;margin-bottom:8px">
@@ -2426,13 +2305,13 @@ function caricaFantino(slot){
 
 // ── COLORI CONTRADA ──
 const CONTRADA_COLORI={
-  SanMartino:   {c1:'#FFFFFF',c2:'#1A3A8C'},
-  SanDomenico:  {c1:'#FFFFFF',c2:'#1A7A2A'},
-  SanMagno:     {c1:'#FFFFFF',c2:'#8B1A1A'},
-  SantAmbrogio: {c1:'#D4AC0D',c2:'#1A7A2A'},
+  SanMartino:   {c1:'#1A3A8C',c2:'#FFFFFF'},
+  SanDomenico:  {c1:'#1A7A2A',c2:'#FFFFFF'},
+  SanMagno:     {c1:'#8B1A1A',c2:'#FFFFFF',stripes:true},
+  SantAmbrogio: {c1:'#1A7A2A',c2:'#D4AC0D'},
   Flora:        {c1:'#8B1A1A',c2:'#1A3A8C'},
-  SantErasmo:   {c1:'#FFFFFF',c2:'#378ADD'},
-  SanBernardino:{c1:'#FFFFFF',c2:'#8B1A1A',c3:'#D4AC0D'},
+  SantErasmo:   {c1:'#378ADD',c2:'#FFFFFF'},
+  SanBernardino:{c1:'#8B1A1A',c2:'#FFFFFF'},
   Legnarello:   {c1:'#8B1A1A',c2:'#D4AC0D'}
 };
 function applicaColoriContrada(){
@@ -2582,16 +2461,25 @@ function creaFantino(contrada){
   if(!nome){showToast('Inserisci un nome!','red');return;}
   const slot=R('FNT_NOME')._slot||1;
   const db=CDB[contrada];
-  // Genera fantini rivali: 7 assegnati 1 per contrada (esclusa la propria), gli altri svincolati
+  // Genera fantini rivali: 2 assegnati alla contrada del giocatore (il giocatore + 1 assegnato dal gioco),
+  // 1 per ognuna delle altre 7 contrade, i rimanenti svincolati
   const rivali={};
   const altreContradeInit=Object.keys(CDB).filter(k=>k!==contrada);
   const shuffContrade=[...altreContradeInit].sort(()=>Math.random()-.5);
   const shuffNomi=[...NOMI_FANTINI_RIVALI].sort(()=>Math.random()-.5);
+  // Prima assegna 1 fantino per ognuna delle 7 altre contrade
   shuffNomi.forEach((n,i)=>{
     const dbStats=FANTINI_MAP[n]||{bravura:rnd(2,4),esp:rnd(2,4),mossa:rnd(2,4),emp:rnd(2,4)};
-    rivali[n]={contrada:i<shuffContrade.length?shuffContrade[i]:null,amicizia:rnd(30,70),
+    // i=0..6 → assegnato alle 7 altre contrade; i=7 → assegnato alla propria contrada (compagno); i>7 → svincolato
+    let ct=null;
+    if(i<shuffContrade.length) ct=shuffContrade[i];
+    else if(i===shuffContrade.length) ct=contrada; // compagno nella stessa contrada
+    rivali[n]={contrada:ct,amicizia:rnd(30,70),
       bravura:dbStats.bravura,esp:dbStats.esp,mossa:dbStats.mossa,emp:dbStats.emp};
   });
+  // Salva il nome del compagno di contrada (il fantino assegnato alla stessa contrada del giocatore)
+  const compagnoEntry=Object.entries(rivali).find(([,info])=>info.contrada===contrada);
+  const nomeCompagno=compagnoEntry?compagnoEntry[0]:null;
   // Intesa con capitani di ogni contrada
   const intesaCapitani={};
   Object.keys(CDB).forEach(k=>{intesaCapitani[k]=k===contrada?60:rnd(20,50);});
@@ -2612,7 +2500,8 @@ function creaFantino(contrada){
     imprevistaUsato:false,
     log:[],
     premi:[],
-    mktF:null
+    mktF:null,
+    nomeCompagno  // fantino assegnato dal gioco nella stessa contrada
   };
   F.mktF=fGenMkt();
   fSalva();
@@ -2811,7 +2700,7 @@ function fShowEv(msg,tipo){
 
 function fAvanzaMese(){
   if(!F)return;
-  if(F.mi===4){fShowSceltaCavallo();return;}
+  if(F.mi===4){fShowSceltaCapitano();return;}
   F.mi++;
   F.oro+=(F._stipendioBase||100);
   F.addestramentoContrataUsato=false;
@@ -2819,6 +2708,7 @@ function fAvanzaMese(){
   F.amiciziaMensile=0;
   F.imprevistaUsato=false;
   F._imprevistoPista=false;
+  F._eventoMeseFantino=null;
   [...F.stallaContrada,...F.stallaPersonale].forEach(cv=>{cv._infortunato=false;});
   if(!F.mktF||F.mi%1===0)F.mktF=fGenMkt();
   // Veterinario: -1 stanchezza a tutti i cavalli
@@ -2829,14 +2719,124 @@ function fAvanzaMese(){
   // Fine anno: veterinario abbandona
   fSyncEmpatia();
   fAddLog('Mese '+F.mi+'. +'+(F._stipendioBase||100)+' oro stipendio.','inf');
-  // Imprevisti (30%, max 1 al mese)
+  // Imprevisti (30%, max 1 al mese) — estratto prima della Gazzetta
   if(!F.imprevistaUsato&&Math.random()<0.3){fEstraiImprevisto();}
   fSalva();
-  fGoTo('mese');
+  // Mostra Gazzetta del Palio prima del mese
+  fMostraGazzettaFantino(()=>{fGoTo('mese');});
+}
+
+
+// ── GAZZETTA DEL PALIO — CARRIERA FANTINO ──
+function fNotiziaMesePalioFantino(){
+  if(!F)return null;
+  const r=Math.random();
+  const contrade=Object.keys(CDB).filter(k=>k!==F.contrada);
+  const rndArr=arr=>arr[Math.floor(Math.random()*arr.length)];
+  let titolo,testo;
+  if(r<0.20){
+    const ct=rndArr(contrade);
+    titolo='🐎 Destriero di Razza!';
+    testo=`Si vocifera che <strong>${ct}</strong> abbia portato in stalla un cavallo di straordinarie qualità. I bookmaker li considerano già favoriti per il Palio.`;
+  } else if(r<0.40){
+    const ct=rndArr(contrade);
+    titolo='⚠️ Tensione tra le Contrade!';
+    testo=`Le rivalità si infiammano. <strong>${ct}</strong> ha rafforzato la propria stalla e si dice voglia il crocione ad ogni costo. Tieni gli occhi aperti.`;
+  } else if(r<0.55){
+    const ct=rndArr(contrade);
+    titolo="🤝 Accordi nell'Ombra";
+    testo=`Si vocifera di un patto segreto tra <strong>${ct}</strong> e un'altra contrada. Le alleanze cambiano le sorti del Palio — e anche della Provaccia.`;
+  } else if(r<0.70){
+    titolo='💪 La Città ti Osserva!';
+    testo=`I contradaioli di <strong>${F.contrada}</strong> ti guardano con aspettativa. I tuoi allenamenti in pista non passano inosservati. Dimostra il tuo valore.`;
+  } else if(r<0.85){
+    const ct=rndArr(contrade);
+    titolo='👑 Il Favorito del Momento';
+    testo=`Le bocche di piazza sussurrano: il favorito per questa edizione sembra essere <strong>${ct}</strong>. Ma il Palio riserva sempre sorprese — e tu potresti essere una.`;
+  } else {
+    titolo='📜 Notizie dalla Piazza';
+    testo=`Le strade di Legnano fremono di attività. La stagione del Palio entra nel vivo e ogni fantino è osservato. Preparati al meglio per fare la tua parte.`;
+  }
+  return {titolo,testo};
+}
+
+function fMostraGazzettaFantino(onClose){
+  if(!F)return onClose&&onClose();
+  const eventoMese=F._eventoMeseFantino;
+  let titolo,testo,isEvento=false;
+  if(eventoMese){
+    isEvento=true;
+    const m=eventoMese.msg;
+    if(m.includes('ha dormito bene')){
+      titolo='😴 Notte di Riposo!';
+      const nomeCav=(m.match(/Il cavallo (.+?) ha dormito/)||[])[1]||'il cavallo';
+      testo=`Buone notizie dalla stalla: <strong>${nomeCav}</strong> ha dormito profondamente e si è svegliato in forma smagliante. La sua stanchezza è diminuita. Un bel segno in vista delle corse.`;
+    } else if(m.includes('Pista impraticabile')){
+      titolo='🌧️ Pista Impraticabile!';
+      testo=`Le piogge di questi giorni hanno reso il terreno del Palio completamente impraticabile. <strong>Nessuna corsa di addestramento sarà possibile questo mese.</strong> Usa il tempo per allenare la mente e consolidare le relazioni.`;
+    } else if(m.includes('infortunato')){
+      const nomeCav=(m.match(/🤕 (.+?) è infortunato/)||m.match(/([A-Z][a-z]+(?: [A-Z][a-z]+)*) è infortunato/)||[])[1]||'un cavallo';
+      titolo='🤕 Cavallo Infortunato!';
+      testo=`Brutta notizia dalla stalla: <strong>${nomeCav}</strong> si è infortunato durante un allenamento. Non potrà correre questo mese. Scegliete con cura gli altri destrieri.`;
+    } else if(m.includes('grande amico')){
+      const nomeFant=(m.match(/grande amico di (.+?)!/)||[])[1]||'un rivale';
+      titolo='🤝 Nuova Amicizia!';
+      testo=`Una serata in compagnia ha fatto miracoli: <strong>${nomeFant}</strong> e tu avete trovato un'intesa straordinaria. L'amicizia tra fantini cambia gli equilibri in pista.`;
+    } else if(m.includes('Patto col diavolo')){
+      const nemCap=(m.match(/capitano di (.+?) → 100/)||[])[1]||'una contrada';
+      titolo='😈 Patto Col Diavolo!';
+      testo=`In un momento di debolezza hai stretto un accordo oscuro. La tua intesa col capitano di <strong>${nemCap}</strong> è alle stelle, ma il prezzo è alto: <strong>la tua gestione della mossa è compromessa.</strong> Valuta attentamente le prossime mosse.`;
+    } else {
+      titolo='📢 Notizia dal Mese';
+      testo=m;
+    }
+  } else {
+    const notizia=fNotiziaMesePalioFantino();
+    if(!notizia){onClose&&onClose();return;}
+    titolo=notizia.titolo;testo=notizia.testo;
+  }
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const mese=MESI[Math.min(F.mi,4)]||'—';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">${mese} ${F.anno} · Fantino</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:${isEvento?'#E05555':'var(--gold-l)'};margin-bottom:8px">${titolo}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7">${testo}</div>
+      <button id="FGAZZETTA_BTN" class="btn gold w" style="margin-top:16px">Ho letto →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('FGAZZETTA_BTN').onclick=()=>{overlay.remove();onClose&&onClose();};
 }
 
 // ── DIALOGA COL CAPITANO ──
 function fDialogaCapitano(){
+  // Recupera dati del compagno assegnato dal gioco
+  const nomeComp=F.nomeCompagno||null;
+  const compInfo=nomeComp&&F.rivali?F.rivali[nomeComp]:null;
+  let compHTML='';
+  if(nomeComp&&compInfo){
+    const dbC=FANTINI_MAP[nomeComp]||compInfo;
+    const mediaComp=((dbC.bravura+dbC.esp+dbC.mossa+dbC.emp)/4).toFixed(1);
+    const mediaGioc=((F.bravura+F.esperienza+F.mossa+F.empatia)/4).toFixed(1);
+    compHTML=`<div class="card" style="background:linear-gradient(135deg,rgba(24,95,165,.15),rgba(26,14,8,.8));border-color:rgba(55,138,221,.4)">
+      <div class="ct" style="color:#7BC8FF">🏇 Fantino assegnato alla contrada</div>
+      <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px">${nomeComp}</div>
+      ${fStarRow('Bravura',dbC.bravura)}
+      ${fStarRow('Esperienza',dbC.esp)}
+      ${fStarRow('Gestione mossa',dbC.mossa)}
+      ${fStarRow('Empatia',dbC.emp)}
+      <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;border-left:3px solid rgba(55,138,221,.5)">
+        Media ${nomeComp}: <strong style="color:#7BC8FF">${mediaComp}/5</strong> · Media tua: <strong style="color:var(--gold)">${mediaGioc}/5</strong><br>
+        <span style="font-size:10px;color:rgba(201,168,76,.4)">Il capitano sceglierà chi correre il Palio in base alla media più alta</span>
+      </div>
+    </div>`;
+  }
   setMain(`<div class="pad">
     <div style="text-align:center;margin-bottom:12px">
       <div style="font-size:30px">💬</div>
@@ -2847,6 +2847,7 @@ function fDialogaCapitano(){
       ${fBar('Intesa col Capitano',F.intesa,'fnt-bar-green')}
       ${fBar('Sostegno contradaioli',F.sostegno,'fnt-bar-blue')}
     </div>
+    ${compHTML}
     <div class="card">
       <div class="ct">Azioni</div>
       ${!F.veterinario&&!F._stipendioAumentato?`
@@ -2910,7 +2911,8 @@ function fEstraiImprevisto(){
     F.mossa=1;
     msg='😈 Patto col diavolo! Intesa col capitano di '+nemCap+' → 100 ma Gestione Mossa → 1.';
   } else return; // nessun effetto se no cavalli
-  showToast(msg.substring(0,50),'red');
+  // Salva l'imprevisto per la Gazzetta del Palio
+  F._eventoMeseFantino={msg};
   fAddLog('Imprevisto: '+msg,'red');
 }
 
@@ -3306,12 +3308,724 @@ function fRenderPremi(){
   el.innerHTML=`<div class="card"><div class="ct">Palii vinti</div>
     ${F.premi&&F.premi.length
       ? F.premi.map(p=>`<div style="padding:8px 0;border-bottom:1px solid rgba(201,168,76,.1)">
-          <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">🏆 ${p.anno}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">🏆 ${p.anno}</div>
+            ${p.isProvaccia?'<span class="bdg o" style="font-size:10px">Provaccia</span>':''}
+          </div>
           <div style="font-size:12px;color:rgba(201,168,76,.5)">Contrada: ${p.contrada}</div>
         </div>`).join('')
       : '<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun palio vinto ancora.</div>'
     }
   </div>`;
+}
+
+// ── SCELTA DEL CAPITANO: chi corre il Palio ──
+// Per ogni contrada avversaria, assegna 2 fantini dal DB e sceglie quello con media stats maggiore.
+// Il fantino "scartato" da ogni contrada finisce nella pool della Provaccia.
+function fCalcolaAssegnazioniContrade(){
+  const altreContrade=Object.keys(CDB).filter(k=>k!==F.contrada);
+  // Pool di fantini dal DB (escluso il compagno e il giocatore stesso)
+  const nomeComp=F.nomeCompagno||null;
+  const tuttiRivali=Object.keys(F.rivali);
+  // Costruisce la lista di tutti i fantini DB disponibili con stats
+  const fanDB=[...FANTINI_DB];
+  // Mappa ogni contrada avversaria: assegna 2 fantini e sceglie il migliore
+  const sceltePalio={}; // contrada → {scelto, scartato}
+  const fantinoPerContrada={}; // contrada → nome fantino prescelto per il Palio
+  const fantinoProvaccia=[]; // fantini scartati → possono correre la Provaccia
+  // Usa i rivali già assegnati come base; trova 1 aggiuntivo per ogni contrada
+  // Lista globale dei fantini fan1 già assegnati alle contrade (da F.rivali)
+  const fan1GiàUsati=altreContrade.map(c=>{
+    const e=Object.entries(F.rivali).find(([,i])=>i.contrada===c);
+    return e?e[0]:null;
+  }).filter(Boolean);
+  // Lista globale dei fan2 già estratti (aggiornata ad ogni iterazione per evitare duplicati)
+  const fan2GiàUsati=[];
+  altreContrade.forEach(k=>{
+    // Fantino già assegnato (dal DB)
+    const rivalEntry=Object.entries(F.rivali).find(([,info])=>info.contrada===k);
+    const fan1Nome=rivalEntry?rivalEntry[0]:null;
+    const fan1Stats=fan1Nome?(FANTINI_MAP[fan1Nome]||{bravura:2,esp:2,mossa:2,emp:2}):{bravura:2,esp:2,mossa:2,emp:2};
+    const media1=fan1Nome?((fan1Stats.bravura+fan1Stats.esp+fan1Stats.mossa+fan1Stats.emp)/4):0;
+    // Costruisce lista globale di tutti i fantini già usati (fan1+fan2 di tutte le contrade + compagno)
+    const tuttiUsati=[...fan1GiàUsati,...fan2GiàUsati,nomeComp].filter(Boolean);
+    // Trova un secondo fantino casuale dal DB non già usato da nessuna contrada
+    const disponibili=fanDB.filter(f=>f.nome!==fan1Nome&&!tuttiUsati.includes(f.nome));
+    const fan2=disponibili.length?disponibili[Math.floor(Math.random()*disponibili.length)]:null;
+    if(fan2)fan2GiàUsati.push(fan2.nome); // segna subito come usato per le prossime iterazioni
+    const media2=fan2?((fan2.bravura+fan2.esp+fan2.mossa+fan2.emp)/4):0;
+    // Il capitano sceglie quello con media più alta
+    let sceltoNome, sceltoMedia, scartatoNome;
+    if(!fan2||media1>=media2){
+      sceltoNome=fan1Nome;sceltoMedia=media1;scartatoNome=fan2?fan2.nome:null;
+    } else {
+      sceltoNome=fan2.nome;sceltoMedia=media2;scartatoNome=fan1Nome;
+    }
+    fantinoPerContrada[k]={scelto:sceltoNome,sceltoMedia,scartato:scartatoNome,fan2:fan2?fan2.nome:null};
+    if(scartatoNome)fantinoProvaccia.push({nome:scartatoNome,contrada:k});
+  });
+  F._fantinoPerContradaPalio=fantinoPerContrada;
+  F._fantinoProvaccia=fantinoProvaccia;
+  return {fantinoPerContrada,fantinoProvaccia};
+}
+
+function fShowSceltaCapitano(){
+  if(!F)return;
+  // Calcola assegnazioni per tutte le contrade avversarie
+  const {fantinoPerContrada,fantinoProvaccia}=fCalcolaAssegnazioniContrade();
+  // Recupera il compagno di contrada
+  const nomeComp=F.nomeCompagno||null;
+  const compInfo=nomeComp&&F.rivali?F.rivali[nomeComp]:null;
+  const dbComp=nomeComp?(FANTINI_MAP[nomeComp]||compInfo):null;
+
+  // Calcola medie
+  const mediaGiocatore=(F.bravura+F.esperienza+F.mossa+F.empatia)/4;
+  const mediaCompagno=dbComp?((dbComp.bravura+(dbComp.esp||dbComp.esperienza||1)+dbComp.mossa+dbComp.emp)/4):0;
+
+  // Il capitano sceglie chi ha la media più alta (in caso di parità, preferisce il giocatore)
+  const giocatorePrescelto=mediaGiocatore>=mediaCompagno;
+  const nomePrescelto=giocatorePrescelto?F.nome:(nomeComp||F.nome);
+
+  const overlay=document.createElement('div');
+  overlay.id='SCELTA_CAPITANO_OVL';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+
+  const colGioc=mediaGiocatore>=mediaCompagno?'var(--gold)':'rgba(201,168,76,.5)';
+  const colComp=mediaCompagno>mediaGiocatore?'#7BC8FF':'rgba(55,138,221,.4)';
+
+  // Costruisce tabella contrade avversarie con i due fantini e il prescelto
+  let tabellaContrHTML='<div style="margin-bottom:14px"><div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Fantini scelti dalle altre contrade</div>';
+  Object.entries(fantinoPerContrada).slice(0,4).forEach(([k,v])=>{
+    tabellaContrHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(201,168,76,.07);font-size:11px;font-family:var(--fn)">
+      <span style="color:rgba(201,168,76,.6)">${k}</span>
+      <span style="color:var(--parch)">⚔ ${v.scelto||'?'} <span style="color:rgba(201,168,76,.4)">(${v.sceltoMedia?v.sceltoMedia.toFixed(1):'?'})</span></span>
+    </div>`;
+  });
+  tabellaContrHTML+='<div style="font-size:10px;color:rgba(201,168,76,.3);margin-top:4px">...e altre ${Object.keys(fantinoPerContrada).length-4 > 0 ? Object.keys(fantinoPerContrada).length-4 : 0} contrade</div></div>';
+
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:18px;padding:20px;max-width:360px;width:100%;box-shadow:0 0 50px rgba(201,168,76,.25);max-height:90vh;overflow-y:auto">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:36px">⚜</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:6px">Il Capitano ha scelto</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:3px">Anno ${F.anno} · ${F.contrada}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:16px"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="padding:12px;border-radius:12px;border:2px solid ${colGioc};background:rgba(0,0,0,.3);text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🏇</div>
+          <div style="font-family:var(--fn);font-size:12px;font-weight:700;color:${colGioc};margin-bottom:4px">${F.nome}</div>
+          <div style="font-size:10px;color:rgba(201,168,76,.5)">Tu</div>
+          <div style="font-size:14px;font-weight:700;color:${colGioc};margin-top:6px">${mediaGiocatore.toFixed(1)}/5</div>
+          <div style="font-size:9px;color:rgba(201,168,76,.4)">media stats</div>
+        </div>
+        <div style="padding:12px;border-radius:12px;border:2px solid ${colComp};background:rgba(0,0,0,.3);text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🎽</div>
+          <div style="font-family:var(--fn);font-size:12px;font-weight:700;color:${colComp};margin-bottom:4px">${nomeComp||'—'}</div>
+          <div style="font-size:10px;color:rgba(201,168,76,.5)">Compagno</div>
+          <div style="font-size:14px;font-weight:700;color:${colComp};margin-top:6px">${mediaCompagno.toFixed(1)}/5</div>
+          <div style="font-size:9px;color:rgba(201,168,76,.4)">media stats</div>
+        </div>
+      </div>
+
+      <div style="padding:14px;background:rgba(0,0,0,.3);border-radius:12px;border-left:3px solid var(--gold);margin-bottom:16px;text-align:center">
+        <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:8px;line-height:1.6">Dopo un&#39;attenta riflessione il capitano ha deciso che</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-bottom:8px">&#34;${nomePrescelto}&#34;</div>
+        <div style="font-size:12px;color:rgba(201,168,76,.6);line-height:1.6">è il prescelto per difendere i colori della contrada al Palio</div>
+      </div>
+
+      <div style="text-align:center;margin-bottom:16px">
+        ${giocatorePrescelto
+          ? `<div style="font-size:36px">🥇</div>
+             <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:#5DBB63;margin-top:8px;letter-spacing:1px">Complimenti!</div>
+             <div style="font-size:13px;color:rgba(201,168,76,.6);margin-top:6px;line-height:1.5">Sei stato scelto dal Capitano!<br>Ti giocherai il Palio in prima persona.</div>`
+          : `<div style="font-size:36px">😔</div>
+             <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:#E05555;margin-top:8px">Peccato, sarà per il prossimo anno</div>
+             <div style="font-size:13px;color:rgba(201,168,76,.6);margin-top:6px;line-height:1.5">Il Capitano ha preferito ${nomeComp}.<br><strong style="color:#E8D5A3">Potrai correre la Provaccia</strong> con i fantini emergenti dalle altre contrade.</div>`
+        }
+      </div>
+
+      <button id="SCELTA_CAP_BTN" class="btn gold w">${giocatorePrescelto?'⚔ Scegli il cavallo per il Palio →':'🏁 Vai alla Provaccia →'}</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('SCELTA_CAP_BTN').onclick=()=>{
+    overlay.remove();
+    if(giocatorePrescelto){
+      fShowSceltaCavallo();
+    } else {
+      fShowProvaccia();
+    }
+  };
+}
+
+// ── PROVACCIA (se il giocatore non viene scelto per il Palio) ──
+// La Provaccia si svolge come il Palio ma con i fantini scartati dalle altre contrade.
+// Pool: i fantini non scelti dai rispettivi capitani delle altre contrade.
+// Il giocatore corre con la sua contrada nella Provaccia.
+function fShowProvaccia(){
+  if(!F)return;
+  F._inProvaccia=true;
+  // Recupera i fantini scartati (pool Provaccia)
+  const fantinoPool=F._fantinoProvaccia||[];
+  // Associa ogni fantino scartato alla propria contrada di provenienza come partecipante Provaccia
+  // (max 8 contrade − 1 (la propria) = 7 scartati + il giocatore = 8 partecipanti totali)
+  // Tutta la logica è identica al Palio: scelta cavallo → sorteggio batterie → obiettivo cap → accordi → mossa → corsa
+
+  // Mostra introduzione Provaccia
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:20px';
+  // Lista partecipanti Provaccia
+  const partHtml=fantinoPool.slice(0,7).map(f=>`<div style="font-size:12px;color:rgba(201,168,76,.7);padding:4px 0;border-bottom:1px solid rgba(201,168,76,.07)">🎽 ${f.nome} <span style="color:rgba(201,168,76,.4)">(${f.contrada})</span></div>`).join('');
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2);max-height:90vh;overflow-y:auto">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:36px">🏁</div>
+        <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:var(--gold);margin-top:6px">La Provaccia!</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:3px">Anno ${F.anno} — Gara degli emergenti</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:12px"></div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:12px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">Non sei stato scelto per il Palio, ma puoi riscattarti nella <strong>Provaccia</strong>: la gara dei fantini emergenti. Batterie + Finale, stesse regole del Palio. Se vinci: <strong style="color:#5DBB63">+1 Esperienza · +100 oro</strong></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Partecipanti alla Provaccia</div>
+        <div style="padding:8px;background:rgba(0,0,0,.2);border-radius:8px">
+          <div style="font-size:12px;color:var(--gold);font-weight:700;padding:4px 0;border-bottom:1px solid rgba(201,168,76,.1)">▶ ${F.nome} (tu) — ${F.contrada}</div>
+          ${partHtml}
+        </div>
+      </div>
+      <button id="PROVACCIA_START_BTN" class="btn gold w">🏇 Scegli il cavallo →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('PROVACCIA_START_BTN').onclick=()=>{
+    overlay.remove();
+    fShowSceltaCavalloProvaccia();
+  };
+}
+
+function fShowSceltaCavalloProvaccia(){
+  // Identica alla scelta cavallo del Palio
+  const tutti=[...F.stallaContrada,...F.stallaPersonale].filter(cv=>(cv.stanchezza||0)<3&&!cv._infortunato);
+  if(!tutti.length){alert('Nessun cavallo disponibile (stanchezza 3 o infortunato)!');return;}
+  const prefCap=F.stallaContrada[0]||null;
+  F._meteo=sorteggiMeteo();
+  setMain(`<div class="pad">
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:30px">🐎</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Scegli il cavallo per la Provaccia</div>
+      ${prefCap?`<div style="font-size:12px;color:var(--gold);margin-top:4px">Il Capitano preferisce: <strong>${prefCap.nome}</strong></div>`:''}
+    </div>
+    ${meteoHTML(F._meteo)}
+    ${tutti.map((c,i)=>`<div class="card" style="cursor:pointer" onclick="fScegliCavProvaccia(${i},${!!(prefCap&&c.nome===prefCap.nome)})">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
+        ${prefCap&&c.nome===prefCap.nome?'<span class="bdg g">♥ Cap. preferisce</span>':'<span class="bdg o">personale</span>'}
+      </div>
+      ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}${sRow('Nervosismo',c.ner,5,true)}
+    </div>`).join('')}
+    <div id="FSCELTA_CAV_LIST_P" style="display:none">${JSON.stringify(tutti)}</div>
+  </div>`);
+  F._sceltaCavList=tutti;
+}
+
+function fScegliCavProvaccia(idx,isPrefCap){
+  F.cavScelta=F._sceltaCavList[idx];
+  applicaMeteoACav(F.cavScelta,F._meteo);
+  if(isPrefCap){F.intesa=clamp(F.intesa+25,0,100);fAddLog('Provaccia: scelto il cavallo del capitano. Intesa +25','grn');}
+  else{F.intesa=clamp(F.intesa-10,0,100);fAddLog('Provaccia: scelto cavallo diverso da quello del capitano. Intesa −10','red');}
+  fSalva();
+  fShowSorteggioBatterieProvaccia();
+}
+
+function fShowSorteggioBatterieProvaccia(){
+  // Costruisce le batterie della Provaccia usando i fantini scartati come contrade
+  const fanPool=F._fantinoProvaccia||[];
+  // Crea lista di "contrade" per la Provaccia: la propria + quelle dei fantini scartati
+  const contPartic=[F.contrada,...fanPool.map(f=>f.contrada)];
+  // Assicura max 8 partecipanti e niente duplicati
+  const unicoP=[...new Set(contPartic)].slice(0,8);
+  // Shuffle e dividi in 2 batterie da 4
+  const shuffled=[...unicoP].sort(()=>Math.random()-.5);
+  let bP,bIA;
+  if(shuffled.slice(0,4).includes(F.contrada)){bP=shuffled.slice(0,4);bIA=shuffled.slice(4);}
+  else{bIA=shuffled.slice(0,4);bP=shuffled.slice(4);}
+  // Se bP ha meno di 4, completa con contrade rimanenti
+  while(bP.length<4&&bIA.length>2){bP.push(bIA.shift());}
+  while(bIA.length<4&&bP.length>2){bIA.push(bP.shift());}
+  F._fprovP=bP;F._fprovIA=bIA;
+
+  const ob=fCalcObiettivoCapitanoProvaccia('batteria');
+  F._obiettivoCapBatteria=ob;
+  fSalva();
+
+  setMain(`<div class="pad">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:30px">🎲</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Sorteggio Batterie — Provaccia</div>
+    </div>
+    <div class="card"><div class="ct">Batteria A — la tua batteria</div>
+      <div class="batt-box">${bP.map(n=>`<div class="batt-nome ${n===F.contrada?'tu':''}">${n===F.contrada?'▶ '+n+' (tu)':n}</div>`).join('')}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.5)">Le prime 2 si qualificano per la finale.</div>
+    </div>
+    <div class="card"><div class="ct">Batteria B</div>
+      <div class="batt-box">${bIA.map(n=>`<div class="batt-nome">${n}</div>`).join('')}</div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,rgba(61,0,0,.3),rgba(26,14,8,.8));border-color:rgba(201,168,76,.4)">
+      <div class="ct">💬 L'Obiettivo del Capitano</div>
+      <div style="text-align:center;font-size:28px;margin-bottom:8px">${ob.icona}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7;padding:10px;background:rgba(0,0,0,.2);border-radius:8px;border-left:3px solid ${ob.colore}">${ob.testo}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:8px;text-align:center">Successo: Intesa +20 · Fallimento: Intesa −20</div>
+    </div>
+    <button class="btn gold w" onclick="fShowMossaFantinoProvaccia('batteria')">⚔ Il canapo è tirato! →</button>
+  </div>`);
+}
+
+function fCalcObiettivoCapitanoProvaccia(fase){
+  const media=(F.bravura+F.esperienza+F.mossa+F.empatia)/4;
+  if(media<=3){
+    return {tipo:'qualificati', testo:'Il Capitano ti guarda: "Qualificati per la finale della Provaccia!"', icona:'🎯', colore:'var(--gold)'};
+  } else {
+    return {tipo:'vinci', testo:'Il Capitano ti sprona: "Vinci la Provaccia e dimostra il tuo valore!"', icona:'🏆', colore:'#5DBB63'};
+  }
+}
+
+function fShowMossaFantinoProvaccia(fase){
+  // Uguale al minigioco mossa standard ma con redirect alla Provaccia
+  setMain(`<div class="pad">
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:30px">🏁</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5)">Provaccia — ${fase==='finale'?'Finale':'Batteria'} · Ferma il cursore nella zona verde</div>
+    </div>
+    <div class="card"><div class="ct">Fase di mossa</div>
+      <div class="mbar" id="MBAR" onclick="fFermaMossaProvaccia('${fase}')">
+        <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
+      <div style="font-size:11px;color:rgba(201,168,76,.5)">Clicca per scattare</div>
+    </div>
+    <div id="MOS_RIS" style="display:none" class="card">
+      <div id="MOS_T" style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px"></div>
+      <div id="MOS_B" style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px"></div>
+      <button class="btn gold w" id="MOS_BTN">Continua →</button>
+    </div>
+  </div>`);
+  const vel=Math.max(.5,1+(1*.4)-(F.bravura*.1));
+  const amp=Math.max(3,5+(F.mossa*2));
+  const avgAmi=Object.values(F.rivali).reduce((s,r)=>s+r.amicizia,0)/Object.keys(F.rivali).length;
+  const bonusAmi=avgAmi>=70?3:avgAmi>=50?1:0;
+  Mos={tacca:rnd(30,80),amp:Math.max(3,amp+bonusAmi),vel,t:0,pos:50,active:true,mult:1};
+  if(MosInt)clearInterval(MosInt);
+  MosInt=setInterval(()=>{
+    if(!Mos.active)return;Mos.t+=.04;Mos.pos=clamp((Math.sin(Mos.t*Mos.vel*2)+1)*50,0,100);
+    const bar=R('MBAR');if(!bar){clearInterval(MosInt);return;}
+    const w=bar.offsetWidth;
+    const ce=R('MCU'),te=R('MT2'),ze=R('MZ');
+    if(ce)ce.style.left=(Mos.pos/100*w-3)+'px';
+    if(te)te.style.left=(Mos.tacca/100*w-1)+'px';
+    if(ze){const a=Mos.amp/100*w;ze.style.left=(Mos.tacca/100*w-a/2)+'px';ze.style.width=a+'px';}
+  },40);
+}
+
+function fFermaMossaProvaccia(fase){
+  if(!Mos.active)return;Mos.active=false;clearInterval(MosInt);MosInt=null;
+  const d=Math.abs(Mos.pos-Mos.tacca);let esito,mult,msg;
+  if(d<=Mos.amp/2){esito='OTTIMALE';mult=1.15;msg='⚡ PARTENZA A FIONDA!';F.mossa=clamp(F.mossa+1,1,5);}
+  else if(Mos.pos>Mos.tacca+Mos.amp/2){esito='FALSA';mult=.1;msg='✗ PARTENZA FALSA!';F.mossa=clamp(F.mossa-1,1,5);}
+  else{esito='LENTA';mult=.5;msg='⚠ PARTENZA LENTA';F.mossa=clamp(F.mossa-1,1,5);}
+  Mos.mult=mult;
+  R('MOS_RIS').style.display='block';
+  const t=R('MOS_T');t.textContent=msg;
+  t.style.color=esito==='OTTIMALE'?'#5DBB63':esito==='FALSA'?'#E05555':'var(--gold)';
+  R('MOS_B').textContent=`Dist: ${Math.round(d)} · ×${mult} · Gestione mossa: ${F.mossa}/5`;
+  fAddLog('Mossa Provaccia ('+fase+'): '+esito,'inf');
+  const btn=R('MOS_BTN');
+  if(btn){
+    if(fase==='batteria'){
+      btn.onclick=()=>fShowAccordiProvaccia('batteria');
+    } else {
+      btn.onclick=()=>fShowAccordiProvaccia('finale');
+    }
+  }
+  fSalva();
+}
+
+function fShowAccordiProvaccia(fase){
+  F._fasePalio=fase;
+  F._accordoPatto=null;
+  const partecipanti=fase==='batteria'?(F._fprovP||[]):[...(F._fprovQP||[]),...(F._fprovQIA||[])];
+  // Escludi il fantino della stessa contrada del giocatore (compagno)
+  const altriFantini=Object.entries(F.rivali).filter(([n,info])=>partecipanti.includes(info.contrada)&&info.contrada!==F.contrada);
+
+  let html=`<div class="pad">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:30px">🤝</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Accordi Pre-Gara — Provaccia</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finalissima':'Batteria'} · Prima del canapo</div>
+    </div>
+    <div class="card">
+      <div class="ct">Accordati con un fantino</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:10px">−300 oro · Probabilità basata sull'amicizia · Se accetta, ti lascia passare in gara. Puoi scegliere un solo accordo.</div>
+      <div id="ACC_BTN_AREA">`;
+
+  if(altriFantini.length){
+    altriFantini.forEach(([nome,info])=>{
+      const ami=info.amicizia||0;
+      const col=ami>=70?'#5DBB63':ami>=40?'var(--gold)':'#E05555';
+      html+=`<button class="btn w acc-btn" onclick="fTentaAccordoProvaccia('${nome}',${ami},'${fase}')" style="text-align:left;padding:12px;margin-bottom:6px;justify-content:space-between">
+        <div>
+          <div style="font-weight:700;color:var(--gold-l)">${nome} <span style="font-size:11px;color:rgba(201,168,76,.5)">(${info.contrada})</span></div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px">−300 oro · ${ami}% probabilità accettazione</div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:${col}">${ami}%</div>
+      </button>`;
+    });
+  } else {
+    html+=`<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun fantino noto in questa batteria.</div>`;
+  }
+
+  html+=`</div>
+      <button class="btn w" onclick="fEseguiCorsaProvaccia()" style="margin-top:8px;border-color:rgba(201,168,76,.3)">🏇 Nessun accordo — Via alla gara!</button>
+    </div>
+  </div>`;
+  setMain(html);
+}
+
+function fTentaAccordoProvaccia(nomeFant, amicizia, fase){
+  if(F.oro<300){showToast('Non hai 300 oro per gli accordi!','red');return;}
+  document.querySelectorAll('.acc-btn').forEach(b=>{b.disabled=true;b.style.opacity='.35';});
+  F.oro-=300;fSalva();
+  const accettato=Math.random()*100<amicizia;
+  if(accettato){
+    F._accordoPatto=nomeFant;
+    fAddLog('Accordo Provaccia con '+nomeFant+' accettato! −300 oro','grn');
+  } else {
+    F._accordoPatto=null;
+    fAddLog('Accordo Provaccia con '+nomeFant+' rifiutato. −300 oro sprecati','red');
+  }
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const col=accettato?'#5DBB63':'#E05555';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-top:4px">Gazzetta del Palio</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="text-align:center;font-size:32px;margin-bottom:8px">${accettato?'🤝':'✗'}</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:${col};margin-bottom:10px;text-align:center">${accettato?nomeFant+' ha accettato!':nomeFant+' ha rifiutato'}</div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid ${col};margin-bottom:12px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">${accettato?`<strong>${nomeFant}</strong> ti lascerà passare. −300 oro.`:`<strong>${nomeFant}</strong> ha rifiutato. −300 oro sprecati.`}</div>
+      </div>
+      <button id="ACC_PROV_BTN" class="btn gold w">⚔ Via alla gara! →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('ACC_PROV_BTN').onclick=()=>{overlay.remove();fEseguiCorsaProvaccia();};
+}
+
+function fEseguiCorsaProvaccia(){
+  const fase=F._fasePalio;
+  const giri=fase==='finale'?5:4;
+  const bP=F._fprovP;
+  const cav=F.cavScelta||F.stallaContrada[0]||F.stallaPersonale[0];
+  fSyncEmpatia();fSalva();
+
+  const partecipanti=fase==='batteria'?bP:[...(F._fprovQP||[]),...(F._fprovQIA||[])];
+  const sc={};partecipanti.forEach(n=>sc[n]=0);const gpg=[];
+  const accordo=F._accordoPatto||null;
+
+  for(let g=1;g<=giri;g++){
+    partecipanti.forEach(n=>{
+      const isP=n===F.contrada;
+      const c2=isP?cav:newIACav();
+      let f2;
+      if(isP){
+        f2={bravura:F.bravura,esp:F.esperienza,mossa:F.mossa,emp:F.empatia};
+      } else {
+        // Usa le stats del fantino scartato assegnato a questa contrada nella Provaccia
+        const fanProv=(F._fantinoProvaccia||[]).find(fp=>fp.contrada===n);
+        if(fanProv){
+          const dbSt=FANTINI_MAP[fanProv.nome]||{bravura:rnd(2,4),esp:rnd(2,4),mossa:rnd(2,4),emp:rnd(2,4)};
+          f2={bravura:dbSt.bravura,esp:dbSt.esp,mossa:dbSt.mossa,emp:dbSt.emp};
+        } else {
+          f2=newIAFan();
+        }
+      }
+      const pen=isP&&c2._meteoPen?c2._meteoPen:{ten:0,res:0};
+      const resEff=Math.max(1,c2.res-(pen.res||0));
+      const tenEff=Math.max(1,c2.ten-(pen.ten||0));
+      const fatica=Math.max(0,(g-1)*(6-resEff)*.2);
+      if(isP){const st=fStatCorsaEffettiva(c2);c2._bonTen=st.ten-c2.ten;c2._bonNer=st.ner-c2.ner;}
+      const bonTen=isP?(c2._bonTen||0):0;
+      let base=(c2.vel+c2.acc+tenEff+bonTen)-fatica+(f2.bravura*.5+(f2.emp||1)*.2);
+      if(accordo&&g===giri){
+        const rivalInfo=F.rivali[accordo];
+        if(rivalInfo&&rivalInfo.contrada===n) base*=0.5;
+      }
+      sc[n]+=base*((g===1&&isP)?Mos.mult:1)+rf(0,3);
+    });
+    gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));
+  }
+  const classFinale=gpg[gpg.length-1];
+  const pos=classFinale.indexOf(F.contrada)+1;
+  const qP=classFinale.slice(0,2);
+
+  if(fase==='batteria'){
+    F._fprovQP=qP;
+    const gpgIA=[];const scIA={};(F._fprovIA||[]).forEach(n=>scIA[n]=0);
+    for(let g=1;g<=4;g++){(F._fprovIA||[]).forEach(n=>{scIA[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});gpgIA.push([...Object.entries(scIA)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
+    F._fprovQIA=gpgIA[gpgIA.length-1].slice(0,2);
+    fSalva();
+  }
+
+  const playerIn=fase==='finale'?true:qP.includes(F.contrada);
+  const vinto=fase==='finale'&&pos===1;
+
+  // Valuta obiettivo capitano
+  if(fase==='batteria'){
+    const ob=F._obiettivoCapBatteria;
+    if(ob){
+      const succ=ob.tipo==='qualificati'?playerIn:vinto;
+      if(succ){F.intesa=clamp(F.intesa+20,0,100);fAddLog('Obiettivo Provaccia (batteria) raggiunto! Intesa +20','grn');}
+      else{F.intesa=clamp(F.intesa-20,0,100);fAddLog('Obiettivo Provaccia (batteria) fallito. Intesa −20','red');}
+    }
+  }
+
+  if(vinto){
+    F.esperienza=clamp(F.esperienza+1,1,5);
+    F.oro+=100;
+    F.premi=F.premi||[];
+    F.premi.push({anno:F.anno,contrada:F.contrada,isProvaccia:true});
+    F._vintoProvacciaQuestAnno=true; // flag per offerta a fine anno
+    fAddLog('🏆 HAI VINTO LA PROVACCIA '+F.anno+'! +1 Esperienza, +100 oro','grn');
+  }
+  if(F.cavScelta)ripristinaMeteo(F.cavScelta);
+  fSyncEmpatia();fSalva();
+
+  // Mostra gara interattiva Provaccia
+  fShowRaceInterattivaProvaccia(partecipanti, gpg, giri, vinto, playerIn, pos, fase, qP);
+}
+
+function fShowRaceInterattivaProvaccia(partecipanti, gpg, giri, vinto, playerIn, pos, fase, qP){
+  _fRaceActionUsed=false;
+  window._fRaceStatDelta=null;
+  F._raceInterBonusVel=0;F._raceInterBonusRes=0;F._raceInterBonusTen=0;
+  window._fRaceData={partecipanti,gpg,giri,vinto,playerIn,pos,fase,qP};
+
+  const hasNemica=partecipanti.includes(F.nemica);
+  // Tasti interattivi solo se il giocatore è qualificato (o è in batteria)
+  const actionsHtml=`<div class="card" style="margin-bottom:8px">
+    <div class="ct">🎮 Azione in gara — Provaccia</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px">Puoi usare UN SOLO tasto. Opzionale.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="RACE_TASTI">
+      <button class="btn race-action-btn" onclick="fRaceAction('nerbo')" style="text-align:left;padding:10px;font-size:12px">
+        <div style="font-weight:700;color:#E05555">🪄 Usa Nerbo</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Acc +1 · Res −1</div>
+      </button>
+      <button class="btn race-action-btn" onclick="fRaceAction('curva')" style="text-align:left;padding:10px;font-size:12px">
+        <div style="font-weight:700;color:#378ADD">🔄 Curva Stretta</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel +1 · Ten −1</div>
+      </button>
+      <button class="btn race-action-btn" onclick="fRaceAction('tieniti')" style="text-align:left;padding:10px;font-size:12px">
+        <div style="font-weight:700;color:#5DBB63">🛡️ Tieniti per ultimo</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Res +1</div>
+      </button>
+      ${hasNemica?`<button class="btn race-action-btn" onclick="fRaceAction('giubba')" style="text-align:left;padding:10px;font-size:12px">
+        <div style="font-weight:700;color:#E05555">👕 Tira Giubba</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Solo se nemica davanti</div>
+      </button>`:'<div></div>'}
+      <button class="btn race-action-btn" onclick="fRaceAction('frena')" style="text-align:left;padding:10px;font-size:12px;grid-column:1/-1">
+        <div style="font-weight:700;color:rgba(201,168,76,.7)">🛑 Frena il Cavallo</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Intesa capitani rivali +10</div>
+      </button>
+    </div>
+    <div id="RACE_ACTION_ESITO" style="margin-top:6px"></div>
+  </div>`;
+
+  showRaceAnimation(partecipanti, gpg, giri, F.contrada, ()=>{
+    fRipristinaStatRace();
+    let html=`<div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:28px">${vinto?'🏆':fase==='finale'?'😔':'🏇'}</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:${vinto?'var(--gold)':'var(--parch)'};margin-top:4px">
+        ${vinto?'HAI VINTO LA PROVACCIA!':fase==='finale'?'Provaccia — '+pos+'° posto':'Batteria Provaccia — '+pos+'° posto'}
+      </div></div>
+    <div class="card">`;
+    for(let g=0;g<gpg.length;g++){
+      html+=`<div style="margin-bottom:7px"><div style="font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:3px">Giro ${g+1}</div>`;
+      gpg[g].forEach((nome,p)=>{html+=`<div class="cr-line ${nome===F.contrada?'pp':'def'}">${p+1}° ${nome}${vinto&&p===0&&g===gpg.length-1?' 🏆':''}</div>`;});
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+    if(vinto){
+      html+=`<div class="result-banner" style="background:linear-gradient(135deg,rgba(26,74,26,.3),rgba(14,26,14,.5))">
+        <div style="font-size:24px;margin-bottom:6px">🏆</div>
+        <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:#5DBB63">Hai vinto la Provaccia! +1 Esperienza · +100 oro</div>
+        <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">La vittoria è registrata nei tuoi premi con "Provaccia"</div>
+      </div>`;
+    }
+    if(fase==='batteria'){
+      const finInBatt=qP.includes(F.contrada);
+      html+=`<div class="card" style="text-align:center">
+        <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:${finInBatt?'#5DBB63':'var(--gold)'};margin-bottom:8px">${finInBatt?'⚜ Qualificato alla finale Provaccia!':'Non sei qualificato. Guardi la finale.'}</div>
+        <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:10px">Finalisti A: ${qP.join(', ')} · Finalisti B: ${(F._fprovQIA||[]).join(', ')}</div>`;
+      if(finInBatt){
+        html+=`<button class="btn gold w" onclick="fMostraObiettivoFinaleProvaccia()">⚔ Prepara la finale! →</button>`;
+      } else {
+        html+=`<button class="btn gold w" onclick="fProvacciaFinaleSpettatore()">👀 Guarda la finale →</button>`;
+      }
+      html+=`</div>`;
+      setMain('<div class="pad">'+html+'</div>');
+    } else {
+      // Finale Provaccia — poi Palio automatico
+      html+=`<button class="btn gold w" onclick="fDopoProvaccia(${vinto?1:0})">Ora si corre il Palio →</button>`;
+      setMain('<div class="pad">'+html+'</div>');
+    }
+  }, {titolo:'Provaccia — '+(fase==='finale'?'Finalissima':'Batteria'), sottotitolo:partecipanti.join(' · ')}, (playerIn||fase==='batteria')?actionsHtml:undefined);
+}
+
+function fMostraObiettivoFinaleProvaccia(){
+  const ob=fCalcObiettivoCapitanoProvaccia('finale');
+  F._obiettivoCapFinale=ob;
+  fSalva();
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">💬</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-top:4px">L'Obiettivo del Capitano</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Finale Provaccia · Anno ${F.anno}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="text-align:center;font-size:36px;margin-bottom:8px">${ob.icona}</div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid ${ob.colore};margin-bottom:12px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">${ob.testo}</div>
+      </div>
+      <button id="OB_FPROV_BTN" class="btn gold w">⚔ Vai alla mossa →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('OB_FPROV_BTN').onclick=()=>{overlay.remove();fShowMossaFantinoProvaccia('finale');};
+}
+
+function fProvacciaFinaleSpettatore(){
+  const finalisti=[...(F._fprovQP||[]),...(F._fprovQIA||[])];
+  F._fasePalio='finale';Mos.mult=1;
+  const sc={};finalisti.forEach(n=>sc[n]=0);const gpg=[];
+  for(let g=1;g<=5;g++){finalisti.forEach(n=>{sc[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
+  fSalva();
+  showRaceAnimation(finalisti, gpg, 5, null, ()=>{
+    // Ricava il vincitore dall'ultimo giro
+    const ultGiro=gpg[gpg.length-1]||finalisti;
+    const vincitoreProvaccia=ultGiro[0]||finalisti[0]||'?—';
+    setMain(`<div class="pad"><div style="text-align:center;margin-bottom:12px"><div style="font-size:28px">🏆</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:4px">Vincitore "${vincitoreProvaccia}"!</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Hai guardato la finale dalla tribuna.</div></div>
+    <button class="btn gold w" onclick="fDopoProvaccia(0)">Ora si corre il Palio →</button>
+    </div>`);
+  }, {titolo:'Finale Provaccia', sottotitolo:'Stai guardando · '+finalisti.join(' · ')});
+}
+
+function fDopoProvaccia(vintoProvaccia){
+  // Dopo la Provaccia mostra il Palio automatico (come spettatore)
+  F._inProvaccia=false;
+  const nomeComp=F.nomeCompagno||null;
+  // Penalità per non essere stati nel Palio (ridotte rispetto al caso senza Provaccia)
+  if(!vintoProvaccia){
+    F.esperienza=clamp(F.esperienza-1,1,5);
+    F.intesa=clamp(F.intesa-10,0,100);
+    F.sostegno=clamp(F.sostegno-20,0,100);
+    fSyncEmpatia();
+  }
+  fSalva();
+  // Ora mostra il Palio automatico
+  fPalioAutomatico(nomeComp);
+}
+
+// ── PALIO AUTOMATICO (il giocatore non è stato scelto — usato DOPO la Provaccia) ──
+function fPalioAutomatico(nomeCompagno){
+  // Simula il palio: batterie + finale completamente automatiche
+  const tutte=Object.keys(CDB);
+  const shuffled=[...tutte].sort(()=>Math.random()-.5);
+  let bP,bIA;
+  if(shuffled.slice(0,4).includes(F.contrada)){bP=shuffled.slice(0,4);bIA=shuffled.slice(4);}
+  else{bIA=shuffled.slice(0,4);bP=shuffled.slice(4);}
+
+  // Simula batterie automatiche
+  const scP={};bP.forEach(n=>scP[n]=0);
+  for(let g=1;g<=4;g++){bP.forEach(n=>{scP[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});}
+  const classP=Object.entries(scP).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const qP=classP.slice(0,2);
+
+  const scIA={};bIA.forEach(n=>scIA[n]=0);
+  for(let g=1;g<=4;g++){bIA.forEach(n=>{scIA[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});}
+  const classIA=Object.entries(scIA).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const qIA=classIA.slice(0,2);
+
+  // Simula finale automatica
+  const finalisti=[...qP,...qIA];
+  const scF={};finalisti.forEach(n=>scF[n]=0);
+  for(let g=1;g<=5;g++){finalisti.forEach(n=>{scF[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});}
+  const classF=Object.entries(scF).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const vincitore=classF[0];
+  const contraddaVince=vincitore;
+  const vince_mia_contrada=(vincitore===F.contrada);
+
+  // Aggiorna stato (anno perso, nessun premio, effetti su intesa/sostegno) — solo se non già fatto dalla Provaccia
+  if(!F._inProvaccia){
+    F.esperienza=clamp(F.esperienza-1,1,5);
+    F.intesa=clamp(F.intesa-10,0,100);
+    F.sostegno=clamp(F.sostegno-20,0,100);
+    fSyncEmpatia();
+  }
+  // Registra nell'album storico se presente
+  if(!F.log)F.log=[];
+  fAddLog('Palio '+F.anno+': non scelto dal capitano. Vince '+vincitore,'red');
+  fSalva();
+
+  // Mostra schermata risultato palio automatico
+  fMostraRisultatoPalioAuto(vincitore, vince_mia_contrada);
+}
+
+function fMostraRisultatoPalioAuto(vincitore, vinceMiaContrada){
+  const colori=CONTRADA_COLORI[vincitore]||{c1:'#8B1A1A',c2:'#C9A84C'};
+  const c1=colori.c1,c2=colori.c2;
+  const isStripes=!!colori.stripes;
+  const bgGrad=`repeating-linear-gradient(45deg,${c1} 0px,${c1} 40px,${c2} 40px,${c2} 80px)`;
+
+  // Pallino colori contrada vincitrice: strisce verticali (c1|c2|c1) o divisione obliqua
+  const pallinoSVG=isStripes
+    ? `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="pcv"><circle cx="30" cy="30" r="27"/></clipPath></defs>
+        <rect x="0" y="0" width="60" height="60" fill="${c1}" clip-path="url(#pcv)"/>
+        <rect x="20" y="0" width="20" height="60" fill="${c2}" clip-path="url(#pcv)"/>
+        <circle cx="30" cy="30" r="27" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"/></svg>`
+    : `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="pcv"><circle cx="30" cy="30" r="27"/></clipPath></defs>
+        <rect x="0" y="0" width="60" height="60" fill="${c1}" clip-path="url(#pcv)"/>
+        <polygon points="0,60 60,0 60,60" fill="${c2}" clip-path="url(#pcv)"/>
+        <circle cx="30" cy="30" r="27" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"/></svg>`;
+
+  const overlay=document.createElement('div');
+  overlay.id='PALIO_AUTO_OVL';
+  overlay.style.cssText=`position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;
+    background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),${bgGrad}`;
+  overlay.innerHTML=`
+    <div style="max-width:340px;width:100%;text-align:center">
+      <div style="font-family:var(--fn);font-size:14px;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Il Palio del ${F.anno}</div>
+      <div style="display:flex;justify-content:center;margin:16px 0;filter:drop-shadow(0 4px 20px rgba(201,168,76,.6))">
+        ${pallinoSVG}
+      </div>
+      <div style="font-family:var(--fn);font-size:22px;font-weight:900;color:#F5E97A;text-shadow:0 2px 16px rgba(0,0,0,.8);letter-spacing:1px;margin-bottom:8px">
+        Il palio del ${F.anno} lo vince ${vincitore}!
+      </div>
+      ${!vinceMiaContrada?`<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;background:rgba(0,0,0,.4);border-radius:10px;padding:10px;margin-top:8px">Sei rimasto a guardare dalle tribune.<br><span style="color:#E05555">Intesa −10 · Sostegno −20 · Esperienza −1</span></div>`:''}
+      <button id="PALIO_AUTO_BTN" style="margin-top:20px;background:linear-gradient(135deg,#C9A84C,#8B6914);color:#1A0E08;border:2px solid #F5E97A;border-radius:12px;padding:14px 28px;font-family:var(--fn);font-size:16px;font-weight:800;cursor:pointer;min-width:200px">
+        ⚜ Fine anno →
+      </button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('PALIO_AUTO_BTN').onclick=()=>{
+    overlay.remove();
+    fShowFineAnno(0);
+  };
 }
 
 // ── SCELTA CAVALLO MAGGIO ──
@@ -3473,7 +4187,8 @@ function fShowAccordiPreGara(fase){
   F._fasePalio=fase;
   F._accordoPatto=null; // reset accordo precedente
   const partecipanti=fase==='batteria'?(F._fbP||[]):[...(F._fbQP||[]),...(F._fbQIA||[])];
-  const altriFantini=Object.entries(F.rivali).filter(([n,info])=>partecipanti.includes(info.contrada));
+  // Escludi il fantino della stessa contrada del giocatore (compagno)
+  const altriFantini=Object.entries(F.rivali).filter(([n,info])=>partecipanti.includes(info.contrada)&&info.contrada!==F.contrada);
 
   let html=`<div class="pad">
     <div style="text-align:center;margin-bottom:14px">
@@ -3943,6 +4658,39 @@ function fShowFineAnno(vinto){
   if(svincolato){
     fShowAnnoSvincolato();return;
   }
+
+  // Genera offerta da contrada rivale se vinto Provaccia o Palio
+  const vintoProvaccia=F._vintoProvacciaQuestAnno||false;
+  F._vintoProvacciaQuestAnno=false; // reset flag
+  let offertaContrada=null,offertaOro=0;
+  if(vinto){
+    // Vinto il Palio: offerta tra 200 e 500 oro
+    const altreContrPalio=Object.keys(CDB).filter(k=>k!==F.contrada);
+    offertaContrada=altreContrPalio[Math.floor(Math.random()*altreContrPalio.length)];
+    offertaOro=rnd(200,500);
+  } else if(vintoProvaccia){
+    // Vinto la Provaccia: offerta tra 50 e 300 oro
+    const altreContrProv=Object.keys(CDB).filter(k=>k!==F.contrada);
+    offertaContrada=altreContrProv[Math.floor(Math.random()*altreContrProv.length)];
+    offertaOro=rnd(50,300);
+  }
+
+  let offertaHtml='';
+  if(offertaContrada){
+    const titoloOfferta=vinto?'🏆 Offerta Post-Palio':'🏁 Offerta Post-Provaccia';
+    const descOfferta=vinto
+      ? `La contrada <strong style="color:var(--gold)">${offertaContrada}</strong> ha notato la tua vittoria al Palio e ti offre <strong style="color:#5DBB63">${offertaOro} oro</strong> per passare con loro!`
+      : `La contrada <strong style="color:var(--gold)">${offertaContrada}</strong> ha notato la tua vittoria nella Provaccia e ti offre <strong style="color:#5DBB63">${offertaOro} oro</strong> per passare con loro!`;
+    offertaHtml=`<div class="card" style="border-color:rgba(93,187,99,.4);background:linear-gradient(135deg,rgba(26,74,26,.15),rgba(26,14,8,.8))">
+      <div class="ct" style="color:#5DBB63">${titoloOfferta}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7;margin-bottom:10px">${descOfferta}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:10px">L'offerta è indipendente dall'intesa col capitano di ${offertaContrada}.</div>
+      <button class="btn w" onclick="fAccettaOfferta('${offertaContrada}',${offertaOro})" style="margin-bottom:6px;background:linear-gradient(135deg,#2E7D32,#1A4D1A);border-color:#5DBB63;color:#5DBB63;font-weight:700">
+        ✅ Accetta — Vai con ${offertaContrada} (+${offertaOro} oro)
+      </button>
+    </div>`;
+  }
+
   setMain(`<div class="pad">
     <div style="text-align:center;margin-bottom:16px">
       <div style="font-size:30px">⚜</div>
@@ -3952,7 +4700,9 @@ function fShowFineAnno(vinto){
       ${fBar('Intesa col Capitano',F.intesa,'fnt-bar-green')}
       ${fBar('Sostegno contradaioli',F.sostegno,'fnt-bar-blue')}
     </div>
+    ${offertaHtml}
     <div class="card">
+      <div class="ct">Scegli il tuo futuro</div>
       ${puoRestare?`<button class="btn gold w" onclick="fNuovoAnno(false)" style="margin-bottom:8px">Rimani con ${F.contrada}</button>`
         :`<div class="evbox red" style="margin-bottom:8px">Intesa troppo bassa per restare (serve ≥40). Devi cambiare contrada.</div>`}
       ${contradeCambiabili.length?`<div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:8px">Contrade disponibili (intesa ≥60):</div>
@@ -3964,13 +4714,22 @@ function fShowFineAnno(vinto){
   </div>`);
 }
 
+function fAccettaOfferta(nuovaContrada, oro){
+  F.oro=(F.oro||0)+oro;
+  fAddLog('Offerta accettata da '+nuovaContrada+'! +'+oro+' oro. Trasferito a '+nuovaContrada,'grn');
+  fSalva();
+  mostraSchermatGiubba(nuovaContrada, ()=>{
+    fNuovoAnno(true, nuovaContrada);
+  });
+}
+
 function fShowAnnoSvincolato(){
   // Reset statistiche a 1
   F.bravura=1;F.esperienza=1;F.mossa=1;F.empatia=1;
   F.intesa=50;F.sostegno=50;
   // Azzera intesa capitani
   Object.keys(F.intesaCapitani||{}).forEach(k=>F.intesaCapitani[k]=rnd(20,50));
-  const annoSvincolato=F.anno;
+  const annoSvincolato=F.anno+1;
   F.anno+=2; // Salta un anno
   F.mi=0;
   F.stallaContrada=[];F.cavScelta=null;
@@ -4173,13 +4932,19 @@ function fNuovoAnno(cambia,nuovaContrada){
 
 function fRiassegnaRivali(){
   const altreContrade=Object.keys(CDB).filter(k=>k!==F.contrada);
-  // assegna esattamente 7 fantini alle 7 contrade, 1 per contrada
+  // assegna esattamente 7 fantini alle 7 contrade avversarie, 1 per contrada
+  // e 1 alla contrada del giocatore come compagno
   const shuffled=[...altreContrade].sort(()=>Math.random()-.5);
   const nomiRivali=Object.keys(F.rivali);
   const shuffledNomi=[...nomiRivali].sort(()=>Math.random()-.5);
   shuffledNomi.forEach((nome,i)=>{
-    F.rivali[nome].contrada=i<shuffled.length?shuffled[i]:null;
+    if(i<shuffled.length) F.rivali[nome].contrada=shuffled[i];
+    else if(i===shuffled.length) F.rivali[nome].contrada=F.contrada; // compagno
+    else F.rivali[nome].contrada=null; // svincolato
   });
+  // Aggiorna nomeCompagno
+  const compagnoEntry=Object.entries(F.rivali).find(([,info])=>info.contrada===F.contrada);
+  F.nomeCompagno=compagnoEntry?compagnoEntry[0]:null;
 }
 
 
