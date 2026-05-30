@@ -316,6 +316,7 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
     <div class="ag" id="MAZIONI"></div>
     <div id="EVBOX"></div>
     <button class="btn pr w" id="BTN_AV" onclick="avanzaMese()">Passa al mese successivo →</button>
+    <button class="btn w" onclick="salva();renderIntro()" style="margin-top:4px;border-color:rgba(201,168,76,.27);color:rgba(201,168,76,.6)">🏠 Salva e torna ad Home</button>
   </div>
   <div class="card">
     <div class="ct">Stato della contrada</div>
@@ -1575,7 +1576,19 @@ function apriMinigiocolmboscata(bersaglio, isNemica){
   function buildPlayerDefs(r){
     const pid='pcd_'+r;
     const c1=colors.c1,c2=colors.c2;
-    if(colors.stripes){
+    const isSanMartino=(G.nome==='SanMartino'||G.nome==='San Martino');
+    if(isSanMartino){
+      // Pallino blu pieno con croce bianca — polygon unico per evitare artefatti
+      const t=r*0.38;
+      const pts=`${-t/2},${-r} ${t/2},${-r} ${t/2},${-t/2} ${r},${-t/2} ${r},${t/2} ${t/2},${t/2} ${t/2},${r} ${-t/2},${r} ${-t/2},${t/2} ${-r},${t/2} ${-r},${-t/2} ${-t/2},${-t/2}`;
+      return `<defs>
+        <clipPath id="cp_${pid}"><circle cx="0" cy="0" r="${r}"/></clipPath>
+        <g id="${pid}">
+          <rect x="${-r}" y="${-r}" width="${r*2}" height="${r*2}" fill="#1A3A8C"/>
+          <polygon points="${pts}" fill="#FFFFFF"/>
+        </g>
+      </defs>`;
+    } else if(colors.stripes){
       // 3 strisce verticali: c1 | c2 | c1  (rosso/bianco/rosso per SanMagno)
       return `<defs>
         <clipPath id="cp_${pid}"><circle cx="0" cy="0" r="${r}"/></clipPath>
@@ -1598,7 +1611,16 @@ function apriMinigiocolmboscata(bersaglio, isNemica){
 
   function buildPlayerSVG(cx2,cy2,r){
     const pid='pcd_'+r;
-    if(colors.stripes){
+    const isSanMartino=(G.nome==='SanMartino'||G.nome==='San Martino');
+    if(isSanMartino){
+      const t=r*0.38;
+      const pts=`${-t/2},${-r} ${t/2},${-r} ${t/2},${-t/2} ${r},${-t/2} ${r},${t/2} ${t/2},${t/2} ${t/2},${r} ${-t/2},${r} ${-t/2},${t/2} ${-r},${t/2} ${-r},${-t/2} ${-t/2},${-t/2}`;
+      return `<g transform="translate(${cx2},${cy2})" clip-path="url(#cp_${pid})">
+        <rect x="${-r}" y="${-r}" width="${r*2}" height="${r*2}" fill="#1A3A8C"/>
+        <polygon points="${pts}" fill="#FFFFFF"/>
+      </g>
+      <circle cx="${cx2}" cy="${cy2}" r="${r}" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1.5"/>`;
+    } else if(colors.stripes){
       return `<g transform="translate(${cx2},${cy2})" clip-path="url(#cp_${pid})">
         <rect x="${-r}" y="${-r}" width="${r*2}" height="${r*2}" fill="${colors.c1}"/>
         <rect x="${-r/3}" y="${-r}" width="${r*2/3}" height="${r*2}" fill="${colors.c2}"/>
@@ -2224,6 +2246,7 @@ function fineAnno(vinta,cambiaContrada,nuovaContrada){
 // ── INTRO ──
 function renderIntro(){
   R('HUD').style.display='none';R('NAV').style.display='none';
+  const app=R('APP');if(app)app.style.background='';
   setMain(`<div style="text-align:center;padding:20px 12px">
     <div style="font-size:56px;margin-bottom:10px">🏇</div>
     <div style="font-family:var(--fn);font-size:24px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-bottom:6px">PALIO DI LEGNANO</div>
@@ -2350,7 +2373,8 @@ function avviaUI(){
       <div class="sc on" id="sc-mese">
         <div class="mt" id="MTRACK"></div>
         <div class="card"><div class="ct">Azioni mensili</div><div class="ag" id="MAZIONI"></div><div id="EVBOX"></div>
-          <button class="btn pr w" id="BTN_AV" onclick="avanzaMese()">Passa al mese successivo →</button></div>
+          <button class="btn pr w" id="BTN_AV" onclick="avanzaMese()">Passa al mese successivo →</button>
+          <button class="btn w" onclick="salva();renderIntro()" style="margin-top:4px;border-color:rgba(201,168,76,.27);color:rgba(201,168,76,.6)">🏠 Salva e torna ad Home</button></div>
         <div class="card"><div class="ct">Stato della contrada</div>
           <div style="font-family:var(--fn);font-size:9px;color:rgba(201,168,76,.6);letter-spacing:1px;margin-bottom:3px">MORALE</div>
           <div class="pb"><div class="pf pfm" id="BM"></div></div>
@@ -2684,6 +2708,7 @@ function fRenderMese(){
     </div>
     <div id="FEVBOX"></div>
     <button class="btn pr w" onclick="fAvanzaMese()" style="margin-top:10px">${isMaggio?'⚔ Vigilia del Palio →':'Passa al mese successivo →'}</button>
+    <button class="btn w" onclick="fSalva();renderIntro()" style="margin-top:4px;border-color:rgba(201,168,76,.27);color:rgba(201,168,76,.6)">🏠 Salva e torna ad Home</button>
   </div>`;
   fRenderMtrack();
 }
@@ -3992,8 +4017,14 @@ function fMostraRisultatoPalioAuto(vincitore, vinceMiaContrada){
   const isStripes=!!colori.stripes;
   const bgGrad=`repeating-linear-gradient(45deg,${c1} 0px,${c1} 40px,${c2} 40px,${c2} 80px)`;
 
-  // Pallino colori contrada vincitrice: strisce verticali (c1|c2|c1) o divisione obliqua
-  const pallinoSVG=isStripes
+  // Pallino colori contrada vincitrice: croce bianca (SanMartino), strisce verticali o divisione obliqua
+  const isSanMartinoV=(vincitore==='SanMartino'||vincitore==='San Martino');
+  const pallinoSVG=isSanMartinoV
+    ? `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="pcv"><circle cx="30" cy="30" r="27"/></clipPath></defs>
+        <rect x="0" y="0" width="60" height="60" fill="#1A3A8C" clip-path="url(#pcv)"/>
+        <polygon points="19,0 41,0 41,19 60,19 60,41 41,41 41,60 19,60 19,41 0,41 0,19 19,19" fill="#FFFFFF" clip-path="url(#pcv)"/>
+        <circle cx="30" cy="30" r="27" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"/></svg>`
+    : isStripes
     ? `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="pcv"><circle cx="30" cy="30" r="27"/></clipPath></defs>
         <rect x="0" y="0" width="60" height="60" fill="${c1}" clip-path="url(#pcv)"/>
         <rect x="20" y="0" width="20" height="60" fill="${c2}" clip-path="url(#pcv)"/>
@@ -4780,108 +4811,31 @@ function fNuovoAnnoSvincolato(k){
 }
 
 function mostraSchermatGiubba(nomeContrada, onContinue){
-  // Definizione colori e pattern giubba per ogni contrada
-  const giubbeMap={
-    'SanMartino':   {c1:'#1A3A8C',c2:'#FFFFFF',pattern:'oblique'},
-    'San Martino':  {c1:'#1A3A8C',c2:'#FFFFFF',pattern:'oblique'},
-    'SanDomenico':  {c1:'#1A7A2A',c2:'#FFFFFF',pattern:'oblique'},
-    'San Domenico': {c1:'#1A7A2A',c2:'#FFFFFF',pattern:'oblique'},
-    'SanMagno':     {c1:'#8B1A1A',c2:'#FFFFFF',c3:'#8B1A1A',pattern:'stripes'},
-    'San Magno':    {c1:'#8B1A1A',c2:'#FFFFFF',c3:'#8B1A1A',pattern:'stripes'},
-    'SantAmbrogio': {c1:'#1A7A2A',c2:'#D4AC0D',pattern:'oblique'},
-    "Sant'Ambrogio":{c1:'#1A7A2A',c2:'#D4AC0D',pattern:'oblique'},
-    'Flora':        {c1:'#8B1A1A',c2:'#1A3A8C',pattern:'oblique'},
-    'SantErasmo':   {c1:'#378ADD',c2:'#FFFFFF',pattern:'oblique'},
-    "Sant'Erasmo":  {c1:'#378ADD',c2:'#FFFFFF',pattern:'oblique'},
-    'SanBernardino':{c1:'#8B1A1A',c2:'#FFFFFF',pattern:'oblique'},
-    'San Bernardino':{c1:'#8B1A1A',c2:'#FFFFFF',pattern:'oblique'},
-    'Legnarello':   {c1:'#8B1A1A',c2:'#D4AC0D',pattern:'oblique'}
+
+  // Mappa nome contrada → nome file immagine giubba+zucchino
+  const giubbaImgMap={
+    'SanMartino':    'giubba_sanmartino.png',
+    'San Martino':   'giubba_sanmartino.png',
+    'SanDomenico':   'giubba_sandomenico.png',
+    'San Domenico':  'giubba_sandomenico.png',
+    'SanMagno':      'giubba_sanmagno.png',
+    'San Magno':     'giubba_sanmagno.png',
+    'SantAmbrogio':  'giubba_santambrogio.png',
+    "Sant'Ambrogio": 'giubba_santambrogio.png',
+    'Flora':         'giubba_flora.png',
+    'SantErasmo':    'giubba_santerasmo.png',
+    "Sant'Erasmo":   'giubba_santerasmo.png',
+    'SanBernardino': 'giubba_sanbernardino.png',
+    'San Bernardino':'giubba_sanbernardino.png',
+    'Legnarello':    'giubba_legnarello.png'
   };
-  const g=giubbeMap[nomeContrada]||{c1:'#8B1A1A',c2:'#C9A84C',pattern:'oblique'};
-  const c1=g.c1,c2=g.c2;
-  // SVG giubba (maglietta fantino a MANICHE LUNGHE) con pattern obliquo o strisce verticali
-  // + zucchino (cuffia) del fantino con gli stessi colori di contrada
-  let giubbaSVG;
-  if(g.pattern==='stripes'){
-    // 3 strisce verticali: c1 | c2 | c1 — con maniche lunghe
-    giubbaSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="150" height="210">
-      <defs>
-        <clipPath id="gc_shirt_s">
-          <!-- Forma giubba maniche lunghe: corpo + maniche -->
-          <path d="M70,55 L25,75 L10,175 L45,180 L55,130 L55,240 L145,240 L145,130 L155,180 L190,175 L175,75 L130,55 L115,68 Q100,78 85,68 Z"/>
-        </clipPath>
-      </defs>
-      <!-- Striscia sinistra -->
-      <rect x="0" y="0" width="67" height="280" fill="${c1}" clip-path="url(#gc_shirt_s)"/>
-      <!-- Striscia centrale -->
-      <rect x="67" y="0" width="66" height="280" fill="${c2}" clip-path="url(#gc_shirt_s)"/>
-      <!-- Striscia destra -->
-      <rect x="133" y="0" width="67" height="280" fill="${c1}" clip-path="url(#gc_shirt_s)"/>
-      <!-- Bordatura silhouette -->
-      <path d="M70,55 L25,75 L10,175 L45,180 L55,130 L55,240 L145,240 L145,130 L155,180 L190,175 L175,75 L130,55 L115,68 Q100,78 85,68 Z" fill="none" stroke="rgba(0,0,0,.4)" stroke-width="3"/>
-      <!-- Collo -->
-      <ellipse cx="100" cy="65" rx="20" ry="11" fill="#1A0E08" opacity=".45"/>
-      <!-- Polsini maniche -->
-      <rect x="7" y="168" width="40" height="13" rx="4" fill="${c2}" stroke="rgba(0,0,0,.3)" stroke-width="1.5"/>
-      <rect x="153" y="168" width="40" height="13" rx="4" fill="${c2}" stroke="rgba(0,0,0,.3)" stroke-width="1.5"/>
-      <!-- === ZUCCHINO (cuffia del fantino) sopra la giubba === -->
-      <!-- Ombra zucchino -->
-      <ellipse cx="100" cy="42" rx="30" ry="18" fill="rgba(0,0,0,.25)"/>
-      <!-- Striscia sinistra zucchino -->
-      <rect x="70" y="10" width="20" height="48" fill="${c1}" clip-path="url(#zucchino_clip_s)"/>
-      <!-- Striscia centrale zucchino -->
-      <rect x="90" y="10" width="20" height="48" fill="${c2}" clip-path="url(#zucchino_clip_s)"/>
-      <!-- Striscia destra zucchino -->
-      <rect x="110" y="10" width="20" height="48" fill="${c1}" clip-path="url(#zucchino_clip_s)"/>
-      <defs><clipPath id="zucchino_clip_s"><ellipse cx="100" cy="36" rx="29" ry="26"/></clipPath></defs>
-      <!-- Bordo zucchino -->
-      <ellipse cx="100" cy="36" rx="29" ry="26" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="2.5"/>
-      <!-- Visiera/bordo inferiore zucchino -->
-      <path d="M71,52 Q100,62 129,52" stroke="rgba(0,0,0,.5)" stroke-width="2" fill="none"/>
-      <!-- Bottoncino in cima -->
-      <circle cx="100" cy="11" r="4" fill="${c2}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>
-    </svg>`;
-  } else {
-    // Divisione obliqua: triangolo in alto sinistra c1, triangolo in basso destra c2 — maniche lunghe
-    giubbaSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="150" height="210">
-      <defs>
-        <clipPath id="gc_shirt2_l">
-          <path d="M70,55 L25,75 L10,175 L45,180 L55,130 L55,240 L145,240 L145,130 L155,180 L190,175 L175,75 L130,55 L115,68 Q100,78 85,68 Z"/>
-        </clipPath>
-      </defs>
-      <!-- Sfondo base c1 -->
-      <rect x="0" y="0" width="200" height="280" fill="${c1}" clip-path="url(#gc_shirt2_l)"/>
-      <!-- Triangolo obliquo c2 (metà inferiore destra) -->
-      <polygon points="200,0 0,280 200,280" fill="${c2}" clip-path="url(#gc_shirt2_l)"/>
-      <!-- Bordatura silhouette -->
-      <path d="M70,55 L25,75 L10,175 L45,180 L55,130 L55,240 L145,240 L145,130 L155,180 L190,175 L175,75 L130,55 L115,68 Q100,78 85,68 Z" fill="none" stroke="rgba(0,0,0,.4)" stroke-width="3"/>
-      <!-- Collo -->
-      <ellipse cx="100" cy="65" rx="20" ry="11" fill="#1A0E08" opacity=".4"/>
-      <!-- Polsini maniche -->
-      <rect x="7" y="168" width="40" height="13" rx="4" fill="${c2}" stroke="rgba(0,0,0,.3)" stroke-width="1.5"/>
-      <rect x="153" y="168" width="40" height="13" rx="4" fill="${c2}" stroke="rgba(0,0,0,.3)" stroke-width="1.5"/>
-      <!-- === ZUCCHINO (cuffia del fantino) === -->
-      <!-- Ombra zucchino -->
-      <ellipse cx="100" cy="42" rx="30" ry="18" fill="rgba(0,0,0,.25)"/>
-      <!-- Colore base zucchino c1 -->
-      <ellipse cx="100" cy="36" rx="29" ry="26" fill="${c1}" clip-path="url(#zucchino_clip_o)"/>
-      <!-- Triangolo c2 sullo zucchino -->
-      <polygon points="130,10 70,62 130,62" fill="${c2}" clip-path="url(#zucchino_clip_o)"/>
-      <defs><clipPath id="zucchino_clip_o"><ellipse cx="100" cy="36" rx="29" ry="26"/></clipPath></defs>
-      <!-- Bordo zucchino -->
-      <ellipse cx="100" cy="36" rx="29" ry="26" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="2.5"/>
-      <!-- Visiera/bordo inferiore -->
-      <path d="M71,52 Q100,62 129,52" stroke="rgba(0,0,0,.5)" stroke-width="2" fill="none"/>
-      <!-- Bottoncino in cima -->
-      <circle cx="100" cy="11" r="4" fill="${c2}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>
-    </svg>`;
-  }
+  const imgFile=giubbaImgMap[nomeContrada]||'giubba_default.png';
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#1A0E08,#261508)';
   overlay.innerHTML=`
     <div style="max-width:340px;width:100%;text-align:center">
       <div style="display:flex;justify-content:center;margin-bottom:16px;filter:drop-shadow(0 6px 24px rgba(201,168,76,.5))">
-        ${giubbaSVG}
+        <img src="${imgFile}" alt="Giubba e zucchino ${nomeContrada}" style="width:150px;height:210px;object-fit:contain"/>
       </div>
       <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:var(--gold);margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,.7)">
         Complimenti, <span style="color:#F5E97A">${nomeContrada}</span> ti ha scelto!
@@ -5034,7 +4988,29 @@ function drawContradaDot(ctx, x, y, r, nome) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI*2);
   ctx.clip();
-  if (cc.stripes) {
+  if (nome === 'SanMartino' || nome === 'San Martino') {
+    // Pallino blu pieno con croce bianca — path unico per evitare artefatti all'intersezione
+    ctx.fillStyle = '#1A3A8C';
+    ctx.fillRect(x-r, y-r, r*2, r*2);
+    const t = r * 0.38; // spessore braccio
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    // path a croce in senso orario, partendo da angolo in alto a sinistra del braccio verticale
+    ctx.moveTo(x - t/2, y - r);
+    ctx.lineTo(x + t/2, y - r);
+    ctx.lineTo(x + t/2, y - t/2);
+    ctx.lineTo(x + r,   y - t/2);
+    ctx.lineTo(x + r,   y + t/2);
+    ctx.lineTo(x + t/2, y + t/2);
+    ctx.lineTo(x + t/2, y + r);
+    ctx.lineTo(x - t/2, y + r);
+    ctx.lineTo(x - t/2, y + t/2);
+    ctx.lineTo(x - r,   y + t/2);
+    ctx.lineTo(x - r,   y - t/2);
+    ctx.lineTo(x - t/2, y - t/2);
+    ctx.closePath();
+    ctx.fill();
+  } else if (cc.stripes) {
     // 3 strisce verticali: rosso | bianco | rosso
     ctx.fillStyle = cc.c1;
     ctx.fillRect(x-r, y-r, r*2, r*2);
