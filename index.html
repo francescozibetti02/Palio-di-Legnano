@@ -309,7 +309,7 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 </div>
 <div class="main" id="MAIN">
 <div class="pad">
-<div class="sc on" id="sc-mese">
+<div class="sc" id="sc-mese">
   <div class="mt" id="MTRACK"></div>
   <div class="card">
     <div class="ct">Azioni mensili</div>
@@ -363,9 +363,12 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 </div>
 </div>
 <!-- Database cavalli e fantini — modificare questi file per aggiornare le statistiche -->
-<script src="cavalli_db.js"></script>
-<script src="fantini_db.js"></script>
+<script src="cavalli_db.js" onerror="console.warn('cavalli_db.js non trovato, uso fallback');window.CAVALLI_DB=window.CAVALLI_DB||[]"></script>
+<script src="fantini_db.js" onerror="console.warn('fantini_db.js non trovato, uso fallback');window.FANTINI_MAP=window.FANTINI_MAP||{}"></script>
 <script>
+// Fallback di sicurezza nel caso i file esterni non siano stati caricati
+if(typeof CAVALLI_DB==='undefined')window.CAVALLI_DB=[];
+if(typeof FANTINI_MAP==='undefined')window.FANTINI_MAP={};
 const CDB={
   Flora:        {nemica:"SanMartino",   bonus:"ALTA_FINANZA",      desc:"Inizia con 4000 oro",            budget:4000,morale:60},
   Legnarello:   {nemica:"SantAmbrogio", bonus:"VOLANO_POPOLARE",   desc:"Budget legato al morale",        budget:3000,morale:60},
@@ -2354,7 +2357,7 @@ function avviaUI(){
   if(G.condManiero===undefined)G.condManiero=60;
   if(!R('sc-mese')){
     R('MAIN').innerHTML=`<div class="pad">
-      <div class="sc on" id="sc-mese">
+      <div class="sc" id="sc-mese">
         <div class="mt" id="MTRACK"></div>
         <div class="card"><div class="ct">Azioni mensili</div><div class="ag" id="MAZIONI"></div><div id="EVBOX"></div>
           <button class="btn pr w" id="BTN_AV" onclick="avanzaMese()">Passa al mese successivo →</button>
