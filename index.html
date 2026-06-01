@@ -362,6 +362,9 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
   <button class="nb" onclick="goTo('log')"><span class="nbi">📜</span>Albo</button>
 </div>
 </div>
+<!-- Database cavalli e fantini — modificare questi file per aggiornare le statistiche -->
+<script src="cavalli_db.js"></script>
+<script src="fantini_db.js"></script>
 <script>
 const CDB={
   Flora:        {nemica:"SanMartino",   bonus:"ALTA_FINANZA",      desc:"Inizia con 4000 oro",            budget:4000,morale:60},
@@ -370,41 +373,11 @@ const CDB={
   SanDomenico:  {nemica:"SantErasmo",   bonus:"SCUDERIA_ELITE",    desc:"Allenamento cavallo a 200 oro",  budget:3000,morale:60},
   SanMagno:     {nemica:"SanBernardino",bonus:"PRESTIGIO_STORICO", desc:"Fantini −20% di costo",          budget:3000,morale:60},
   SanMartino:   {nemica:"Flora",        bonus:"FAME_DI_VITTORIA",  desc:"Morale di partenza 85/200",      budget:3000,morale:85},
-  SantAmbrogio: {nemica:"Legnarello",   bonus:"RACCOLTA_FONDI",    desc:"Raccolta fondi 300 oro",         budget:3000,morale:60},
+  SantAmbrogio: {nemica:"Legnarello",   bonus:"GADGET_EXTRA",      desc:"Guadagno extra per vendita gadget",         budget:3000,morale:60},
   SantErasmo:   {nemica:"SanDomenico",  bonus:"ALLEVAMENTO_TOP",   desc:"Cavalli −20% di costo",          budget:3000,morale:60}
 };
 const NF=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
-const CAVALLI_DB=[
-  {nome:"Fulmine",vel:2,acc:4,ten:2,res:1,ner:3},
-  {nome:"Tempesta",vel:4,acc:2,ten:3,res:2,ner:3},
-  {nome:"Vento",vel:1,acc:2,ten:2,res:1,ner:1},
-  {nome:"Spirit",vel:2,acc:1,ten:3,res:2,ner:2},
-  {nome:"Dardo",vel:5,acc:4,ten:2,res:2,ner:4},
-  {nome:"Ombra",vel:1,acc:4,ten:3,res:4,ner:2},
-  {nome:"Abbagliante",vel:1,acc:1,ten:4,res:5,ner:3},
-  {nome:"Guerriero",vel:1,acc:1,ten:2,res:1,ner:1},
-  {nome:"Woody",vel:4,acc:3,ten:4,res:3,ner:2},
-  {nome:"Pannocchia",vel:4,acc:4,ten:3,res:3,ner:1},
-  {nome:"Star",vel:2,acc:5,ten:2,res:3,ner:4},
-  {nome:"Odi et Amo",vel:5,acc:4,ten:4,res:3,ner:3},
-  {nome:"Carilbom",vel:3,acc:4,ten:2,res:3,ner:5},
-  {nome:"El Rey",vel:5,acc:4,ten:2,res:2,ner:3},
-  {nome:"Farabundo",vel:4,acc:3,ten:4,res:1,ner:3},
-  {nome:"El Marador",vel:2,acc:1,ten:4,res:5,ner:2},
-  {nome:"Anacleto",vel:5,acc:4,ten:5,res:4,ner:1},
-  {nome:"Selvaggio",vel:1,acc:2,ten:3,res:3,ner:5},
-  {nome:"Eretica",vel:5,acc:3,ten:2,res:5,ner:1},
-  {nome:"Fegone",vel:3,acc:1,ten:3,res:1,ner:3},
-  {nome:"Fox Royale",vel:3,acc:2,ten:2,res:3,ner:2},
-  {nome:"Fenice",vel:2,acc:1,ten:2,res:1,ner:4},
-  {nome:"Ambra",vel:3,acc:3,ten:2,res:2,ner:3},
-  {nome:"Chimera",vel:2,acc:2,ten:2,res:2,ner:2},
-  {nome:"Frankie",vel:3,acc:2,ten:2,res:3,ner:2},
-  {nome:"Cristallo",vel:3,acc:4,ten:2,res:2,ner:1},
-  {nome:"Eclettico",vel:3,acc:5,ten:3,res:5,ner:1},
-  {nome:"Bum Bum",vel:5,acc:5,ten:5,res:5,ner:1},
-  {nome:"Wakanda",vel:4,acc:3,ten:3,res:3,ner:1}
-];
+/* CAVALLI_DB è caricato da cavalli_db.js (file esterno) */
 // NC rimane per retrocompatibilità
 const NC=CAVALLI_DB.map(c=>c.nome);
 const MESI=["Gennaio","Febbraio","Marzo","Aprile","Maggio"];
@@ -496,7 +469,7 @@ function inizia2(k){
   // preserve trofeiPerContrada across slots — G may be null here
   const tpc=(G&&G.trofeiPerContrada)||{};
   G={nome:k,nemica:db.nemica,bonus:db.bonus,oro:db.budget,morale:db.morale,difesa:0,mi:0,
-     stalla:[],cav:null,cavSelIdx:0,fan:null,log:[],trofei:0,anno:2026,slot:n,
+     stalla:[],cav:null,cavSelIdx:0,fan:null,log:[],trofei:0,anno:2027,slot:n,
      raccoltaUsata:false,cenaUsata:false,sicurezzaUsata:false,eventoUsato:false,
      condManiero:60,manieroOrganizzaCena:false,manieroVenditaGadget:false,manieroOrganizzaEvento:false,manieroManutenzione:false,
      puntSfilata:0,_bP:null,_bIA:null,_qP:null,_qIA:null,
@@ -838,7 +811,7 @@ function doManiero(tipo){
     return;
   } else if(tipo==='gadget'){
     if(G.manieroVenditaGadget)return;
-    const guad=Math.floor(G.morale*2);
+    const guad=Math.floor(G.morale*(G.bonus==='GADGET_EXTRA'?3:2)*rf(.8,1.2));
     G.oro+=guad;G.manieroVenditaGadget=true;
     addLog('Vendita Gadget al Maniero. +'+guad+' oro','inf');
     showMev('💰 Gadget venduti! +'+guad+' oro','grn');
@@ -918,12 +891,18 @@ function renderStalla(){
       const accAtMax=c.acc>=c.maxAcc,resAtMax=c.res>=c.maxRes;
       const costoAll=G.bonus==='SCUDERIA_ELITE'?200:400;
       const eta=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${5-Math.min(c.maxAcc,c.maxRes)} anno/i — acc e res al massimo attuale.</div>`:'';
+      const _dbCavS=getCavDB(c.nome);const _imgSrcS=_dbCavS&&_dbCavS.img?_dbCavS.img:'';const _imgHtmlS=_imgSrcS?`<img src="${_imgSrcS}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:12px;margin-bottom:10px;background:#1A0E08">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="vendiCav(${idx})">Vendi (${Math.floor(c.valore*.5)} oro)</button>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div style="width:72px;height:72px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:28px">${_imgHtmlS}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
+              <button class="btn" style="font-size:11px;padding:5px 10px" onclick="vendiCav(${idx})">Vendi (${Math.floor(c.valore*.5)} oro)</button>
+            </div>
+            ${eta}
+          </div>
         </div>
-        ${eta}
         ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
         ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
         ${sRow('Nervosismo',c.ner,5,true)}
@@ -1226,9 +1205,14 @@ function scegliCavParlio(idx){G.cavSelIdx=idx;G.cav=G.stalla[idx];applicaMeteoAC
 
 // ── MERCATO (solo cavalli) ──
 function mktItem(item,i){
+  const dbCav=getCavDB(item.nome);
+  const imgSrc=dbCav&&dbCav.img?dbCav.img:'';
+  const imgHtml=imgSrc?`<div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center">
+    <img src="${imgSrc}" alt="${item.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">
+  </div>`:`<div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:28px">🐎</div>`;
   const stats=sRow('Velocità',item.vel)+sRow('Accelerazione',item.acc)+sRow('Tenuta curva',item.ten)+sRow('Resistenza',item.res)+sRow('Nervosismo',item.ner,5,true);
-  return `<div class="mi"><div style="flex:1"><div class="mi-name">${item.nome} <span class="mi-cost">${item.valore} oro</span></div>${stats}</div>
-    <div><button class="btn pr" style="font-size:13px;padding:11px 13px" onclick="buyC(${i})">Acquista</button></div></div>`;
+  return `<div class="mi" style="align-items:flex-start">${imgHtml}<div style="flex:1"><div class="mi-name">${item.nome} <span class="mi-cost">${item.valore} oro</span></div>${stats}
+    <button class="btn pr w" style="font-size:13px;padding:11px 13px;margin-top:8px" onclick="buyC(${i})">Acquista</button></div></div>`;
 }
 function renderMkt(){if(!MKT)MKT=genMkt();R('MKT_C').innerHTML=MKT.c.map((c,i)=>mktItem(c,i)).join('');}
 function buyC(i){
@@ -2250,7 +2234,7 @@ function renderIntro(){
   setMain(`<div style="text-align:center;padding:20px 12px">
     <div style="font-size:56px;margin-bottom:10px">🏇</div>
     <div style="font-family:var(--fn);font-size:24px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-bottom:6px">PALIO DI LEGNANO</div>
-    <div style="font-family:var(--fn);font-size:13px;color:rgba(201,168,76,.5);margin-bottom:20px;letter-spacing:.5px;font-style:italic">Anno Domini MMXXVI</div>
+    <div style="font-family:var(--fn);font-size:13px;color:rgba(201,168,76,.5);margin-bottom:20px;letter-spacing:.5px;font-style:italic">Anno Domini MMXXVII</div>
     <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px;font-family:var(--fn)">Scegli la tua carriera</div>
     <div class="career-choice">
       <div class="career-card" onclick="mostraSlotScreen('new')">
@@ -2416,26 +2400,7 @@ function avviaUI(){
 let F=null; // stato fantino
 
 const NOMI_FANTINI_RIVALI=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
-const FANTINI_DB=[
-  {nome:"Aceto",     bravura:5,esp:5,mossa:4,emp:4},
-  {nome:"Il Pesse",  bravura:4,esp:5,mossa:2,emp:1},
-  {nome:"Massimino", bravura:3,esp:2,mossa:1,emp:4},
-  {nome:"Tittia",    bravura:5,esp:5,mossa:5,emp:5},
-  {nome:"Scompiglio",bravura:4,esp:1,mossa:4,emp:1},
-  {nome:"Gingillo",  bravura:4,esp:5,mossa:5,emp:4},
-  {nome:"Velluto",   bravura:3,esp:5,mossa:2,emp:4},
-  {nome:"Brigante",  bravura:1,esp:3,mossa:1,emp:1},
-  {nome:"Bighino",   bravura:3,esp:5,mossa:5,emp:3},
-  {nome:"Cittino",   bravura:1,esp:1,mossa:1,emp:1},
-  {nome:"Gavino",    bravura:2,esp:4,mossa:1,emp:1},
-  {nome:"Ares",      bravura:1,esp:1,mossa:1,emp:1},
-  {nome:"Amsicora",  bravura:5,esp:5,mossa:5,emp:5},
-  {nome:"Carburo",   bravura:2,esp:1,mossa:2,emp:1},
-  {nome:"Voglia",    bravura:4,esp:2,mossa:1,emp:1},
-  {nome:"Bucefalo",  bravura:5,esp:2,mossa:5,emp:2},
-  {nome:"Trecciolino",bravura:5,esp:5,mossa:1,emp:1},
-  {nome:"Truciolo",  bravura:4,esp:4,mossa:4,emp:4}
-];
+/* FANTINI_DB è caricato da fantini_db.js (file esterno) */
 // Mappa rapida nome→stats per accesso O(1)
 const FANTINI_MAP=Object.fromEntries(FANTINI_DB.map(f=>([f.nome,f])));
 
@@ -2510,7 +2475,7 @@ function creaFantino(contrada){
 
   F={
     nome,contrada,nemica:db.nemica,slot,
-    oro:0,mi:0,anno:2026,
+    oro:0,mi:0,anno:2027,
     bravura:1,esperienza:1,mossa:1,empatia:1,
     sostegno:50,intesa:60,
     rivali,intesaCapitani,
@@ -2963,9 +2928,12 @@ function fRenderStalla(){
   if(F.stallaContrada.length){
     F.stallaContrada.forEach((c,i)=>{
       const eta=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ Cavallo anziano — acc/res al massimo attuale.</div>`:'';
+      const _dbFC=getCavDB(c.nome);const _imgFC=_dbFC&&_dbFC.img?_dbFC.img:'';const _imgHtmlFC=_imgFC?`<img src="${_imgFC}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
-        ${fCavCardHeader(c,true)}
-        ${eta}
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+          <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFC}</div>
+          <div style="flex:1">${fCavCardHeader(c,true)}${eta}</div>
+        </div>
         ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
         ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
         ${sRow('Nervosismo',c.ner,5,true)}
@@ -2987,9 +2955,12 @@ function fRenderStalla(){
       const anni=F.anno-(c.annoAcquisto||F.anno);
       const etaP=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${anni} anni in stalla — invecchiamento attivo.</div>`:'';
       const prezzoVendita=Math.floor((c.valoreAcquisto||c.valore)*.5);
+      const _dbFP=getCavDB(c.nome);const _imgFP=_dbFP&&_dbFP.img?_dbFP.img:'';const _imgHtmlFP=_imgFP?`<img src="${_imgFP}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
-        ${fCavCardHeader(c,false)}
-        ${etaP}
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+          <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFP}</div>
+          <div style="flex:1">${fCavCardHeader(c,false)}${etaP}</div>
+        </div>
         ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
         ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
         ${sRow('Nervosismo',c.ner,5,true)}
@@ -3048,12 +3019,18 @@ function fRenderMercato(){
   if(!F.mktF)F.mktF=fGenMkt();
   let html=`<div class="card"><div class="ct">Cavalli disponibili</div>`;
   F.mktF.cavalli.forEach((c,i)=>{
+    const _dbFMkt=getCavDB(c.nome);const _imgFMkt=_dbFMkt&&_dbFMkt.img?_dbFMkt.img:'';const _imgHtmlFMkt=_imgFMkt?`<img src="${_imgFMkt}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
     html+=`<div class="mi" style="flex-direction:column">
-      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:6px">
-        <div class="mi-name">${c.nome} <span class="mi-cost">${c.valore} oro</span></div>
-      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;width:100%;margin-bottom:6px">
+        <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFMkt}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div class="mi-name">${c.nome} <span class="mi-cost">${c.valore} oro</span></div>
+          </div>
       ${sRow('Velocità',c.vel)}${sRow('Accelerazione',c.acc)}${sRow('Tenuta curva',c.ten)}${sRow('Resistenza',c.res)}${sRow('Nervosismo',c.ner,5,true)}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
         <button class="btn" style="font-size:12px;padding:10px" onclick="fPropoiAlCapitano(${i})">🤝 Proponi al Capitano</button>
         <button class="btn gold" style="font-size:12px;padding:10px" ${F.oro<c.valore?'disabled':''} onclick="fAcquistaCav(${i})">Acquista (${c.valore} oro)</button>
       </div>
@@ -4064,7 +4041,17 @@ function fShowSceltaCavallo(){
   const tutti=[...F.stallaContrada,...F.stallaPersonale].filter(cv=>(cv.stanchezza||0)<3&&!cv._infortunato);
   const tuttiTutti=[...F.stallaContrada,...F.stallaPersonale];
   if(!tutti.length){alert('Nessun cavallo disponibile (stanchezza 3 o infortunato)!');return;}
-  const prefCap=F.stallaContrada[0]||null;
+  // Il capitano preferisce il cavallo MIGLIORE della stalla di contrada (non per forza il primo).
+  // La valutazione si basa sulla somma delle statistiche positive (vel+acc+ten+res) meno il nervosismo.
+  const stallaContrDisp=F.stallaContrada.filter(cv=>(cv.stanchezza||0)<3&&!cv._infortunato);
+  let prefCap=null;
+  if(stallaContrDisp.length){
+    prefCap=stallaContrDisp.reduce((best,cv)=>{
+      const score=(cv.vel||0)+(cv.acc||0)+(cv.ten||0)+(cv.res||0)-(cv.ner||0);
+      const bestScore=(best.vel||0)+(best.acc||0)+(best.ten||0)+(best.res||0)-(best.ner||0);
+      return score>bestScore?cv:best;
+    });
+  }
   F._meteo=sorteggiMeteo();
   setMain(`<div class="pad">
     <div style="text-align:center;margin-bottom:12px">
@@ -4073,13 +4060,18 @@ function fShowSceltaCavallo(){
       ${prefCap?`<div style="font-size:12px;color:var(--gold);margin-top:4px">Il Capitano preferisce: <strong>${prefCap.nome}</strong></div>`:''}
     </div>
     ${meteoHTML(F._meteo)}
-    ${tutti.map((c,i)=>`<div class="card" style="cursor:pointer" onclick="fScegliCavParlio(${i},${!!(prefCap&&c.nome===prefCap.nome)})">
+    ${tutti.map((c,i)=>{
+      const isContrada=F.stallaContrada.some(sc=>sc===c||sc.nome===c.nome);
+      const isPref=prefCap&&c.nome===prefCap.nome;
+      const badge=isPref?'<span class="bdg g">♥ Cap. preferisce</span>'
+        :(isContrada?'<span class="bdg o">contrada</span>':'<span class="bdg r">personale</span>');
+      return `<div class="card" style="cursor:pointer" onclick="fScegliCavParlio(${i},${!!isPref})">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
-        ${prefCap&&c.nome===prefCap.nome?'<span class="bdg g">♥ Cap. preferisce</span>':'<span class="bdg o">personale</span>'}
+        ${badge}
       </div>
       ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}${sRow('Nervosismo',c.ner,5,true)}
-    </div>`).join('')}
+    </div>`;}).join('')}
     <div id="FSCELTA_CAV_LIST" style="display:none">${JSON.stringify(tutti)}</div>
   </div>`);
   F._sceltaCavList=tutti;
@@ -4939,30 +4931,71 @@ const TUT_FNT=[
   {title:"🏆 Fine Anno e Carriera",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) oppure cambiarla (intesa con l'altra ≥60). I cavalli personali restano con te, quelli di contrada vengono rilasciati. Il budget personale si mantiene. Se l'intesa crolla e nessuna contrada ti vuole, passi un anno da svincolato. Buona fortuna, diventa il fantino più vincente della storia del Palio!",btn:"Ho capito! Torna alla home →"},
 ];
 
-let _tutIdx=0,_tutDati=null;
-function avviaTutorialCapitano(){_tutIdx=0;_tutDati=TUT_CAP;mostraTutStep();}
-function avviaTutorialFantino(){_tutIdx=0;_tutDati=TUT_FNT;mostraTutStep();}
+let _tutIdx=0,_tutDati=null,_tutType=null;
+function avviaTutorialCapitano(){_tutIdx=0;_tutDati=TUT_CAP;_tutType='cap';mostraTutStep();}
+function avviaTutorialFantino(){_tutIdx=0;_tutDati=TUT_FNT;_tutType='fnt';mostraTutStep();}
 function mostraTutStep(){
-  if(!_tutDati||_tutIdx>=_tutDati.length){renderIntro();return;}
+  if(!_tutDati||_tutIdx>=_tutDati.length){
+    // Ripristina titolo header
+    const hNome=document.getElementById('H_NOME');
+    if(hNome)hNome.textContent='Scegli la Contrada';
+    renderIntro();return;
+  }
+  // Aggiorna titolo header
+  const hNome=document.getElementById('H_NOME');
+  if(hNome)hNome.textContent=_tutType==='cap'?'Tutorial Capitano':'Tutorial Fantino';
+
   const s=_tutDati[_tutIdx];
   const isLast=_tutIdx===_tutDati.length-1;
   const prog=Math.round((_tutIdx/_tutDati.length)*100);
-  setMain(`<div class="pad">
-    <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(201,168,76,.5);margin-bottom:4px;font-family:var(--fn)">
-        <span>Passo ${_tutIdx+1} di ${_tutDati.length}</span><span>${prog}%</span>
+  const imgFile=_tutType==='cap'?'tutorial-capitano.png':'tutorial-fantino.png';
+
+  setMain(`<div style="position:relative;min-height:calc(100vh - 120px);display:flex;flex-direction:column;padding:0">
+
+    <!-- Area contenuto -->
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-start;
+                padding:12px 12px 12px 12px">
+
+      <!-- Barra progresso -->
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;
+                    color:rgba(201,168,76,.5);margin-bottom:4px;font-family:var(--fn)">
+          <span>Passo ${_tutIdx+1} di ${_tutDati.length}</span><span>${prog}%</span>
+        </div>
+        <div style="height:4px;background:#1A0E08;border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${prog}%;background:var(--gold);
+                      border-radius:2px;transition:width .3s"></div>
+        </div>
       </div>
-      <div style="height:4px;background:#1A0E08;border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:${prog}%;background:var(--gold);border-radius:2px;transition:width .3s"></div>
+
+      <!-- Box testo centrato in alto -->
+      <div style="width:100%;margin:0 auto 20px auto">
+        <div style="background:linear-gradient(135deg,#2C1810,#261508);
+                    border:1.5px solid rgba(201,168,76,0.45);
+                    border-radius:16px;padding:16px 16px 14px;
+                    box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(201,168,76,.15)">
+          <div style="font-family:var(--fn);font-size:17px;font-weight:700;
+                      color:var(--gold);margin-bottom:10px;line-height:1.3;text-align:center">${s.title}</div>
+          <div style="font-size:13px;color:var(--parch2);line-height:1.75;text-align:center">${s.text}</div>
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <div style="font-family:var(--fn);font-size:18px;font-weight:700;color:var(--gold);margin-bottom:12px">${s.title}</div>
-      <div style="font-size:14px;color:var(--parch2);line-height:1.7">${s.text}</div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      ${_tutIdx>0?`<button class="btn" onclick="_tutIdx--;mostraTutStep()" style="padding:12px 16px">← Indietro</button>`:''}
-      <button class="btn ${isLast?'pr':'gold'} w" onclick="${isLast?'renderIntro()':'_tutIdx++;mostraTutStep()'}" style="justify-content:center">${s.btn}</button>
+
+      <!-- Personaggio centrato -->
+      <div style="display:flex;justify-content:center;align-items:center;flex:1;pointer-events:none;margin-bottom:16px">
+        <img src="${imgFile}" alt="Personaggio tutorial"
+             style="width:min(55vw,260px);height:auto;display:block;object-fit:contain;
+                    filter:drop-shadow(0 4px 24px rgba(0,0,0,.7))"
+             onerror="this.style.display='none'">
+      </div>
+
+      <!-- Bottoni -->
+      <div style="display:flex;gap:8px;margin-top:8px">
+        ${_tutIdx>0?`<button class="btn" onclick="_tutIdx--;mostraTutStep()" style="padding:12px 16px">← Indietro</button>`:''}
+        <button class="btn ${isLast?'pr':'gold'} w"
+                onclick="${isLast?'(()=>{const h=document.getElementById(\'H_NOME\');if(h)h.textContent=\'Scegli la Contrada\';renderIntro();})()':'_tutIdx++;mostraTutStep()'}"
+                style="justify-content:center">${s.btn}</button>
+      </div>
+
     </div>
   </div>`);
 }
@@ -5292,7 +5325,7 @@ const OBIETTIVI_DEF=[
   {id:'amica_contrada',label:'Diventa amica di una contrada',desc:'Raggiungi amicizia 100 con almeno una contrada',icon:'🤝'},
   {id:'massimo_morale',label:'Massimo sostegno dei contradaioli',desc:'Raggiungi 200 di morale',icon:'❤️'},
   {id:'impedisci_nemica',label:'Impedisci la vittoria della nemica',desc:'La tua nemica non vince il Palio',icon:'⚔️'},
-  {id:'vinci_primo_anno',label:'Vinci il palio al primo anno',desc:'Vinci il Palio nel 2026',icon:'🏆'},
+  {id:'vinci_primo_anno',label:'Vinci il palio al primo anno',desc:'Vinci il Palio nel 2027',icon:'🏆'},
   {id:'consecutivi_2',label:'Vinci il palio per due anni consecutivi',desc:'Vittoria in due anni di fila',icon:'🥇'},
   {id:'consecutivi_3',label:'Vinci il palio per tre anni consecutivi',desc:'Vittoria in tre anni di fila',icon:'👑'},
   {id:'consecutivi_4',label:'Vinci il palio per quattro anni consecutivi',desc:'Vittoria in quattro anni di fila',icon:'⚜'},
@@ -5362,7 +5395,7 @@ function checkObiettivi(tipo){
     done.impedisci_nemica=true;modPrestigio(5,'Obiettivo: nemica fermata');showToast('🎯 Obiettivo: nemica fermata! +5 Prestigio','grn');
   }
   if(tipo==='vinto_palio'){
-    if(G.anno===2026&&!done.vinci_primo_anno){
+    if(G.anno===2027&&!done.vinci_primo_anno){
       done.vinci_primo_anno=true;modPrestigio(5,'Obiettivo: vinto al primo anno');showToast('🎯 Vinto al primo anno! +5 Prestigio','grn');
     }
     ob.consecutivi=(ob.consecutivi||0)+1;
