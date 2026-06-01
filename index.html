@@ -363,7 +363,7 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 </div>
 </div>
 <!-- Database cavalli e fantini — modificare questi file per aggiornare le statistiche -->
-<script src="cavalli_db.js"></script>
+<script src="cavalli_db.js?v=2"></script>
 <script src="fantini_db.js"></script>
 <script>
 const CDB={
@@ -2306,6 +2306,8 @@ function caricaFantino(slot){
     if(!s){showToast('Slot '+slot+' vuoto!','red');return;}
     F=JSON.parse(s);F.slot=slot;
     if(!F.mktF)F.mktF=fGenMkt();
+    if(F.reputazione===undefined)F.reputazione=10;
+    if(!F.obiettiviFantino)F.obiettiviFantino={completati:{}};
     fAvviaUI();showToast('Fantino caricato — '+F.nome,'grn');
   }catch(e){alert('Errore nel caricamento.');}
 }
@@ -2478,6 +2480,7 @@ function creaFantino(contrada){
     oro:0,mi:0,anno:2027,
     bravura:1,esperienza:1,mossa:1,empatia:1,
     sostegno:50,intesa:60,
+    reputazione:10,
     rivali,intesaCapitani,
     stallaContrada:[],stallaPersonale:[],
     cavScelta:null,
@@ -2490,6 +2493,7 @@ function creaFantino(contrada){
     log:[],
     premi:[],
     mktF:null,
+    obiettiviFantino:{completati:{}},
     nomeCompagno  // fantino assegnato dal gioco nella stessa contrada
   };
   F.mktF=fGenMkt();
@@ -2559,6 +2563,13 @@ function fSyncIntesa(){
   F.intesaCapitani[F.contrada]=F.intesa;
 }
 function fSyncEmpatia(){F.empatia=fCalcEmpatia();fSyncIntesa();}
+
+function modReputazione(delta,motivo){
+  if(!F)return;
+  const prev=F.reputazione||10;
+  F.reputazione=clamp(prev+delta,0,100);
+  if(delta!==0)fAddLog('Reputazione '+(delta>0?'+':'')+delta+' ('+motivo+') → '+F.reputazione,'inf');
+}
 
 // ── UI FANTINO ──
 function fApplicaColoriContradaFantino(){
@@ -2648,16 +2659,22 @@ function fHudHTML(){
 function fRenderMese(){
   const el=R('sc-fmese');if(!el)return;
   const isMaggio=F.mi===4;
+  const rep=F.reputazione||0;
+  const repCol=rep>=80?'#5DBB63':rep>=60?'var(--gold)':rep>=30?'rgba(201,168,76,.7)':'#E05555';
   el.innerHTML=fHudHTML()+`
   <div class="mt" id="FMTRACK"></div>
   <div class="card">
-    <div class="ct">Statistiche fantino — ${F.nome}</div>
+    <div class="ct">Statistiche fantino — ${F.nome} <span style="font-size:10px;font-weight:400;color:${repCol};margin-left:6px">⭐ Reputazione ${rep}/100</span></div>
     ${fStarRow('Bravura',F.bravura)}
     ${fStarRow('Esperienza',F.esperienza)}
     ${fStarRow('Gestione mossa',F.mossa)}
     ${fStarRow('Empatia',F.empatia)}
     ${fBar('Intesa col Capitano',F.intesa,'fnt-bar-green')}
     ${fBar('Sostegno contradaioli',F.sostegno,'fnt-bar-blue')}
+    <div class="fnt-bar-wrap">
+      <div class="fnt-bar-label" style="color:${repCol}"><span>⭐ Reputazione</span><span>${rep}/100</span></div>
+      <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${rep}%"></div></div>
+    </div>
   </div>
   <div class="card">
     <div class="ct">Azioni mensili</div>
@@ -2672,6 +2689,10 @@ function fRenderMese(){
       </button>
     </div>
     <div id="FEVBOX"></div>
+    <button class="btn" onclick="fShowObiettiviFantino()" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px;width:100%;margin-top:8px">
+      <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🎯 Obiettivi</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Traguardi · +5 Reputazione ciascuno</div>
+    </button>
     <button class="btn pr w" onclick="fAvanzaMese()" style="margin-top:10px">${isMaggio?'⚔ Vigilia del Palio →':'Passa al mese successivo →'}</button>
     <button class="btn w" onclick="fSalva();renderIntro()" style="margin-top:4px;border-color:rgba(201,168,76,.27);color:rgba(201,168,76,.6)">🏠 Salva e torna ad Home</button>
   </div>`;
@@ -2711,6 +2732,10 @@ function fAvanzaMese(){
   fAddLog('Mese '+F.mi+'. +'+(F._stipendioBase||100)+' oro stipendio.','inf');
   // Imprevisti (30%, max 1 al mese) — estratto prima della Gazzetta
   if(!F.imprevistaUsato&&Math.random()<0.3){fEstraiImprevisto();}
+  // Bonus mensile sostegno da reputazione
+  const repF=F.reputazione||0;
+  if(repF>=80){F.sostegno=clamp(F.sostegno+10,0,100);fAddLog('Reputazione alta ('+repF+'): Sostegno +10','grn');}
+  else if(repF>=60){F.sostegno=clamp(F.sostegno+5,0,100);fAddLog('Buona reputazione ('+repF+'): Sostegno +5','grn');}
   fSalva();
   // Mostra Gazzetta del Palio prima del mese
   fMostraGazzettaFantino(()=>{fGoTo('mese');});
@@ -3065,6 +3090,7 @@ function fAcquistaCav(i){
   F.stallaPersonale.push(cavAcq);
   F.mktF.cavalli.splice(i,1);
   fAddLog('Acquistato '+c.nome+' per '+c.valore+' oro (personale)','inf');
+  fCheckObiettiviFantino('acquisto_personale');
   showToast('✦ '+c.nome+' nella tua stalla personale!','grn');
   fSalva();fRenderMercato();
 }
@@ -3130,7 +3156,7 @@ function fRunAddestramento(cavIdx){
     const finale=gpg[gpg.length-1];
     const pos=finale.indexOf(F.contrada)+1;
     const vinto=pos===1;
-    if(vinto){F.bravura=clamp(F.bravura+1,1,5);fAddLog('Corsa addestramento vinta! +1 Bravura','grn');}
+    if(vinto){F.bravura=clamp(F.bravura+1,1,5);modReputazione(5,'Vittoria corsa addestramento');fCheckObiettiviFantino('vinto_addestramento');fAddLog('Corsa addestramento vinta! +1 Bravura · Reputazione +5','grn');}
     else{fAddLog('Corsa addestramento: '+pos+'° posto.','inf');}
     const cavScelto=F._addestramentoCav[cavIdx];
     cavScelto.stanchezza=Math.min(3,(cavScelto.stanchezza||0)+1);
@@ -3299,8 +3325,10 @@ function fEseguiTradimento(contrada){
   F.oro+=300;
   F.intesa=clamp(F.intesa-25,0,100);
   fSyncEmpatia();fSalva();
+  modReputazione(-10,'Tradimento del capitano');
+  fCheckObiettiviFantino('tradimento');
   fAddLog('Tradimento verso '+contrada+'! +30 intesa cap. '+contrada+', +300 oro, −25 intesa tuo cap.','red');
-  showToast('🗡️ Tradimento! +30 intesa, +300 oro, −25 intesa capitano','grn');
+  showToast('🗡️ Tradimento! +30 intesa, +300 oro, −25 intesa capitano · Reputazione −10','grn');
   fRenderContrade();
 }
 
@@ -3654,9 +3682,28 @@ function fFermaMossaProvaccia(fase){
 function fShowAccordiProvaccia(fase){
   F._fasePalio=fase;
   F._accordoPatto=null;
+  F._tangentePatto=null;
+  F._frenatoConTangente=false;
   const partecipanti=fase==='batteria'?(F._fprovP||[]):[...(F._fprovQP||[]),...(F._fprovQIA||[])];
   // Escludi il fantino della stessa contrada del giocatore (compagno)
   const altriFantini=Object.entries(F.rivali).filter(([n,info])=>partecipanti.includes(info.contrada)&&info.contrada!==F.contrada);
+
+  // Genera offerte tangente (30% probabilità ciascuna)
+  let tangenteFantino=null, tangenteCapitano=null;
+  if(altriFantini.length){
+    if(Math.random()<0.30){
+      const idx=Math.floor(Math.random()*altriFantini.length);
+      const [nome,info]=altriFantini[idx];
+      const cifra=Math.floor(Math.random()*(450-150+1))+150;
+      tangenteFantino={nome,contrada:info.contrada,cifra};
+    }
+    const contradeRivali=altriFantini.map(([,info])=>info.contrada).filter(c=>c&&c!==F.contrada);
+    if(contradeRivali.length&&Math.random()<0.30){
+      const contrRnd=contradeRivali[Math.floor(Math.random()*contradeRivali.length)];
+      const cifra=Math.floor(Math.random()*(650-250+1))+250;
+      tangenteCapitano={contrada:contrRnd,cifra};
+    }
+  }
 
   let html=`<div class="pad">
     <div style="text-align:center;margin-bottom:14px">
@@ -3683,6 +3730,28 @@ function fShowAccordiProvaccia(fase){
     });
   } else {
     html+=`<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun fantino noto in questa batteria.</div>`;
+  }
+
+  // Tasto offerta tangente da fantino rivale
+  if(tangenteFantino){
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${tangenteFantino.nome}','${tangenteFantino.contrada}',${tangenteFantino.cifra},'${fase}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
+      <div>
+        <div style="font-weight:700;color:#C9A84C">💰 Offerta da ${tangenteFantino.nome}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteFantino.cifra} oro · Ti chiede di frenare il cavallo</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#C9A84C">+${tangenteFantino.cifra}🪙</div>
+    </button>`;
+  }
+
+  // Tasto offerta tangente da capitano rivale
+  if(tangenteCapitano){
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${tangenteCapitano.contrada}',${tangenteCapitano.cifra},'${fase}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
+      <div>
+        <div style="font-weight:700;color:#D4A060">🏛 Offerta dal Capitano di ${tangenteCapitano.contrada}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteCapitano.cifra} oro · Ti chiede di frenare il cavallo</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#D4A060">+${tangenteCapitano.cifra}🪙</div>
+    </button>`;
   }
 
   html+=`</div>
@@ -3725,6 +3794,40 @@ function fTentaAccordoProvaccia(nomeFant, amicizia, fase){
   document.getElementById('ACC_PROV_BTN').onclick=()=>{overlay.remove();fEseguiCorsaProvaccia();};
 }
 
+// ── TANGENTE: offerta oro in cambio di frenare il cavallo ──
+function fAccettaTangente(tipo, nomeFant, contrada, cifra, fase, corsaFn){
+  // Disabilita tutti i tasti accordo
+  document.querySelectorAll('.acc-btn').forEach(b=>{b.disabled=true;b.style.opacity='.35';});
+  // Aggiungi oro
+  F.oro+=cifra;
+  F._tangentePatto={tipo, nomeFant, contrada, cifra};
+  F._frenatoConTangente=false;
+  fSalva();
+  const chi=tipo==='fantino'?`il fantino <strong>${nomeFant}</strong>`:`il Capitano di <strong>${contrada}</strong>`;
+  fAddLog(`Tangente accettata da ${tipo==='fantino'?nomeFant:('Capitano '+contrada)}: +${cifra} oro`,'inf');
+  // Popup stile Gazzetta del Palio
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);margin-top:4px">Gazzetta del Palio</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Notizie dal paddock · Anno ${F.anno}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="text-align:center;font-size:32px;margin-bottom:8px">💰</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:#C9A84C;margin-bottom:10px;text-align:center">Accordo nell'ombra</div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid #C9A84C;margin-bottom:14px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">Hai accettato l'accordo. La richiesta è di frenare il cavallo durante la gara, a te la scelta.</div>
+        <div style="margin-top:8px;font-size:13px;color:#C9A84C;font-weight:700">+${cifra} 🪙 oro ricevuto da ${chi}.</div>
+      </div>
+      <div style="font-size:11px;color:rgba(201,168,76,.45);text-align:center;margin-bottom:12px">Frena in gara → ${tipo==='fantino'?'Amicizia con '+nomeFant:'Intesa con Capitano '+contrada} +10<br>Tradisci → ${tipo==='fantino'?'Amicizia con '+nomeFant:'Intesa con Capitano '+contrada} azzera a 0</div>
+      <button id="TANG_BTN" class="btn gold w">⚔ Via alla gara! →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('TANG_BTN').onclick=()=>{overlay.remove();window[corsaFn]();};
+}
 function fEseguiCorsaProvaccia(){
   const fase=F._fasePalio;
   const giri=fase==='finale'?5:4;
@@ -3783,6 +3886,11 @@ function fEseguiCorsaProvaccia(){
   const playerIn=fase==='finale'?true:qP.includes(F.contrada);
   const vinto=fase==='finale'&&pos===1;
 
+  // Reputazione batteria Provaccia
+  if(fase==='batteria'&&playerIn){
+    modReputazione(5,'Qualificato in batteria Provaccia');
+  }
+
   // Valuta obiettivo capitano
   if(fase==='batteria'){
     const ob=F._obiettivoCapBatteria;
@@ -3799,7 +3907,13 @@ function fEseguiCorsaProvaccia(){
     F.premi=F.premi||[];
     F.premi.push({anno:F.anno,contrada:F.contrada,isProvaccia:true});
     F._vintoProvacciaQuestAnno=true; // flag per offerta a fine anno
-    fAddLog('🏆 HAI VINTO LA PROVACCIA '+F.anno+'! +1 Esperienza, +100 oro','grn');
+    modReputazione(10,'Vittoria Provaccia');
+    fCheckObiettiviFantino('vinto_provaccia');
+    fAddLog('🏆 HAI VINTO LA PROVACCIA '+F.anno+'! +1 Esperienza, +100 oro · Reputazione +10','grn');
+  } else if(fase==='finale'){
+    modReputazione(-5,'Sconfitto in finale Provaccia');
+  } else if(fase==='batteria'&&!qP.includes(F.contrada)){
+    modReputazione(-5,'Eliminato in batteria Provaccia');
   }
   if(F.cavScelta)ripristinaMeteo(F.cavScelta);
   fSyncEmpatia();fSalva();
@@ -4209,9 +4323,29 @@ function fValutaObiettivoCapitano(fase, pos, qualificato, vinto){
 function fShowAccordiPreGara(fase){
   F._fasePalio=fase;
   F._accordoPatto=null; // reset accordo precedente
+  F._tangentePatto=null; // reset tangente precedente
+  F._frenatoConTangente=false; // reset flag frena con tangente
   const partecipanti=fase==='batteria'?(F._fbP||[]):[...(F._fbQP||[]),...(F._fbQIA||[])];
   // Escludi il fantino della stessa contrada del giocatore (compagno)
   const altriFantini=Object.entries(F.rivali).filter(([n,info])=>partecipanti.includes(info.contrada)&&info.contrada!==F.contrada);
+
+  // Genera offerte tangente (30% probabilità ciascuna)
+  let tangenteFantino=null, tangenteCapitano=null;
+  if(altriFantini.length){
+    if(Math.random()<0.30){
+      const idx=Math.floor(Math.random()*altriFantini.length);
+      const [nome,info]=altriFantini[idx];
+      const cifra=Math.floor(Math.random()*(450-150+1))+150;
+      tangenteFantino={nome,contrada:info.contrada,cifra};
+    }
+    // Capitani rivali: prendi contrade rivali presenti in gara (escludi la propria)
+    const contradeRivali=altriFantini.map(([,info])=>info.contrada).filter(c=>c&&c!==F.contrada);
+    if(contradeRivali.length&&Math.random()<0.30){
+      const contrRnd=contradeRivali[Math.floor(Math.random()*contradeRivali.length)];
+      const cifra=Math.floor(Math.random()*(650-250+1))+250;
+      tangenteCapitano={contrada:contrRnd,cifra};
+    }
+  }
 
   let html=`<div class="pad">
     <div style="text-align:center;margin-bottom:14px">
@@ -4238,6 +4372,28 @@ function fShowAccordiPreGara(fase){
     });
   } else {
     html+=`<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun fantino noto in questa batteria.</div>`;
+  }
+
+  // Tasto offerta tangente da fantino rivale
+  if(tangenteFantino){
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${tangenteFantino.nome}','${tangenteFantino.contrada}',${tangenteFantino.cifra},'${fase}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
+      <div>
+        <div style="font-weight:700;color:#C9A84C">💰 Offerta da ${tangenteFantino.nome}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteFantino.cifra} oro · Ti chiede di frenare il cavallo</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#C9A84C">+${tangenteFantino.cifra}🪙</div>
+    </button>`;
+  }
+
+  // Tasto offerta tangente da capitano rivale
+  if(tangenteCapitano){
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${tangenteCapitano.contrada}',${tangenteCapitano.cifra},'${fase}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
+      <div>
+        <div style="font-weight:700;color:#D4A060">🏛 Offerta dal Capitano di ${tangenteCapitano.contrada}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteCapitano.cifra} oro · Ti chiede di frenare il cavallo</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#D4A060">+${tangenteCapitano.cifra}🪙</div>
+    </button>`;
   }
 
   html+=`</div>
@@ -4364,6 +4520,12 @@ function fEseguiCorsa(){
   const playerIn=fase==='finale'?true:qP.includes(F.contrada);
   const vinto=fase==='finale'&&pos===1;
 
+  // Reputazione batteria
+  if(fase==='batteria'&&playerIn){
+    modReputazione(5,'Qualificato in batteria Palio');
+    fCheckObiettiviFantino('vinto_batteria');
+  }
+
   // Valuta obiettivo capitano
   fValutaObiettivoCapitano(fase, pos, playerIn, vinto);
 
@@ -4372,13 +4534,19 @@ function fEseguiCorsa(){
     F.intesa=clamp(F.intesa+50,0,100);F.sostegno=clamp(F.sostegno+50,0,100);
     F.premi=F.premi||[];F.premi.push({anno:F.anno,contrada:F.contrada});
     F.oro+=500;
-    fAddLog('🏆 HAI VINTO IL PALIO '+F.anno+'! +500 oro, +1 Esp, +50 intesa, +50 sostegno','grn');
+    modReputazione(25,'Vittoria del Palio');
+    fCheckObiettiviFantino('vinto_palio');
+    fAddLog('🏆 HAI VINTO IL PALIO '+F.anno+'! +500 oro, +1 Esp, +50 intesa, +50 sostegno · Reputazione +25','grn');
     // Intesa capitani rivali −20 alla vittoria
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]-20,0,100);});
     fAddLog('Vittoria del Palio: intesa capitani rivali −20','red');
   } else if(fase==='finale'){
     F.bravura=clamp(F.bravura-1,1,5);F.esperienza=clamp(F.esperienza-1,1,5);
-    fAddLog('Palio '+F.anno+': perso. −1 Bravura, −1 Esperienza','red');
+    modReputazione(-5,'Sconfitto in finale Palio');
+    fAddLog('Palio '+F.anno+': perso. −1 Bravura, −1 Esperienza · Reputazione −5','red');
+  } else if(fase==='batteria'&&!qP.includes(F.contrada)){
+    modReputazione(-5,'Eliminato in batteria Palio');
+    fAddLog('Palio '+F.anno+': eliminato in batteria · Reputazione −5','red');
   }
   if(F.cavScelta)ripristinaMeteo(F.cavScelta);
   fSyncEmpatia();fSalva();
@@ -4463,6 +4631,20 @@ function fRaceAction(tipo){
     if(F.cavScelta){F.cavScelta.vel=clamp(F.cavScelta.vel-1,1,5);window._fRaceStatDelta.vel-=1;}
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]+10,0,100);});
     fAddLog('Frena cavallo: Vel −1, Intesa capitani rivali +10','inf');
+    // Gestione tangente: se c'era un patto, aggiorna relazione
+    if(F._tangentePatto){
+      F._frenatoConTangente=true;
+      const tp=F._tangentePatto;
+      if(tp.tipo==='fantino'&&tp.nomeFant&&F.rivali[tp.nomeFant]){
+        F.rivali[tp.nomeFant].amicizia=clamp((F.rivali[tp.nomeFant].amicizia||0)+10,0,100);
+        msg+=' · 🤝 Amicizia con '+tp.nomeFant+' +10';
+        fAddLog('Tangente onorata con '+tp.nomeFant+': Amicizia +10','grn');
+      } else if(tp.tipo==='capitano'&&tp.contrada){
+        F.intesaCapitani[tp.contrada]=clamp((F.intesaCapitani[tp.contrada]||0)+10,0,100);
+        msg+=' · 🏛 Intesa con Capitano '+tp.contrada+' +10';
+        fAddLog('Tangente onorata con Capitano '+tp.contrada+': Intesa +10','grn');
+      }
+    }
   }
   if(esito)esito.innerHTML=`<div class="evbox ${colore}">${msg}</div>`;
   fSyncEmpatia();fSalva();
@@ -4478,6 +4660,22 @@ function fRipristinaStatRace(){
     if(d.ten)F.cavScelta.ten=clamp(F.cavScelta.ten-d.ten,1,5);
   }
   window._fRaceStatDelta=null;
+  // Gestione tradimento tangente: se aveva un patto ma non ha frenato, azzera relazione
+  if(F._tangentePatto&&!F._frenatoConTangente){
+    const tp=F._tangentePatto;
+    if(tp.tipo==='fantino'&&tp.nomeFant&&F.rivali[tp.nomeFant]){
+      F.rivali[tp.nomeFant].amicizia=0;
+      modReputazione(-10,'Accordi gara traditi');
+      fCheckObiettiviFantino('accordi_traditi');
+      fAddLog('Tangente tradita con '+tp.nomeFant+': Amicizia azzerata a 0 · Reputazione −10','red');
+    } else if(tp.tipo==='capitano'&&tp.contrada){
+      F.intesaCapitani[tp.contrada]=0;
+      modReputazione(-10,'Accordi gara traditi');
+      fAddLog('Tangente tradita con Capitano '+tp.contrada+': Intesa azzerata a 0 · Reputazione −10','red');
+    }
+  }
+  F._tangentePatto=null;
+  F._frenatoConTangente=false;
 }
 
 function fLanciaAnimazioneFinal(partecipanti, giri, vinto, playerIn, pos, fase, qP, actionsHtml){
@@ -4611,6 +4809,20 @@ function fRaceActionAdd(tipo){
     if(cav){cav.vel=clamp(cav.vel-1,1,5);window._fAddRaceStatDelta.vel-=1;}
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]+10,0,100);});
     colore='inf';
+    // Gestione tangente: se c'era un patto, aggiorna relazione
+    if(F._tangentePatto){
+      F._frenatoConTangente=true;
+      const tp=F._tangentePatto;
+      if(tp.tipo==='fantino'&&tp.nomeFant&&F.rivali[tp.nomeFant]){
+        F.rivali[tp.nomeFant].amicizia=clamp((F.rivali[tp.nomeFant].amicizia||0)+10,0,100);
+        msg+=' · 🤝 Amicizia +10';
+        fAddLog('Tangente onorata con '+tp.nomeFant+': Amicizia +10','grn');
+      } else if(tp.tipo==='capitano'&&tp.contrada){
+        F.intesaCapitani[tp.contrada]=clamp((F.intesaCapitani[tp.contrada]||0)+10,0,100);
+        msg+=' · 🏛 Intesa +10';
+        fAddLog('Tangente onorata con Capitano '+tp.contrada+': Intesa +10','grn');
+      }
+    }
   }
   if(esito)esito.innerHTML=`<div class="evbox ${colore}">${msg}</div>`;
   fSalva();
@@ -4629,6 +4841,22 @@ function fRipristinaStatAdd(){
     }
   }
   window._fAddRaceStatDelta=null;
+  // Gestione tradimento tangente (Provaccia): se aveva un patto ma non ha frenato, azzera relazione
+  if(F._tangentePatto&&!F._frenatoConTangente){
+    const tp=F._tangentePatto;
+    if(tp.tipo==='fantino'&&tp.nomeFant&&F.rivali[tp.nomeFant]){
+      F.rivali[tp.nomeFant].amicizia=0;
+      modReputazione(-10,'Accordi gara traditi');
+      fCheckObiettiviFantino('accordi_traditi');
+      fAddLog('Tangente tradita con '+tp.nomeFant+': Amicizia azzerata a 0 · Reputazione −10','red');
+    } else if(tp.tipo==='capitano'&&tp.contrada){
+      F.intesaCapitani[tp.contrada]=0;
+      modReputazione(-10,'Accordi gara traditi');
+      fAddLog('Tangente tradita con Capitano '+tp.contrada+': Intesa azzerata a 0 · Reputazione −10','red');
+    }
+  }
+  F._tangentePatto=null;
+  F._frenatoConTangente=false;
 }
 
 function fLanciaAnimazioneAdd(actionsHtml){
@@ -4669,6 +4897,102 @@ function fEseguiCorsaSpettatore(finalisti){
     html+=`</div><button class="btn gold w" onclick="fShowFineAnno(0)">Fine anno →</button>`;
     setMain('<div class="pad">'+html+'</div>');
   }, {titolo:'La Finalissima', sottotitolo:'Stai guardando dalle tribune · '+finalisti.join(' · ')});
+}
+
+// ── OBIETTIVI FANTINO ──
+const OBIETTIVI_FANTINO_DEF=[
+  {id:'traditore',   label:'Traditore',           desc:'Tradisci il tuo capitano con un capitano rivale', icon:'🗡️'},
+  {id:'infame',      label:'Infame',              desc:'Non rispettare gli accordi presi prima della gara', icon:'💀'},
+  {id:'inizia_vincere', label:'Inizia a vincere', desc:'Vinci una corsa di addestramento', icon:'🏁'},
+  {id:'nata_stella', label:'Nata una stella',     desc:'Vinci la Provaccia', icon:'⭐'},
+  {id:'un_sogno',    label:'Un sogno',             desc:'Vinci il Palio', icon:'🏆'},
+  {id:'con_tuoi',    label:'Con i tuoi',           desc:'Vinci il Palio con un cavallo della tua stalla personale', icon:'🐎'},
+  {id:'acquisto_promettente', label:'Acquisto promettente', desc:'Compra un cavallo per la stalla personale', icon:'💰'},
+  {id:'vinci_palio_primo_anno', label:'Vinci Palio al primo anno', desc:'Vinci il Palio nel 2027 (anno di partenza)', icon:'🌟'},
+  {id:'vinci_provaccia_primo_anno', label:'Vinci Provaccia al primo anno', desc:'Vinci la Provaccia nel 2027', icon:'✨'},
+  {id:'doppietta',   label:'Doppietta',            desc:'Vinci il Palio per due anni consecutivi', icon:'🥇'},
+  {id:'vero_esperto',label:'Un vero esperto',      desc:'Vinci la Provaccia con tutte e 8 le contrade', icon:'🎖️'},
+  {id:'il_re',       label:'Il Re',                desc:'Vinci il Palio con tutte e 8 le contrade', icon:'👑'},
+];
+
+function fShowObiettiviFantino(){
+  if(!F)return;
+  if(!F.obiettiviFantino)F.obiettiviFantino={completati:{}};
+  const completati=F.obiettiviFantino.completati||{};
+  const totComp=Object.keys(completati).filter(k=>completati[k]).length;
+  let html=`<div style="text-align:center;margin-bottom:14px">
+    <div style="font-size:28px">🎯</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Obiettivi Fantino</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Si conservano di anno in anno e al cambio contrada · +5 Prestigio ciascuno</div>
+    <div style="font-size:11px;color:var(--gold);margin-top:4px">${totComp}/${OBIETTIVI_FANTINO_DEF.length} completati</div>
+  </div>`;
+  OBIETTIVI_FANTINO_DEF.forEach(ob=>{
+    const done=completati[ob.id];
+    html+=`<div class="card" style="opacity:${done?'.65':'1'}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:22px">${ob.icon}</div>
+        <div style="flex:1">
+          <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:${done?'#5DBB63':'var(--gold-l)'}">
+            ${done?'✓ ':''}${ob.label}
+          </div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px">${ob.desc}</div>
+        </div>
+        ${done?'<span class="bdg g">+5 ⭐</span>':'<span class="bdg o">In corso</span>'}
+      </div>
+    </div>`;
+  });
+  html+=`<button class="btn w" onclick="fBuildDOM();fGoTo('mese')" style="margin-top:4px">← Torna al mese</button>`;
+  setMain('<div class="pad">'+html+'</div>');
+}
+
+function fCheckObiettiviFantino(tipo){
+  if(!F)return;
+  if(!F.obiettiviFantino)F.obiettiviFantino={completati:{}};
+  const done=F.obiettiviFantino.completati;
+  function completa(id,label){
+    if(done[id])return;
+    done[id]=true;
+    F.obiettiviFantino.completati=done;
+    // +5 prestigio = modReputazione non applicabile qui; use +5 solo per eventuale display
+    // Il spec dice "+5 prestigio" — nella carriera fantino il "prestigio" è la reputazione stessa
+    modReputazione(5,'Obiettivo: '+label);
+    showToast('🎯 Obiettivo: '+label+'! Reputazione +5','grn');
+    fAddLog('Obiettivo completato: '+label+' · Reputazione +5','grn');
+    fSalva();
+  }
+  if(tipo==='tradimento')completa('traditore','Traditore');
+  if(tipo==='accordi_traditi')completa('infame','Infame');
+  if(tipo==='vinto_addestramento')completa('inizia_vincere','Inizia a vincere');
+  if(tipo==='vinto_provaccia'){
+    completa('nata_stella','Nata una stella');
+    if(F.anno===2027&&!done.vinci_provaccia_primo_anno)completa('vinci_provaccia_primo_anno','Vinci Provaccia al primo anno');
+    // vero esperto: vinci provaccia con tutte e 8 le contrade
+    if(!F.obiettiviFantino._provacciaContrade)F.obiettiviFantino._provacciaContrade=[];
+    if(!F.obiettiviFantino._provacciaContrade.includes(F.contrada)){
+      F.obiettiviFantino._provacciaContrade.push(F.contrada);
+    }
+    if(F.obiettiviFantino._provacciaContrade.length>=8)completa('vero_esperto','Un vero esperto');
+  }
+  if(tipo==='vinto_palio'){
+    completa('un_sogno','Un sogno');
+    if(F.anno===2027&&!done.vinci_palio_primo_anno)completa('vinci_palio_primo_anno','Vinci Palio al primo anno');
+    // doppietta: 2 anni consecutivi
+    if(!F.obiettiviFantino._anniVittorie)F.obiettiviFantino._anniVittorie=[];
+    const ay=F.obiettiviFantino._anniVittorie;
+    ay.push(F.anno);
+    // controlla se c'è coppia consecutiva
+    for(let i=ay.length-1;i>0;i--){if(ay[i]-ay[i-1]===1){completa('doppietta','Doppietta');break;}}
+    // il re: vinci con tutte e 8 le contrade
+    if(!F.obiettiviFantino._palioContrade)F.obiettiviFantino._palioContrade=[];
+    if(!F.obiettiviFantino._palioContrade.includes(F.contrada)){
+      F.obiettiviFantino._palioContrade.push(F.contrada);
+    }
+    if(F.obiettiviFantino._palioContrade.length>=8)completa('il_re','Il Re');
+    // con i tuoi: vinto con cavallo personale
+    if(F.cavScelta&&F.stallaPersonale.some(c=>c.nome===F.cavScelta.nome))completa('con_tuoi','Con i tuoi');
+  }
+  if(tipo==='vinto_batteria'){}// batteria non ha obiettivo specifico da lista
+  if(tipo==='acquisto_personale')completa('acquisto_promettente','Acquisto promettente');
 }
 
 // ── FINE ANNO FANTINO ──
