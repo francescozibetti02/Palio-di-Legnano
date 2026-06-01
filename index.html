@@ -368,7 +368,15 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 <script>
 // Fallback di sicurezza nel caso i file esterni non siano stati caricati
 if(typeof CAVALLI_DB==='undefined')window.CAVALLI_DB=[];
-if(typeof FANTINI_MAP==='undefined')window.FANTINI_MAP={};
+// Costruisce FANTINI_MAP da FANTINI_DB se non già disponibile
+if(typeof FANTINI_MAP==='undefined'||Object.keys(FANTINI_MAP).length===0){
+  if(typeof FANTINI_DB!=='undefined'&&Array.isArray(FANTINI_DB)){
+    window.FANTINI_MAP={};
+    FANTINI_DB.forEach(f=>{FANTINI_MAP[f.nome]=f;});
+  } else {
+    window.FANTINI_MAP={};
+  }
+}
 const CDB={
   Flora:        {nemica:"SanMartino",   bonus:"ALTA_FINANZA",      desc:"Inizia con 4000 oro",            budget:4000,morale:60},
   Legnarello:   {nemica:"SantAmbrogio", bonus:"VOLANO_POPOLARE",   desc:"Budget legato al morale",        budget:3000,morale:60},

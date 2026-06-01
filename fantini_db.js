@@ -31,3 +31,7 @@ const FANTINI_DB = [
   {nome:"Trecciolino",bravura:5, esp:5, mossa:1, emp:1},
   {nome:"Truciolo",   bravura:4, esp:4, mossa:4, emp:4}
 ];
+
+// Mappa nome→stats per accesso rapido (richiesta da index.html)
+const FANTINI_MAP = {};
+FANTINI_DB.forEach(f => { FANTINI_MAP[f.nome] = f; });
