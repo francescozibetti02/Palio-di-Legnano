@@ -2405,7 +2405,7 @@ let F=null; // stato fantino
 const NOMI_FANTINI_RIVALI=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
 /* FANTINI_DB è caricato da fantini_db.js (file esterno) */
 // Mappa rapida nome→stats per accesso O(1)
-const FANTINI_MAP=Object.fromEntries(FANTINI_DB.map(f=>([f.nome,f])));
+const FANTINI_MAP=Object.fromEntries((window.FANTINI_DB||[]).map(f=>([f.nome,f])));
 
 function fStarRow(label,val){
   let h=`<div class="fnt-star-row"><span class="fnt-star-label">${label}</span><div class="fnt-stars">`;
@@ -3333,7 +3333,7 @@ function fCalcolaAssegnazioniContrade(){
   const nomeComp=F.nomeCompagno||null;
   const tuttiRivali=Object.keys(F.rivali);
   // Costruisce la lista di tutti i fantini DB disponibili con stats
-  const fanDB=[...FANTINI_DB];
+  const fanDB=[...(window.FANTINI_DB||[])];
   // Mappa ogni contrada avversaria: assegna 2 fantini e sceglie il migliore
   const sceltePalio={}; // contrada → {scelto, scartato}
   const fantinoPerContrada={}; // contrada → nome fantino prescelto per il Palio
