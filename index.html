@@ -891,7 +891,7 @@ function renderStalla(){
       const accAtMax=c.acc>=c.maxAcc,resAtMax=c.res>=c.maxRes;
       const costoAll=G.bonus==='SCUDERIA_ELITE'?200:400;
       const eta=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${5-Math.min(c.maxAcc,c.maxRes)} anno/i — acc e res al massimo attuale.</div>`:'';
-      const _dbCavS=getCavDB(c.nome);const _imgSrcS=_dbCavS&&_dbCavS.img?_dbCavS.img:'';const _imgHtmlS=_imgSrcS?`<img src="${_imgSrcS}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
+      const _dbCavS=getCavDB(c.nome);const _imgSrcS=_dbCavS&&_dbCavS.img?_dbCavS.img:'';const _imgHtmlS=_imgSrcS?`<img src="${_imgSrcS}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:12px;margin-bottom:10px;background:#1A0E08">
         <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
           <div style="width:72px;height:72px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:28px">${_imgHtmlS}</div>
@@ -1208,7 +1208,7 @@ function mktItem(item,i){
   const dbCav=getCavDB(item.nome);
   const imgSrc=dbCav&&dbCav.img?dbCav.img:'';
   const imgHtml=imgSrc?`<div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center">
-    <img src="${imgSrc}" alt="${item.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">
+    <img src="${imgSrc}" alt="${item.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">
   </div>`:`<div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:28px">🐎</div>`;
   const stats=sRow('Velocità',item.vel)+sRow('Accelerazione',item.acc)+sRow('Tenuta curva',item.ten)+sRow('Resistenza',item.res)+sRow('Nervosismo',item.ner,5,true);
   return `<div class="mi" style="align-items:flex-start">${imgHtml}<div style="flex:1"><div class="mi-name">${item.nome} <span class="mi-cost">${item.valore} oro</span></div>${stats}
@@ -2953,7 +2953,7 @@ function fRenderStalla(){
   if(F.stallaContrada.length){
     F.stallaContrada.forEach((c,i)=>{
       const eta=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ Cavallo anziano — acc/res al massimo attuale.</div>`:'';
-      const _dbFC=getCavDB(c.nome);const _imgFC=_dbFC&&_dbFC.img?_dbFC.img:'';const _imgHtmlFC=_imgFC?`<img src="${_imgFC}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
+      const _dbFC=getCavDB(c.nome);const _imgFC=_dbFC&&_dbFC.img?_dbFC.img:'';const _imgHtmlFC=_imgFC?`<img src="${_imgFC}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
         <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
           <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFC}</div>
@@ -2980,7 +2980,7 @@ function fRenderStalla(){
       const anni=F.anno-(c.annoAcquisto||F.anno);
       const etaP=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${anni} anni in stalla — invecchiamento attivo.</div>`:'';
       const prezzoVendita=Math.floor((c.valoreAcquisto||c.valore)*.5);
-      const _dbFP=getCavDB(c.nome);const _imgFP=_dbFP&&_dbFP.img?_dbFP.img:'';const _imgHtmlFP=_imgFP?`<img src="${_imgFP}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
+      const _dbFP=getCavDB(c.nome);const _imgFP=_dbFP&&_dbFP.img?_dbFP.img:'';const _imgHtmlFP=_imgFP?`<img src="${_imgFP}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
         <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
           <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFP}</div>
@@ -3044,7 +3044,7 @@ function fRenderMercato(){
   if(!F.mktF)F.mktF=fGenMkt();
   let html=`<div class="card"><div class="ct">Cavalli disponibili</div>`;
   F.mktF.cavalli.forEach((c,i)=>{
-    const _dbFMkt=getCavDB(c.nome);const _imgFMkt=_dbFMkt&&_dbFMkt.img?_dbFMkt.img:'';const _imgHtmlFMkt=_imgFMkt?`<img src="${_imgFMkt}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
+    const _dbFMkt=getCavDB(c.nome);const _imgFMkt=_dbFMkt&&_dbFMkt.img?_dbFMkt.img:'';const _imgHtmlFMkt=_imgFMkt?`<img src="${_imgFMkt}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
     html+=`<div class="mi" style="flex-direction:column">
       <div style="display:flex;gap:10px;align-items:flex-start;width:100%;margin-bottom:6px">
         <div style="width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:26px">${_imgHtmlFMkt}</div>
