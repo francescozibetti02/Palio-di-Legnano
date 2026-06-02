@@ -2503,7 +2503,15 @@ function creaFantino(contrada){
 }
 
 function fGenMkt(){
-  return {cavalli:sample(NC,5).map(n=>newCav(n))};
+  // Raccoglie tutti i nomi già in uso: stalla contrada, stalla personale e mercato attuale
+  const nomiUsati=new Set([
+    ...(F&&F.stallaContrada||[]).map(c=>c.nome),
+    ...(F&&F.stallaPersonale||[]).map(c=>c.nome),
+    ...(F&&F.mktF&&F.mktF.cavalli||[]).map(c=>c.nome)
+  ]);
+  const disponibili=NC.filter(n=>!nomiUsati.has(n));
+  const selezionati=sample(disponibili,Math.min(5,disponibili.length));
+  return {cavalli:selezionati.map(n=>newCav(n))};
 }
 
 function fAddLog(msg,tipo){
@@ -2801,6 +2809,16 @@ function fMostraGazzettaFantino(onClose){
       const nemCap=(m.match(/capitano di (.+?) → 100/)||[])[1]||'una contrada';
       titolo='😈 Patto Col Diavolo!';
       testo=`In un momento di debolezza hai stretto un accordo oscuro. La tua intesa col capitano di <strong>${nemCap}</strong> è alle stelle, ma il prezzo è alto: <strong>la tua gestione della mossa è compromessa.</strong> Valuta attentamente le prossime mosse.`;
+    } else if(m.includes('Multa')){
+      const importo=(m.match(/pagato (\d+) oro/)||[])[1]||'oro';
+      titolo='💸 Multa Salata!';
+      testo=`Le autorità del Palio ti hanno comminato una <strong>multa di ${importo} oro</strong>. Non si sa bene per quale infrazione, ma le tasche ne risentono. Fai più attenzione in futuro.`;
+    } else if(m.includes('Beccato con gli avversari')){
+      titolo='🍽️ Tradimento a Tavola!';
+      testo=`Qualcuno ti ha visto a cena con dei contradaioli rivali. <strong>I tuoi contradaioli si sentono traditi.</strong> Il tuo sostegno nella contrada è crollato di 50 punti. Dovrai lavorare duro per riconquistare la loro fiducia.`;
+    } else if(m.includes('Che peccato')){
+      titolo='😱 Scandalo in Città!';
+      testo=`Le voci corrono veloci tra i vicoli di Legnano: <strong>ti hanno scoperto a svolgere pratiche illegali.</strong> La tua reputazione ha subito un duro colpo — 50 punti in meno. La città osserva e giudica.`;
     } else {
       titolo='📢 Notizia dal Mese';
       testo=m;
@@ -2901,7 +2919,7 @@ function fRichiediAumento(){
 function fEstraiImprevisto(){
   F.imprevistaUsato=true;
   const tuttoCav=[...F.stallaContrada,...F.stallaPersonale];
-  const tipi=['dormito_bene','meteo_pista','infortunato','amici','patto_diavolo'];
+  const tipi=['dormito_bene','meteo_pista','infortunato','amici','patto_diavolo','multa','beccato_avversari','che_peccato'];
   const tipo=tipi[rnd(0,tipi.length-1)];
   let msg='';
   if(tipo==='dormito_bene'&&tuttoCav.length){
@@ -2925,6 +2943,16 @@ function fEstraiImprevisto(){
     F.intesaCapitani[nemCap]=100;
     F.mossa=1;
     msg='😈 Patto col diavolo! Intesa col capitano di '+nemCap+' → 100 ma Gestione Mossa → 1.';
+  } else if(tipo==='multa'){
+    const importoMulta=rnd(500,1000);
+    F.oro=Math.max(0,F.oro-importoMulta);
+    msg='💸 Multa! Hai pagato '+importoMulta+' oro di multa.';
+  } else if(tipo==='beccato_avversari'){
+    F.sostegno=clamp((F.sostegno||50)-50,0,100);
+    msg='🍽️ Beccato con gli avversari! I contradaioli ti hanno visto a cena con dei contradaioli rivali, si sentono traditi. Sostegno contradaioli −50.';
+  } else if(tipo==='che_peccato'){
+    F.reputazione=clamp((F.reputazione||10)-50,0,100);
+    msg='😱 Che peccato! Ti hanno scoperto svolgere delle pratiche illegali. Reputazione −50.';
   } else return; // nessun effetto se no cavalli
   // Salva l'imprevisto per la Gazzetta del Palio
   F._eventoMeseFantino={msg};
@@ -3538,7 +3566,16 @@ function fShowSceltaCavalloProvaccia(){
   // Identica alla scelta cavallo del Palio
   const tutti=[...F.stallaContrada,...F.stallaPersonale].filter(cv=>(cv.stanchezza||0)<3&&!cv._infortunato);
   if(!tutti.length){alert('Nessun cavallo disponibile (stanchezza 3 o infortunato)!');return;}
-  const prefCap=F.stallaContrada[0]||null;
+  // Il capitano preferisce il cavallo MIGLIORE della stalla di contrada (non per forza il primo).
+  const stallaContrDisp=F.stallaContrada.filter(cv=>(cv.stanchezza||0)<3&&!cv._infortunato);
+  let prefCap=null;
+  if(stallaContrDisp.length){
+    prefCap=stallaContrDisp.reduce((best,cv)=>{
+      const score=(cv.vel||0)+(cv.acc||0)+(cv.ten||0)+(cv.res||0)-(cv.ner||0);
+      const bestScore=(best.vel||0)+(best.acc||0)+(best.ten||0)+(best.res||0)-(best.ner||0);
+      return score>bestScore?cv:best;
+    });
+  }
   F._meteo=sorteggiMeteo();
   setMain(`<div class="pad">
     <div style="text-align:center;margin-bottom:12px">
@@ -3547,13 +3584,18 @@ function fShowSceltaCavalloProvaccia(){
       ${prefCap?`<div style="font-size:12px;color:var(--gold);margin-top:4px">Il Capitano preferisce: <strong>${prefCap.nome}</strong></div>`:''}
     </div>
     ${meteoHTML(F._meteo)}
-    ${tutti.map((c,i)=>`<div class="card" style="cursor:pointer" onclick="fScegliCavProvaccia(${i},${!!(prefCap&&c.nome===prefCap.nome)})">
+    ${tutti.map((c,i)=>{
+      const isContrada=F.stallaContrada.some(sc=>sc===c||sc.nome===c.nome);
+      const isPref=prefCap&&c.nome===prefCap.nome;
+      const badge=isPref?'<span class="bdg g">♥ Cap. preferisce</span>'
+        :(isContrada?'<span class="bdg o">contrada</span>':'<span class="bdg r">personale</span>');
+      return `<div class="card" style="cursor:pointer" onclick="fScegliCavProvaccia(${i},${!!isPref})">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
-        ${prefCap&&c.nome===prefCap.nome?'<span class="bdg g">♥ Cap. preferisce</span>':'<span class="bdg o">personale</span>'}
+        ${badge}
       </div>
       ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}${sRow('Nervosismo',c.ner,5,true)}
-    </div>`).join('')}
+    </div>`;}).join('')}
     <div id="FSCELTA_CAV_LIST_P" style="display:none">${JSON.stringify(tutti)}</div>
   </div>`);
   F._sceltaCavList=tutti;
@@ -3952,7 +3994,7 @@ function fShowRaceInterattivaProvaccia(partecipanti, gpg, giri, vinto, playerIn,
       </button>`:'<div></div>'}
       <button class="btn race-action-btn" onclick="fRaceAction('frena')" style="text-align:left;padding:10px;font-size:12px;grid-column:1/-1">
         <div style="font-weight:700;color:rgba(201,168,76,.7)">🛑 Frena il Cavallo</div>
-        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Intesa capitani rivali +10</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −3 · Intesa capitani rivali +10</div>
       </button>
     </div>
     <div id="RACE_ACTION_ESITO" style="margin-top:6px"></div>
@@ -3960,6 +4002,8 @@ function fShowRaceInterattivaProvaccia(partecipanti, gpg, giri, vinto, playerIn,
 
   showRaceAnimation(partecipanti, gpg, giri, F.contrada, ()=>{
     fRipristinaStatRace();
+    // Mostra i toast obiettivi completati ora che l'animazione è finita
+    fFlushObiettivoToasts();
     let html=`<div style="text-align:center;margin-bottom:12px">
       <div style="font-size:28px">${vinto?'🏆':fase==='finale'?'😔':'🏇'}</div>
       <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:${vinto?'var(--gold)':'var(--parch)'};margin-top:4px">
@@ -4586,7 +4630,7 @@ function fShowRaceInterattiva(partecipanti, gpg, giri, vinto, playerIn, pos, fas
       </button>`:'<div></div>'}
       <button class="btn race-action-btn" onclick="fRaceAction('frena')" style="text-align:left;padding:10px;font-size:12px;grid-column:1/-1">
         <div style="font-weight:700;color:rgba(201,168,76,.7)">🛑 Frena il Cavallo</div>
-        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Intesa capitani rivali +10</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −3 · Intesa capitani rivali +10</div>
       </button>
     </div>
     <div id="RACE_ACTION_ESITO" style="margin-top:6px"></div>
@@ -4626,11 +4670,11 @@ function fRaceAction(tipo){
     // Segna flag per simulatore
     window._fTiraGiubba=true;
   } else if(tipo==='frena'){
-    msg='🛑 Freni il cavallo! Velocità −1 · Intesa capitani rivali +10';
+    msg='🛑 Freni il cavallo! Velocità −3 · Intesa capitani rivali +10';
     colore='inf';
-    if(F.cavScelta){F.cavScelta.vel=clamp(F.cavScelta.vel-1,1,5);window._fRaceStatDelta.vel-=1;}
+    if(F.cavScelta){F.cavScelta.vel=clamp(F.cavScelta.vel-3,1,5);window._fRaceStatDelta.vel-=3;}
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]+10,0,100);});
-    fAddLog('Frena cavallo: Vel −1, Intesa capitani rivali +10','inf');
+    fAddLog('Frena cavallo: Vel −3, Intesa capitani rivali +10','inf');
     // Gestione tangente: se c'era un patto, aggiorna relazione
     if(F._tangentePatto){
       F._frenatoConTangente=true;
@@ -4685,6 +4729,8 @@ function fLanciaAnimazioneFinal(partecipanti, giri, vinto, playerIn, pos, fase, 
   showRaceAnimation(partecipanti, gpg, giri, F.contrada, ()=>{
     // Ripristina le stat del cavallo modificate temporaneamente dai tasti di gara
     fRipristinaStatRace();
+    // Mostra i toast obiettivi completati ora che l'animazione è finita
+    fFlushObiettivoToasts();
     let html=`<div style="text-align:center;margin-bottom:12px">
       <div style="font-size:28px">${vinto?'🏆':fase==='finale'?'😔':'🏇'}</div>
       <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:${vinto?'var(--gold)':'var(--parch)'};margin-top:4px">
@@ -4774,7 +4820,7 @@ function fShowRaceInterattivaAdd(partecipanti, gpg, pos, vinto, cavIdx){
         <div style="font-weight:700;color:#5DBB63">🛡️ Tieniti per ultimo</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Res +1</div>
       </button>
       <button class="btn race-action-btn" onclick="fRaceActionAdd('frena')" style="text-align:left;padding:10px;font-size:12px">
-        <div style="font-weight:700;color:rgba(201,168,76,.7)">🛑 Frena il Cavallo</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −1 · Int. cap. rivali +10</div>
+        <div style="font-weight:700;color:rgba(201,168,76,.7)">🛑 Frena il Cavallo</div><div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:2px">Vel −3 · Int. cap. rivali +10</div>
       </button>
     </div>
     <div id="RACE_ACTION_ESITO" style="margin-top:6px"></div>
@@ -4805,8 +4851,8 @@ function fRaceActionAdd(tipo){
     msg='🛡️ Tieniti! Vel −1, Res +1';
     if(cav){cav.vel=clamp(cav.vel-1,1,5);cav.res=clamp(cav.res+1,1,5);window._fAddRaceStatDelta.vel-=1;window._fAddRaceStatDelta.res+=1;}
   } else if(tipo==='frena'){
-    msg='🛑 Frena! Vel −1, Int. cap. rivali +10';
-    if(cav){cav.vel=clamp(cav.vel-1,1,5);window._fAddRaceStatDelta.vel-=1;}
+    msg='🛑 Frena! Vel −3, Int. cap. rivali +10';
+    if(cav){cav.vel=clamp(cav.vel-3,1,5);window._fAddRaceStatDelta.vel-=3;}
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]+10,0,100);});
     colore='inf';
     // Gestione tangente: se c'era un patto, aggiorna relazione
@@ -4865,6 +4911,8 @@ function fLanciaAnimazioneAdd(actionsHtml){
   showRaceAnimation(partecipanti, gpg, 4, F.contrada, ()=>{
     // Ripristina le stat del cavallo modificate temporaneamente dai tasti di gara
     fRipristinaStatAdd();
+    // Mostra i toast obiettivi completati ora che l'animazione è finita
+    fFlushObiettivoToasts();
     let html=`<div style="text-align:center;margin-bottom:12px">
       <div style="font-size:28px">${vinto?'🥇':'🏁'}</div>
       <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:${vinto?'var(--gold)':'var(--parch)'};margin-top:6px">${vinto?'Vittoria! +1 Bravura':'Sei arrivato '+pos+'°'}</div>
@@ -4953,10 +5001,10 @@ function fCheckObiettiviFantino(tipo){
     if(done[id])return;
     done[id]=true;
     F.obiettiviFantino.completati=done;
-    // +5 prestigio = modReputazione non applicabile qui; use +5 solo per eventuale display
-    // Il spec dice "+5 prestigio" — nella carriera fantino il "prestigio" è la reputazione stessa
     modReputazione(5,'Obiettivo: '+label);
-    showToast('🎯 Obiettivo: '+label+'! Reputazione +5','grn');
+    // Accoda il toast invece di mostrarlo subito: verrà visualizzato nella schermata di riassunto
+    if(!window._pendingObiettivoToasts)window._pendingObiettivoToasts=[];
+    window._pendingObiettivoToasts.push({msg:'🎯 Obiettivo: '+label+'! Reputazione +5',tipo:'grn'});
     fAddLog('Obiettivo completato: '+label+' · Reputazione +5','grn');
     fSalva();
   }
@@ -4993,6 +5041,13 @@ function fCheckObiettiviFantino(tipo){
   }
   if(tipo==='vinto_batteria'){}// batteria non ha obiettivo specifico da lista
   if(tipo==='acquisto_personale')completa('acquisto_promettente','Acquisto promettente');
+}
+
+// Mostra i toast obiettivo accumulati nella schermata di riassunto (dopo l'animazione)
+function fFlushObiettivoToasts(){
+  const queue=window._pendingObiettivoToasts||[];
+  window._pendingObiettivoToasts=[];
+  queue.forEach((t,i)=>setTimeout(()=>showToast(t.msg,t.tipo),400+i*2800));
 }
 
 // ── FINE ANNO FANTINO ──
@@ -5246,7 +5301,7 @@ const TUT_FNT=[
   {title:"🤝 Intesa e Sostegno",text:"Due valori fondamentali: Intesa con il Capitano (0–100) e Sostegno dei Contradaioli (0–100). Alta intesa = stipendio migliore e ordini più affidabili. Alto sostegno = i contradaioli ti difendono e ti premiano. Crollano se deludi in gara o tradisci.",btn:"Avanti →"},
   {title:"💬 Dialoga col Capitano",text:"Dal menù Mese puoi chiedere un aumento di stipendio (calcolato sulla media delle tue statistiche, costa −5 intesa e −10 sostegno) e, se hai già vinto almeno una volta con questa contrada, assumere un veterinario: riduce −1 stanchezza al mese a tutti i cavalli.",btn:"Avanti →"},
   {title:"🏁 Corsa di Addestramento",text:"Una volta al mese puoi correre una gara di addestramento: scegli un cavallo, gioca il minigioco della Mossa e osserva la gara animata. Se vinci: +1 Bravura. Il cavallo scelto prende +1 stanchezza e +1 intesa col fantino. Gli altri cavalli perdono −1 stanchezza.",btn:"Avanti →"},
-  {title:"🎮 Azioni durante la Gara",text:"Sia nell'addestramento sia nelle batterie del Palio, i tasti d'azione appaiono direttamente nella schermata della gara animata. Puoi usarne UNO SOLO per gara, quando vuoi: 🪄 Usa Nerbo (Acc +1, Res −1), 🔄 Curva Stretta (Vel +1, Ten −1), 🛡️ Tieniti per ultimo (Vel −1, Res +1), 👕 Tira Giubba alla nemica (sorpasso!), 🛑 Frena il Cavallo (Vel −1, intesa capitani rivali +10). Osserva la gara e scegli il momento giusto.",btn:"Avanti →"},
+  {title:"🎮 Azioni durante la Gara",text:"Sia nell'addestramento sia nelle batterie del Palio, i tasti d'azione appaiono direttamente nella schermata della gara animata. Puoi usarne UNO SOLO per gara, quando vuoi: 🪄 Usa Nerbo (Acc +1, Res −1), 🔄 Curva Stretta (Vel +1, Ten −1), 🛡️ Tieniti per ultimo (Vel −1, Res +1), 👕 Tira Giubba alla nemica (sorpasso!), 🛑 Frena il Cavallo (Vel −3, intesa capitani rivali +10). Osserva la gara e scegli il momento giusto.",btn:"Avanti →"},
   {title:"🐎 La Stalla",text:"La stalla è divisa in due sezioni: cavalli della contrada (puoi allenarli gratis una volta al mese) e cavalli personali (allenamento costa 300 oro). Ogni cavallo mostra STAN (stanchezza 0–3, verde = ok) e INT (intesa col fantino 0–3, azzurro). Stanchezza 3 = non può correre!",btn:"Avanti →"},
   {title:"🛒 Mercato",text:"Al mercato puoi proporre un cavallo al Capitano (la probabilità dipende dalla tua intesa ed esperienza) oppure acquistarlo di tasca tua per la stalla personale. I cavalli personali si possono rivendere alla metà del prezzo d'acquisto. I cavalli invecchiano dopo due anni in scuderia.",btn:"Avanti →"},
   {title:"⚔️ Politica Fantini",text:"In politica vedi te stesso e i fantini avversari (ognuno assegnato a una contrada rivale). Spendi 100 oro per +5 amicizia con un fantino (max 3 volte al mese). Alta amicizia = zona verde più ampia nel minigioco Mossa! Puoi anche tentare un Tradimento (una volta l'anno) per ottenere oro e intesa con un capitano rivale.",btn:"Avanti →"},
