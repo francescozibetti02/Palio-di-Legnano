@@ -42,6 +42,6 @@ const CAVALLI_DB = [
   {nome:"Frankie",    vel:3, acc:2, ten:2, res:3, ner:2, img:"img/cavalli/frankie.png"},
   {nome:"Cristallo",  vel:3, acc:4, ten:2, res:2, ner:1, img:"img/cavalli/cristallo.png"},
   {nome:"Eclettico",  vel:3, acc:5, ten:3, res:5, ner:1, img:"img/cavalli/eclettico.png"},
-  {nome:"Bum Bum",    vel:5, acc:5, ten:5, res:5, ner:1, img:"img/cavalli/bum_bum.png"},
+  {nome:"Bam Bam",    vel:5, acc:5, ten:5, res:5, ner:1, img:"img/cavalli/bum_bum.png"},
   {nome:"Wakanda",    vel:4, acc:3, ten:3, res:3, ner:1, img:"img/cavalli/wakanda.png"}
 ];
