@@ -389,6 +389,13 @@ const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const rf=(a,b)=>Math.random()*(b-a)+a;
 const sample=(arr,n)=>[...arr].sort(()=>Math.random()-.5).slice(0,n);
 const clamp=(v,mn,mx)=>Math.max(mn,Math.min(mx,v));
+// Prezzo di vendita di un cavallo: media di velocità, accelerazione, tenuta curva e resistenza
+// (il nervosismo non viene conteggiato) x 200 x fattore random tra 0,8 e 1,2.
+// Va ricalcolato ogni mese e ogni volta che cambiano le statistiche del cavallo (allenamento/invecchiamento).
+function calcPrezzoVendita(c){
+  const media=(c.vel+c.acc+c.ten+c.res)/4;
+  return Math.floor(media*200*rf(.8,1.2));
+}
 const R=id=>document.getElementById(id);
 
 // ── TOAST ──
@@ -474,7 +481,7 @@ function inizia2(k){
      condManiero:60,manieroOrganizzaCena:false,manieroVenditaGadget:false,manieroOrganizzaEvento:false,manieroManutenzione:false,
      puntSfilata:0,_bP:null,_bIA:null,_qP:null,_qIA:null,
      amicizia:{},trofeiPerContrada:tpc,imboscateVinte:{},
-     nomeCapitano,prestigio:20,albumStorico:[],fantiniMercato:null,
+     nomeCapitano,prestigio:20,albumStorico:[],fantiniMercato:null,fantiniRifiutati:{},
      obiettivi:{ceneAnno:0,eventiAnno:0,amica:false,massimoMorale:false,nemicaFermata:false,
        vintoAlPrimo:false,consecutivi:0,maxConsecutivi:0,
        completati:{}},
@@ -763,16 +770,20 @@ function apriManiero(){
   document.getElementById('APP').appendChild(overlay);
 }
 
-function mostraPopupGuadagnoManiero(titolo,guadagno,sottotitolo){
+function mostraPopupGuadagnoManiero(titolo,guadagno,sottotitolo,immagine){
   const overlay=document.createElement('div');
   overlay.id='MANIERO_GUADAGNO_POPUP';
   overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const img=immagine||'cena_propiziatoria.png';
   overlay.innerHTML=`
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 0 40px rgba(201,168,76,.25)">
       <div style="font-size:36px;margin-bottom:8px">${titolo.split(' ')[0]}</div>
       <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);margin-bottom:4px">${titolo.substring(titolo.indexOf(' ')+1)}</div>
       <div style="font-size:11px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">${sottotitolo}</div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:16px"></div>
+      <div style="display:flex;justify-content:center;margin-bottom:14px">
+        <img src="${img}" alt="${titolo}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:var(--bord)" onerror="this.style.display='none'">
+      </div>
       <div style="font-family:var(--fn);font-size:48px;font-weight:800;color:#5DBB63;letter-spacing:-1px">+${guadagno}</div>
       <div style="font-size:14px;color:rgba(201,168,76,.6);margin-top:4px;margin-bottom:20px">oro guadagnati</div>
       <button class="btn gold w" id="MANIERO_GUADAGNO_BTN" style="margin-top:4px">✓ Continua</button>
@@ -807,7 +818,7 @@ function doManiero(tipo){
     if(G.morale>=200)checkObiettivi('morale_200');
     // Popup guadagno cena
     updHUD();salva();
-    mostraPopupGuadagnoManiero('🍷 Cena al Maniero',guadEff,'Incasso dalla cena con i contradaioli');
+    mostraPopupGuadagnoManiero('🍷 Cena al Maniero',guadEff,'Incasso dalla cena con i contradaioli','cena_propiziatoria.png');
     return;
   } else if(tipo==='gadget'){
     if(G.manieroVenditaGadget)return;
@@ -817,7 +828,7 @@ function doManiero(tipo){
     showMev('💰 Gadget venduti! +'+guad+' oro','grn');
     // Popup guadagno gadget
     updHUD();salva();
-    mostraPopupGuadagnoManiero('💰 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada');
+    mostraPopupGuadagnoManiero('💰 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada','vendita_gadget.png');
     return;
   } else if(tipo==='evento'){
     if(G.manieroOrganizzaEvento)return;
@@ -849,6 +860,8 @@ function avanzaMese(){
   if(G.mi===4){showSceltaCavallo();return;}
   if(G.difesa>0)G.difesa--;
   G.oro+=100;G.raccoltaUsata=false;G.cenaUsata=false;G.sicurezzaUsata=false;
+  // Ricalcola il prezzo di vendita dei cavalli ogni mese
+  if(G.stalla)G.stalla.forEach(c=>{c.valoreVendita=calcPrezzoVendita(c);});
   // Reset flag mensili maniero
   G.manieroOrganizzaCena=false;G.manieroVenditaGadget=false;G.manieroOrganizzaEvento=false;G.manieroManutenzione=false;
   // Degrado mensile condizioni maniero
@@ -898,7 +911,7 @@ function renderStalla(){
           <div style="flex:1">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
               <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
-              <button class="btn" style="font-size:11px;padding:5px 10px" onclick="vendiCav(${idx})">Vendi (${Math.floor(c.valore*.5)} oro)</button>
+              <button class="btn" style="font-size:11px;padding:5px 10px" onclick="vendiCav(${idx})">Vendi (${c.valoreVendita!==undefined?c.valoreVendita:(c.valoreVendita=calcPrezzoVendita(c))} oro)</button>
             </div>
             ${eta}
           </div>
@@ -1124,6 +1137,7 @@ function mostraMinigioco(tipo,idx,costoAll){
       if(tipo==='forza'){c.vel=clamp(c.vel+1,1,5);c.ner=clamp(c.ner+1,1,5);descMiglioramento='+1 Velocità, +1 Nervosismo';addLog('Allenamento Forza su '+c.nome+' (minigioco vinto)','grn');}
       else if(tipo==='controllo'){c.acc=clamp(c.acc+1,1,c.maxAcc);c.ner=clamp(c.ner-1,1,5);descMiglioramento='+1 Accelerazione, −1 Nervosismo';addLog('Allenamento Controllo su '+c.nome+' (minigioco vinto)','grn');}
       else if(tipo==='fondo'){c.ten=clamp(c.ten+1,1,5);c.res=clamp(c.res+1,1,c.maxRes);descMiglioramento='+1 Tenuta curva, +1 Resistenza';addLog('Allenamento Fondo su '+c.nome+' (minigioco vinto)','grn');}
+      c.valoreVendita=calcPrezzoVendita(c);
       resMsg.style.borderLeftColor='#5DBB63';
       resMsg.innerHTML=`Il cavallo <strong>${c.nome}</strong> ha risposto magnificamente all'allenamento!<br><span style="color:#5DBB63;font-weight:700">${descMiglioramento}</span><br><span style="font-size:11px;color:rgba(201,168,76,.5)">−${effCosto} oro</span>`;
     } else {
@@ -1147,7 +1161,7 @@ function mostraMinigioco(tipo,idx,costoAll){
 }
 function vendiCav(idx){
   if(!G.stalla||!G.stalla[idx])return;
-  const c=G.stalla[idx];const v=Math.floor(c.valore*.5);
+  const c=G.stalla[idx];const v=c.valoreVendita!==undefined?c.valoreVendita:calcPrezzoVendita(c);
   G.oro+=v;addLog('Venduto '+c.nome+' per '+v+' oro — torna nel mercato con stat base','inf');
   // Restituisce il cavallo al pool svincolati (con stats base del DB)
   // Il mercato si rigenera automaticamente includendolo
@@ -1194,7 +1208,10 @@ function showSceltaCavallo(){
   </div>
   ${meteoHTML(G._meteo)}`;
   G.stalla.forEach((cv,i)=>{
+    const _scDb=getCavDB(cv.nome);const _scImg=_scDb&&_scDb.img?_scDb.img:'';
+    const _scImgHtml=_scImg?`<div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${_scImg}" alt="${cv.nome}" style="max-width:100%;max-height:140px;object-fit:contain;border-radius:8px;border:var(--bord)" onerror="this.style.display='none'"></div>`:'';
     html+=`<div class="card" style="cursor:pointer" onclick="scegliCavParlio(${i})">
+      ${_scImgHtml}
       <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">${cv.nome}</div>
       ${sRow('Velocità',cv.vel)}${sRowCapped('Accelerazione',cv.acc,cv.maxAcc)}${sRow('Tenuta curva',cv.ten)}${sRowCapped('Resistenza',cv.res,cv.maxRes)}${sRow('Nervosismo',cv.ner,5,true)}
     </div>`;
@@ -1220,6 +1237,7 @@ function buyC(i){
   G.oro-=c.valore;
   if(!G.stalla)G.stalla=[];
   c.annoAcquisto=G.anno;
+  c.valoreVendita=calcPrezzoVendita(c);
   G.stalla.push(c);
   if(!G.cav){G.cav=c;G.cavSelIdx=0;}
   MKT.c.splice(i,1);
@@ -1261,21 +1279,26 @@ function renderFntMkt(){
   }
 
   // Svincolati
+  if(!G.fantiniRifiutati)G.fantiniRifiutati={};
   html+=`<div style="font-family:var(--fn);font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:4px">Svincolati (ingaggiabili)</div>`;
   if(svincolati.length===0){
     html+=`<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun fantino svincolato disponibile.</div>`;
   } else {
     svincolati.forEach((f,i)=>{
-      const media=((f.bravura+f.esp+f.mossa+f.emp)/4).toFixed(1);
+      const media=(f.bravura+f.esp+f.mossa+f.emp)/4;
+      const offSugg=Math.round(media*500+100);
+      const haRifiutato=!!G.fantiniRifiutati[f.nome];
       html+=`<div class="mi" style="flex-direction:column;gap:8px" id="FNT_ITEM_${i}">
         <div style="display:flex;align-items:flex-start;gap:10px">
           <div style="flex:1">
-            <div class="mi-name">${f.nome} <span class="bdg g">Svincolato</span></div>
+            <div class="mi-name">${f.nome} <span class="bdg g">Svincolato</span>${haRifiutato?' <span class="bdg r">Ha rifiutato</span>':''}</div>
             ${sRow('Bravura',f.bravura)}${sRow('Esperienza',f.esp)}${sRow('Gestione mossa',f.mossa)}${sRow('Empatia',f.emp)}
-            <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:4px;font-family:var(--fn)">Valore medio: ${media}/5</div>
+            <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:4px;font-family:var(--fn)">Valore medio: ${media.toFixed(1)}/5</div>
+            <div style="font-size:11px;color:var(--gold-l);margin-top:2px;font-family:var(--fn)">💡 Offerta suggerita: ${offSugg} oro</div>
+            ${haRifiutato?`<div style="font-size:11px;color:#E05555;margin-top:2px">Non può essere contattato fino al prossimo anno.</div>`:''}
           </div>
           <div>
-            <button class="btn pr" style="font-size:12px;padding:9px 11px" onclick="apriOffertaFnt(${i})" ${G.fan?'disabled':''}>Offerta</button>
+            <button class="btn pr" style="font-size:12px;padding:9px 11px" onclick="apriOffertaFnt(${i})" ${(G.fan||haRifiutato)?'disabled':''}>Offerta</button>
           </div>
         </div>
         <div id="FNT_OFFERTA_${i}" style="display:none"></div>
@@ -1301,15 +1324,21 @@ function renderFntMkt(){
 
 function apriOffertaFnt(i){
   if(G.fan){showToast('Licenzia prima il fantino attuale dalla Stalla!','red');return;}
+  const f=G.fantiniMercato&&G.fantiniMercato.svincolati[i];
+  if(!f)return;
+  if(!G.fantiniRifiutati)G.fantiniRifiutati={};
+  if(G.fantiniRifiutati[f.nome]){showToast(f.nome+' ha rifiutato: non può essere contattato fino al prossimo anno.','red');return;}
   const el=R('FNT_OFFERTA_'+i);if(!el)return;
+  const media=(f.bravura+f.esp+f.mossa+f.emp)/4;
+  const offSugg=Math.min(G.oro,Math.round(media*500+100));
   const maxOfferta=G.oro;
   el.style.display='block';
   el.innerHTML=`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:12px;border:var(--bord)">
-    <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);margin-bottom:8px">💰 Quanto vuoi offrire?</div>
+    <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);margin-bottom:8px">💰 Quanto vuoi offrire? <span style="color:rgba(201,168,76,.5);text-transform:none;font-weight:400">(suggerita: ${Math.round(media*500+100)} oro)</span></div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <input type="range" min="0" max="${maxOfferta}" step="50" value="${Math.floor(maxOfferta/4)}" id="FNT_SL_${i}"
+      <input type="range" min="0" max="${maxOfferta}" step="50" value="${offSugg}" id="FNT_SL_${i}"
         oninput="document.getElementById('FNT_SL_V_${i}').textContent=this.value+' oro'" style="flex:1;accent-color:var(--gold)">
-      <span style="font-family:var(--fn);font-size:13px;color:var(--gold);min-width:70px;text-align:right" id="FNT_SL_V_${i}">${Math.floor(maxOfferta/4)} oro</span>
+      <span style="font-family:var(--fn);font-size:13px;color:var(--gold);min-width:70px;text-align:right" id="FNT_SL_V_${i}">${offSugg} oro</span>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn gold" style="flex:1;font-size:13px;padding:10px" onclick="inviaOffertaFnt(${i})">✦ Fai l'offerta</button>
@@ -1344,7 +1373,10 @@ function inviaOffertaFnt(i){
     updHUD();salva();
     mostraEsitoOffertaFnt(f.nome,true,offerta,Math.round(soglia));
   } else {
-    addLog(f.nome+' ha rifiutato l\'offerta di '+offerta+' oro','red');
+    if(!G.fantiniRifiutati)G.fantiniRifiutati={};
+    G.fantiniRifiutati[f.nome]=true;
+    addLog(f.nome+' ha rifiutato l\'offerta di '+offerta+' oro e non vuole più essere contattato quest\'anno','red');
+    salva();
     mostraEsitoOffertaFnt(f.nome,false,offerta,Math.round(soglia));
   }
 }
@@ -1357,7 +1389,7 @@ function mostraEsitoOffertaFnt(nome,accettato,offerta,soglia){
   const icona=accettato?'🤝':'❌';
   const msg=accettato
     ?`<strong>${nome}</strong> ha accettato il tuo ingaggio per <strong>${offerta} oro</strong>!`
-    :`<strong>${nome}</strong> ha rifiutato la tua offerta di ${offerta} oro. Prova ad aumentare l'offerta o a guadagnare più prestigio.`;
+    :`<strong>${nome}</strong> ha rifiutato la tua offerta di ${offerta} oro e non vuole più essere contattato per quest'anno. Potrai riprovare dal prossimo anno, a meno che non venga assegnato ad un'altra contrada.`;
   overlay.innerHTML=`
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
       <div style="text-align:center;margin-bottom:12px">
@@ -1844,6 +1876,9 @@ function faiCena(){
   setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🍷</div>
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">La Cena è Stata un Successo!</div></div>
   <div class="card" style="text-align:center"><div class="ct">Incasso della serata</div>
+    <div style="display:flex;justify-content:center;margin-bottom:12px">
+      <img src="cena_propiziatoria.png" alt="Cena Propiziatoria" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:var(--bord)" onerror="this.style.display='none'">
+    </div>
     <div class="score-big">${guad}</div>
     <div style="font-size:13px;color:rgba(201,168,76,.5);margin-bottom:10px">oro raccolti dai contradaioli</div>
     <div style="font-size:13px">Morale: <span style="color:#5DBB63;font-family:var(--fn)">${G.morale}/200</span> <span style="color:#5DBB63">(+15)</span></div>
@@ -1872,9 +1907,13 @@ function eseguiSfilata(){
   const inv=parseInt(R('SFL_SL').value);if(inv>G.oro){alert('Oro insufficiente!');return;}
   G.oro-=inv;G.puntSfilata=Math.round((G.morale/200*40)+Math.min(inv/1000*40,40)+rf(0,20));
   addLog('Sfilata completata. Punteggio: '+G.puntSfilata+'/100','inf');updHUD();salva();
+  const _sflImg=G.puntSfilata<=30?'sfilata_1.png':G.puntSfilata<=60?'sfilata_2.png':'sfilata_3.png';
   setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🎺</div>
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Sfilata Completata!</div></div>
   <div class="card" style="text-align:center"><div class="ct">Punteggio sfilata</div>
+    <div style="display:flex;justify-content:center;margin:10px 0 14px">
+      <img src="${_sflImg}" alt="Sfilata" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:var(--bord)" onerror="this.style.display='none'">
+    </div>
     <div class="score-big">${G.puntSfilata}<span style="font-size:20px;color:var(--gold-l)">/100</span></div>
     <div style="font-size:13px;color:rgba(201,168,76,.5)">${G.puntSfilata>=70?'Magnifica! La folla è in delirio.':G.puntSfilata>=50?'Buona sfilata.':G.puntSfilata>=30?'Discreta.':'Modesta.'}</div>
   </div>
@@ -2203,6 +2242,7 @@ function fineAnno(vinta,cambiaContrada,nuovaContrada){
     if(!c.annoAcquisto)c.annoAcquisto=G.anno-1; // retrocompatibilità: assume acquistato l'anno scorso
     const anniInStalla=G.anno-c.annoAcquisto;
     if(anniInStalla>=2){c.maxAcc=Math.max(1,c.maxAcc-1);c.maxRes=Math.max(1,c.maxRes-1);c.acc=Math.min(c.acc,c.maxAcc);c.res=Math.min(c.res,c.maxRes);}
+    c.valoreVendita=calcPrezzoVendita(c);
   });}
   G.anno++;
   if(cambiaContrada&&nuovaContrada){
@@ -2222,7 +2262,7 @@ function fineAnno(vinta,cambiaContrada,nuovaContrada){
     // Le condizioni del maniero si conservano rimanendo nella stessa contrada
   }
   assegnaCavalliIAAnno();
-  MKT=genMkt();G.fantiniMercato=null;salva();
+  MKT=genMkt();G.fantiniMercato=null;G.fantiniRifiutati={};salva();
   R('HUD').style.display='grid';R('NAV').style.display='flex';
   R('MAIN').innerHTML='';avviaUI();
 }
@@ -2275,13 +2315,34 @@ function mostraSlotFantinoScreen(){
   for(let i=1;i<=3;i++){
     let inf=null;
     try{const s=localStorage.getItem('palio_fantino_'+i);if(s){const d=JSON.parse(s);inf={nome:d.nome,anno:d.anno,premi:(d.premi||[]).length};}}catch(e){}
-    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="iniziaCarrieraFantino(${i})">
+    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="mostraSceltaModoFantino(${i})">
       <div class="slot-num">Slot ${i}</div>
       <div class="slot-info">${inf?inf.nome+'<br>Anno '+inf.anno+' · 🏆'+inf.premi:'Vuoto'}</div>
     </div>`;
   }
   html+=`</div><button class="btn w" onclick="renderIntro()" style="margin-top:8px">← Indietro</button>`;
   setMain('<div style="padding:20px 12px">'+html+'</div>');
+}
+
+// ── SCELTA MODALITÀ: crea fantino vs controlla fantino reale ──
+function mostraSceltaModoFantino(slot){
+  setMain(`<div style="text-align:center;padding:20px 12px">
+    <div style="font-size:40px;margin-bottom:8px">🏇</div>
+    <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:var(--gold);margin-bottom:18px">Carriera Fantino</div>
+    <div class="career-choice">
+      <div class="career-card" onclick="iniziaCarrieraFantino(${slot})">
+        <div class="cc-icon">✏️</div>
+        <div class="cc-title">Crea il tuo fantino</div>
+        <div class="cc-desc">Scegli nome e contrada, parti da zero e costruisci la tua leggenda</div>
+      </div>
+      <div class="career-card" onclick="mostraSceltaFantinoReale(${slot})">
+        <div class="cc-icon">🎭</div>
+        <div class="cc-title">Controlla fantino reale</div>
+        <div class="cc-desc">Scegli un fantino esistente con le sue statistiche e prendi il suo posto in pista</div>
+      </div>
+    </div>
+    <button class="btn w" onclick="mostraSlotFantinoScreen()" style="margin-top:8px;justify-content:center">← Indietro</button>
+  </div>`);
 }
 
 function mostraSlotFantinoLoad(){
@@ -2308,6 +2369,7 @@ function caricaFantino(slot){
     if(!F.mktF)F.mktF=fGenMkt();
     if(F.reputazione===undefined)F.reputazione=10;
     if(!F.obiettiviFantino)F.obiettiviFantino={completati:{}};
+    if(!F.ultimaVittoriaContrada)F.ultimaVittoriaContrada={};
     fAvviaUI();showToast('Fantino caricato — '+F.nome,'grn');
   }catch(e){alert('Errore nel caricamento.');}
 }
@@ -2401,6 +2463,18 @@ function avviaUI(){
 // ═══════════════════════════════════════════════════════
 let F=null; // stato fantino
 
+// Anno dell'ultima vittoria al Palio per contrada (valori storici di partenza)
+const ULTIMA_VITTORIA_DEFAULT={
+  SanMartino:2016,Flora:2021,SanBernardino:2007,SantAmbrogio:2025,
+  SanMagno:2022,SanDomenico:2019,Legnarello:2024,SantErasmo:2026
+};
+// Restituisce l'anno dell'ultima vittoria di una contrada (aggiornato durante la carriera)
+function fGetUltimaVittoria(k){
+  if(F&&F.ultimaVittoriaContrada&&F.ultimaVittoriaContrada[k]!==undefined)
+    return F.ultimaVittoriaContrada[k];
+  return ULTIMA_VITTORIA_DEFAULT[k]||'—';
+}
+
 const NOMI_FANTINI_RIVALI=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
 /* FANTINI_DB è caricato da fantini_db.js (file esterno) */
 // Mappa rapida nome→stats per accesso O(1)
@@ -2432,11 +2506,14 @@ function iniziaCarrieraFantino(slot){
     <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:16px">Poi scegli la contrada di partenza</div>
     <div class="cg2" id="FNT_CT" style="margin-bottom:14px"></div>
     <div id="FNT_BTN"></div>
-    <button class="btn w" onclick="renderIntro()" style="margin-top:8px;justify-content:center">← Indietro</button>
+    <button class="btn w" onclick="mostraSceltaModoFantino(${slot})" style="margin-top:8px;justify-content:center">← Indietro</button>
   </div>`);
-  R('FNT_CT').innerHTML=Object.entries(CDB).map(([k,v])=>
-    `<div class="cc2" onclick="selFntCt('${k}')" id="FCI_${k}">
-      <div class="cc2-name">${k}</div><div class="cc2-desc">${v.desc}</div></div>`).join('');
+  R('FNT_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
+    const annUlt=fGetUltimaVittoria(k);
+    return `<div class="cc2" onclick="selFntCt('${k}')" id="FCI_${k}">
+      <div class="cc2-name">${k}</div>
+      <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
+  }).join('');
   R('FNT_NOME')._slot=slot;
 }
 
@@ -2451,13 +2528,23 @@ function creaFantino(contrada){
   const nome=(R('FNT_NOME').value||'').trim();
   if(!nome){showToast('Inserisci un nome!','red');return;}
   const slot=R('FNT_NOME')._slot||1;
+  fFinalizzaCreazione({nome,contrada,slot});
+}
+
+// Crea la carriera fantino vera e propria, condivisa tra "crea il tuo fantino" e "controlla fantino reale".
+// opts: {nome, contrada, slot, statsIniziali:{bravura,esp,mossa,emp}, escludiDaRivali:nomeFantinoReale}
+function fFinalizzaCreazione(opts){
+  const {nome,contrada,slot,statsIniziali,escludiDaRivali}=opts;
   const db=CDB[contrada];
   // Genera fantini rivali: 2 assegnati alla contrada del giocatore (il giocatore + 1 assegnato dal gioco),
   // 1 per ognuna delle altre 7 contrade, i rimanenti svincolati
   const rivali={};
   const altreContradeInit=Object.keys(CDB).filter(k=>k!==contrada);
   const shuffContrade=[...altreContradeInit].sort(()=>Math.random()-.5);
-  const shuffNomi=[...NOMI_FANTINI_RIVALI].sort(()=>Math.random()-.5);
+  // Se il giocatore controlla un fantino reale, quel nome viene escluso dal pool dei rivali:
+  // non esiste più come avversario né come potenziale amico/compagno.
+  const poolNomi=escludiDaRivali?NOMI_FANTINI_RIVALI.filter(n=>n!==escludiDaRivali):NOMI_FANTINI_RIVALI;
+  const shuffNomi=[...poolNomi].sort(()=>Math.random()-.5);
   // Prima assegna 1 fantino per ognuna delle 7 altre contrade
   shuffNomi.forEach((n,i)=>{
     const dbStats=FANTINI_MAP[n]||{bravura:rnd(2,4),esp:rnd(2,4),mossa:rnd(2,4),emp:rnd(2,4)};
@@ -2475,10 +2562,12 @@ function creaFantino(contrada){
   const intesaCapitani={};
   Object.keys(CDB).forEach(k=>{intesaCapitani[k]=k===contrada?60:rnd(20,50);});
 
+  const stats=statsIniziali||{bravura:1,esp:1,mossa:1,emp:1};
+
   F={
     nome,contrada,nemica:db.nemica,slot,
     oro:0,mi:0,anno:2027,
-    bravura:1,esperienza:1,mossa:1,empatia:1,
+    bravura:stats.bravura,esperienza:stats.esp,mossa:stats.mossa,empatia:stats.emp,
     sostegno:50,intesa:60,
     reputazione:10,
     rivali,intesaCapitani,
@@ -2494,12 +2583,85 @@ function creaFantino(contrada){
     premi:[],
     mktF:null,
     obiettiviFantino:{completati:{}},
-    nomeCompagno  // fantino assegnato dal gioco nella stessa contrada
+    nomeCompagno,  // fantino assegnato dal gioco nella stessa contrada
+    ultimaVittoriaContrada:{}  // aggiornato quando una contrada vince il Palio
   };
   F.mktF=fGenMkt();
   fSalva();
   // Mostra schermata giubba prima della UI
   mostraSchermatGiubba(contrada, ()=>fAvviaUI());
+}
+
+// ── CONTROLLA FANTINO REALE ──
+// Permette al giocatore di scegliere un fantino esistente (dal database esterno) invece di crearne uno nuovo.
+// Il fantino scelto viene rimosso dal pool dei rivali generati (fFinalizzaCreazione → escludiDaRivali).
+let _fntRealeIdx=0;
+let _fntRealeCtSel=null;
+
+function mostraSceltaFantinoReale(slot){
+  _fntRealeIdx=0;_fntRealeCtSel=null;
+  setMain(`<div style="padding:20px 12px;text-align:center">
+    <div style="font-size:40px;margin-bottom:8px">🎭</div>
+    <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:var(--gold);margin-bottom:6px">Carriera Fantino</div>
+    <div style="font-size:13px;color:rgba(201,168,76,.5);margin-bottom:18px">Scegli quale fantino vuoi controllare</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <button class="btn" onclick="fNavFantinoReale(-1)" style="padding:14px 16px;justify-content:center">◀</button>
+      <div id="FNT_REALE_CARD" style="flex:1"></div>
+      <button class="btn" onclick="fNavFantinoReale(1)" style="padding:14px 16px;justify-content:center">▶</button>
+    </div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:16px">Poi scegli la contrada di partenza</div>
+    <div class="cg2" id="FNT_REALE_CT" style="margin-bottom:14px"></div>
+    <div id="FNT_REALE_BTN"></div>
+    <button class="btn w" onclick="mostraSceltaModoFantino(${slot})" style="margin-top:8px;justify-content:center">← Indietro</button>
+  </div>`);
+  R('FNT_REALE_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
+    const annUlt=fGetUltimaVittoria(k);
+    return `<div class="cc2" onclick="selFntRealeCt('${k}')" id="FRCI_${k}">
+      <div class="cc2-name">${k}</div>
+      <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
+  }).join('');
+  R('FNT_REALE_CARD')._slot=slot;
+  fRenderFantinoRealeCard();
+}
+
+function fRenderFantinoRealeCard(){
+  const el=R('FNT_REALE_CARD');if(!el)return;
+  const db=FANTINI_DB;
+  if(!db||!db.length){el.innerHTML='<div style="font-size:13px;color:rgba(201,168,76,.5)">Nessun fantino disponibile.</div>';return;}
+  if(_fntRealeIdx<0)_fntRealeIdx=db.length-1;
+  if(_fntRealeIdx>=db.length)_fntRealeIdx=0;
+  const f=db[_fntRealeIdx];
+  el.innerHTML=`<div class="mi" style="flex-direction:column;text-align:left">
+    <div class="mi-name" style="text-align:center;font-size:15px;margin-bottom:8px">${f.nome}</div>
+    ${sRow('Bravura',f.bravura)}
+    ${sRow('Esperienza',f.esp)}
+    ${sRow('Gestione mossa',f.mossa)}
+    ${sRow('Empatia',f.emp)}
+  </div>`;
+}
+
+function fNavFantinoReale(dir){
+  _fntRealeIdx+=dir;
+  fRenderFantinoRealeCard();
+}
+
+function selFntRealeCt(k){
+  document.querySelectorAll('[id^="FRCI_"]').forEach(e=>e.classList.remove('sel'));
+  R('FRCI_'+k).classList.add('sel');_fntRealeCtSel=k;
+  R('FNT_REALE_BTN').innerHTML=`<button class="btn gold w" onclick="creaFantinoReale('${k}')" style="justify-content:center">⚜ Inizia come fantino di ${k} →</button>`;
+}
+
+function creaFantinoReale(contrada){
+  const db=FANTINI_DB;
+  if(!db||!db.length)return;
+  const f=db[_fntRealeIdx];
+  if(!f)return;
+  const slot=(R('FNT_REALE_CARD')&&R('FNT_REALE_CARD')._slot)||1;
+  fFinalizzaCreazione({
+    nome:f.nome,contrada,slot,
+    statsIniziali:{bravura:f.bravura,esp:f.esp,mossa:f.mossa,emp:f.emp},
+    escludiDaRivali:f.nome
+  });
 }
 
 function fGenMkt(){
@@ -2729,6 +2891,8 @@ function fAvanzaMese(){
   F._imprevistoPista=false;
   F._eventoMeseFantino=null;
   [...F.stallaContrada,...F.stallaPersonale].forEach(cv=>{cv._infortunato=false;});
+  // Ricalcola il prezzo di vendita dei cavalli della scuderia personale ogni mese
+  F.stallaPersonale.forEach(c=>{c.valoreVendita=calcPrezzoVendita(c);});
   if(!F.mktF||F.mi%1===0)F.mktF=fGenMkt();
   // Veterinario: -1 stanchezza a tutti i cavalli
   if(F.veterinario){
@@ -2990,7 +3154,7 @@ function fRenderStalla(){
         ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
         ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
         ${sRow('Nervosismo',c.ner,5,true)}
-        ${!F.addestramentoContrataUsato?`
+        ${(c.stanchezza||0)>=3?`<div style="font-size:11px;color:#E05555;margin-top:6px">⚠ Cavallo troppo stanco per allenarsi</div>`:!F.addestramentoContrataUsato?`
         <div style="font-size:10px;color:rgba(201,168,76,.5);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">Allenamento (gratis · 1/mese)</div>
         <div style="display:flex;flex-direction:column;gap:5px">
           <button class="train-btn" onclick="fAllenaContrada(${i},'forza')"><div class="train-title">Forza pura</div><div class="train-desc">+1 Velocità, +1 Nervosismo</div></button>
@@ -3007,7 +3171,7 @@ function fRenderStalla(){
     F.stallaPersonale.forEach((c,i)=>{
       const anni=F.anno-(c.annoAcquisto||F.anno);
       const etaP=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${anni} anni in stalla — invecchiamento attivo.</div>`:'';
-      const prezzoVendita=Math.floor((c.valoreAcquisto||c.valore)*.5);
+      const prezzoVendita=c.valoreVendita!==undefined?c.valoreVendita:(c.valoreVendita=calcPrezzoVendita(c));
       const _dbFP=getCavDB(c.nome);const _imgFP=_dbFP&&_dbFP.img?_dbFP.img:'';const _imgHtmlFP=_imgFP?`<img src="${_imgFP}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
       html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
         <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
@@ -3017,12 +3181,13 @@ function fRenderStalla(){
         ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
         ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
         ${sRow('Nervosismo',c.ner,5,true)}
+        ${(c.stanchezza||0)>=3?`<div style="font-size:11px;color:#E05555;margin-top:6px">⚠ Cavallo troppo stanco per allenarsi</div>`:`
         <div style="font-size:10px;color:rgba(201,168,76,.5);margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">Allenamento (300 oro)</div>
         <div style="display:flex;flex-direction:column;gap:5px">
           <button class="train-btn" ${F.oro<300?'disabled':''} onclick="fAllenaPersonale(${i},'forza')"><div class="train-title">Forza pura</div><div class="train-desc">+1 Velocità, +1 Nervosismo</div></button>
           <button class="train-btn" ${(F.oro<300||c.acc>=c.maxAcc)?'disabled':''} onclick="fAllenaPersonale(${i},'controllo')"><div class="train-title">Controllo e ritmo</div><div class="train-desc ${c.acc>=c.maxAcc?'cap':''}">${c.acc>=c.maxAcc?'Acc al massimo':'+1 Accelerazione, −1 Nervosismo'}</div></button>
           <button class="train-btn" ${(F.oro<300||c.res>=c.maxRes)?'disabled':''} onclick="fAllenaPersonale(${i},'fondo')"><div class="train-title">Fondo e curve</div><div class="train-desc ${c.res>=c.maxRes?'cap':''}">${c.res>=c.maxRes?'Res al massimo':'+1 Tenuta curva, +1 Resistenza'}</div></button>
-        </div>
+        </div>`}
         <div style="display:flex;justify-content:flex-end;margin-top:8px">
           <button class="btn" style="font-size:11px;padding:6px 12px" onclick="fVendiCavPersonale(${i})">Vendi (${prezzoVendita} oro)</button>
         </div>
@@ -3036,6 +3201,7 @@ function fRenderStalla(){
 function fAllenaContrada(idx,tipo){
   if(F.addestramentoContrataUsato){showToast('Allenamento contrada già usato!','red');return;}
   const c=F.stallaContrada[idx];if(!c)return;
+  if((c.stanchezza||0)>=3){showToast('Cavallo troppo stanco per allenarsi!','red');return;}
   if(tipo==='forza'){c.vel=clamp(c.vel+1,1,5);c.ner=clamp(c.ner+1,1,5);fAddLog('Forza pura su '+c.nome+' (contrada)','inf');}
   else if(tipo==='controllo'){c.acc=clamp(c.acc+1,1,c.maxAcc);c.ner=clamp(c.ner-1,1,5);fAddLog('Controllo su '+c.nome+' (contrada)','inf');}
   else{c.ten=clamp(c.ten+1,1,5);c.res=clamp(c.res+1,1,c.maxRes);fAddLog('Fondo su '+c.nome+' (contrada)','inf');}
@@ -3047,10 +3213,12 @@ function fAllenaContrada(idx,tipo){
 function fAllenaPersonale(idx,tipo){
   if(F.oro<300){showToast('Servono 300 oro!','red');return;}
   const c=F.stallaPersonale[idx];if(!c)return;
+  if((c.stanchezza||0)>=3){showToast('Cavallo troppo stanco per allenarsi!','red');return;}
   F.oro-=300;
   if(tipo==='forza'){c.vel=clamp(c.vel+1,1,5);c.ner=clamp(c.ner+1,1,5);fAddLog('Forza pura su '+c.nome+' −300 oro','inf');}
   else if(tipo==='controllo'){c.acc=clamp(c.acc+1,1,c.maxAcc);c.ner=clamp(c.ner-1,1,5);fAddLog('Controllo su '+c.nome+' −300 oro','inf');}
   else{c.ten=clamp(c.ten+1,1,5);c.res=clamp(c.res+1,1,c.maxRes);fAddLog('Fondo su '+c.nome+' −300 oro','inf');}
+  c.valoreVendita=calcPrezzoVendita(c);
   c.stanchezza=Math.min(3,(c.stanchezza||0)+1);
   showToast('✦ Allenamento completato! −300 oro','grn');
   fSalva();fRenderStalla();
@@ -3058,7 +3226,7 @@ function fAllenaPersonale(idx,tipo){
 
 function fVendiCavPersonale(idx){
   const c=F.stallaPersonale[idx];if(!c)return;
-  const prezzo=Math.floor((c.valoreAcquisto||c.valore)*.5);
+  const prezzo=c.valoreVendita!==undefined?c.valoreVendita:calcPrezzoVendita(c);
   F.oro+=prezzo;
   fAddLog('Venduto '+c.nome+' per '+prezzo+' oro','inf');
   F.stallaPersonale.splice(idx,1);
@@ -3115,6 +3283,7 @@ function fAcquistaCav(i){
   if(F.oro<c.valore){showToast('Oro insufficiente!','red');return;}
   F.oro-=c.valore;
   const cavAcq={...c,annoAcquisto:F.anno,valoreAcquisto:c.valore};
+  cavAcq.valoreVendita=calcPrezzoVendita(cavAcq);
   F.stallaPersonale.push(cavAcq);
   F.mktF.cavalli.splice(i,1);
   fAddLog('Acquistato '+c.nome+' per '+c.valore+' oro (personale)','inf');
@@ -3141,13 +3310,34 @@ function fCorsaAddestramento(){
       <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:4px">Corsa di Addestramento</div>
       <div style="font-size:12px;color:rgba(201,168,76,.5)">Partecipanti: ${partecipanti.join(' · ')}</div>
     </div>
-    <div class="card">
-      <div class="ct">Scegli il cavallo</div>
-      ${cavDisp.map((c,i)=>`<button class="btn w" onclick="fRunAddestramento(${i})" style="text-align:left;margin-bottom:6px;padding:10px">
-        <span style="font-weight:700">${c.nome}</span>
-        <span style="font-size:11px;color:rgba(201,168,76,.5);margin-left:8px">Vel:${c.vel} Acc:${c.acc} Ten:${c.ten}</span>
-      </button>`).join('')}
-    </div>
+    <div class="ct" style="margin:0 2px 6px">Scegli il cavallo</div>
+    ${cavDisp.map((c,i)=>{
+      const isContrada=F.stallaContrada.some(sc=>sc===c||sc.nome===c.nome);
+      const badge=isContrada?'<span class="bdg o">contrada</span>':'<span class="bdg r">personale</span>';
+      const _addDb=getCavDB(c.nome);const _addImg=_addDb&&_addDb.img?_addDb.img:'';
+      const _addImgHtml=_addImg?`<div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${_addImg}" alt="${c.nome}" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:8px;border:var(--bord)" onerror="this.style.display='none'"></div>`:'';
+      const troppoStanco=(c.stanchezza||0)>=3;
+      return `<div class="card" style="cursor:${troppoStanco?'default':'pointer'};${troppoStanco?'opacity:.45':''}" ${troppoStanco?'':`onclick="fRunAddestramento(${i})"`}>
+      ${_addImgHtml}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
+          <div style="margin-top:4px">${badge}</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div>
+            <div class="fpip-label" style="text-align:center;margin-bottom:2px">STAN</div>
+            ${fPipsGrn(c.stanchezza||0,3)}
+          </div>
+          <div>
+            <div class="fpip-label" style="text-align:center;margin-bottom:2px">INT</div>
+            ${fPipsBlu(c.intesaFant||0,3)}
+          </div>
+        </div>
+      </div>
+      ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}${sRow('Nervosismo',c.ner,5,true)}
+      ${troppoStanco?'<div style="font-size:11px;color:#E05555;margin-top:6px">⚠ Cavallo troppo stanco per correre</div>':''}
+    </div>`;}).join('')}
     <button class="btn w" onclick="fBuildDOM();fGoTo('mese')" style="margin-top:4px">← Annulla</button>
     <div id="FADDR_DATA" style="display:none" data-part="${JSON.stringify(partecipanti).replace(/"/g,'&quot;')}"></div>
   </div>`);
@@ -3177,7 +3367,8 @@ function fRunAddestramento(cavIdx){
         else{const rivalEntry=Object.entries(F.rivali).find(([,info])=>info.contrada===n);if(rivalEntry){const[,info]=rivalEntry;f2={bravura:info.bravura||rnd(2,4),esp:info.esp||rnd(2,4),mossa:info.mossa||rnd(2,4),emp:info.emp||rnd(2,4)};}else{f2=newIAFan();}}
         const fatica=Math.max(0,(g-1)*(6-c2.res)*.2);
         const base=(c2.vel+c2.acc+c2.ten)-fatica+(f2.bravura*.5+(f2.emp||f2.empatia||1)*.2);
-        sc[n]+=base*((g===1&&isP)?Mos.mult:1)+rf(0,3);
+        const multN=(Mos.multByContrada&&Mos.multByContrada[n]!==undefined)?Mos.multByContrada[n]:((isP&&g===1)?Mos.mult:1);
+        sc[n]+=base*(g===1?multN:1)+rf(0,3);
       });
       gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));
     }
@@ -3198,66 +3389,1297 @@ function fRunAddestramento(cavIdx){
   fShowMossaFantino('addestramento');
 }
 
-// ── MOSSA FANTINO ──
+// ── MOSSA FANTINO — NUOVO MINIGIOCO ZONA MOSSA ──
+// Stato del minigioco mossa
+let _mosG = null; // stato globale minigioco
+
 function fShowMossaFantino(fase){
-  setMain(`<div class="pad">
-    <div style="text-align:center;margin-bottom:12px">
-      <div style="font-size:30px">🏁</div>
-      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
-      <div style="font-size:12px;color:rgba(201,168,76,.5)">${fase==='finale'?'Finale':'Batteria'} · Ferma il cursore nella zona verde</div>
-    </div>
-    <div class="card"><div class="ct">Fase di mossa</div>
-      <div class="mbar" id="MBAR" onclick="fFermaMossa('${fase}')">
-        <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
-      <div style="font-size:11px;color:rgba(201,168,76,.5)">Clicca per scattare</div>
-    </div>
-    <div id="MOS_RIS" style="display:none" class="card">
-      <div id="MOS_T" style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px"></div>
-      <div id="MOS_B" style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px"></div>
-      <button class="btn gold w" id="MOS_BTN">Continua →</button>
-    </div>
-  </div>`);
-  const vel=Math.max(.5,1+(1*.4)-(F.bravura*.1));
-  const amp=Math.max(3,5+(F.mossa*2));
-  // Amicizia fantini in batteria rende la zona più ampia
-  const avgAmi=Object.values(F.rivali).reduce((s,r)=>s+r.amicizia,0)/Object.keys(F.rivali).length;
-  const bonusAmi=avgAmi>=70?3:avgAmi>=50?1:0;
-  Mos={tacca:rnd(30,80),amp:Math.max(3,amp+bonusAmi),vel,t:0,pos:50,active:true,mult:1};
-  if(MosInt)clearInterval(MosInt);
-  MosInt=setInterval(()=>{
-    if(!Mos.active)return;Mos.t+=.04;Mos.pos=clamp((Math.sin(Mos.t*Mos.vel*2)+1)*50,0,100);
-    const bar=R('MBAR');if(!bar){clearInterval(MosInt);return;}
-    const w=bar.offsetWidth;
-    const ce=R('MCU'),te=R('MT2'),ze=R('MZ');
-    if(ce)ce.style.left=(Mos.pos/100*w-3)+'px';
-    if(te)te.style.left=(Mos.tacca/100*w-1)+'px';
-    if(ze){const a=Mos.amp/100*w;ze.style.left=(Mos.tacca/100*w-a/2)+'px';ze.style.width=a+'px';}
-  },40);
+  // Passa i partecipanti della batteria/finale corretta invece di leggerli dal DOM
+  const batt = fase==='finale'
+    ? [...(F._fbQP||[]), ...(F._fbQIA||[])].slice(0,4)
+    : (F._fbP||[]).slice(0,4);
+  _fAvviaMinigiocaMossa(fase, false, batt.length>=4 ? batt : null);
 }
 
-function fFermaMossa(fase){
-  if(!Mos.active)return;Mos.active=false;clearInterval(MosInt);MosInt=null;
-  const d=Math.abs(Mos.pos-Mos.tacca);let esito,mult,msg;
-  if(d<=Mos.amp/2){esito='OTTIMALE';mult=1.15;msg='⚡ PARTENZA A FIONDA!';F.mossa=clamp(F.mossa+1,1,5);}
-  else if(Mos.pos>Mos.tacca+Mos.amp/2){esito='FALSA';mult=.1;msg='✗ PARTENZA FALSA!';F.mossa=clamp(F.mossa-1,1,5);}
-  else{esito='LENTA';mult=.5;msg='⚠ PARTENZA LENTA';F.mossa=clamp(F.mossa-1,1,5);}
-  Mos.mult=mult;
-  R('MOS_RIS').style.display='block';
-  const t=R('MOS_T');t.textContent=msg;
-  t.style.color=esito==='OTTIMALE'?'#5DBB63':esito==='FALSA'?'#E05555':'var(--gold)';
-  R('MOS_B').textContent=`Dist: ${Math.round(d)} · ×${mult} · Gestione mossa: ${F.mossa}/5`;
-  fAddLog('Mossa ('+fase+'): '+esito,'inf');
-  const btn=R('MOS_BTN');
-  if(btn){
-    if(fase==='addestramento'&&F._addestramentoOnComplete){
-      btn.onclick=F._addestramentoOnComplete;
-    } else if(fase==='batteria'){
-      btn.onclick=()=>fShowAccordiPreGara('batteria');
-    } else {
-      btn.onclick=()=>fShowAccordiPreGara('finale');
+function _fAvviaMinigiocaMossa(fase, isProvaccia, battOverride){
+  if(MosInt){clearInterval(MosInt);MosInt=null;}
+  if(_raceAnimFrame){cancelAnimationFrame(_raceAnimFrame);_raceAnimFrame=null;}
+
+  // Determina i partecipanti della batteria corrente
+  let batt;
+  if(battOverride && battOverride.length>=4){
+    // Partecipanti passati direttamente (batteria/finale del Palio)
+    batt=battOverride.slice(0,4);
+  } else if(isProvaccia){
+    batt = F._fprovP || Object.keys(F.rivali).slice(0,3).map(k=>F.rivali[k].contrada).filter(Boolean);
+    if(batt.length<4){const extra=Object.keys(CDB).filter(n=>!batt.includes(n));batt=[...batt,...extra].slice(0,4);}
+  } else {
+    // Addestramento: legge dal DOM
+    const partEl=R('FADDR_DATA');
+    batt=partEl?JSON.parse(partEl.dataset.part.replace(/&quot;/g,'"')):Object.keys(CDB).slice(0,4);
+    if(batt.length<4){const extra=Object.keys(CDB).filter(n=>!batt.includes(n));batt=[...batt,...extra].slice(0,4);}
+  }
+  batt=batt.slice(0,4);
+  // Garanzia: la contrada del giocatore deve essere sempre presente
+  if(F.contrada && !batt.includes(F.contrada)){batt[3]=F.contrada;}
+
+  // Sorteggio posizioni al canapo: pos 1=destra, pos 4=sinistra (rincorsa)
+  const posizioniEstratte=[...batt].sort(()=>Math.random()-.5);
+  // La contrada del giocatore
+  const miaContrada=F.contrada||batt[0];
+
+  // ── DIMENSIONI CANVAS ──
+  // Layout: fascia verde sx | zona mossa sabbia | fascia verde dx | quadrato mossiere dx esterno
+  const W_ZONA=340, H_ZONA=320;
+  const MOSSIERE_W=36;     // larghezza quadrato mossiere (fuori dalla zona mossa, destra)
+  const VERDE_W=28;        // fascia verde a sinistra
+  const ZONA_X=VERDE_W;   // la zona mossa inizia qui
+  const ZONA_W=W_ZONA-VERDE_W-MOSSIERE_W; // larghezza zona mossa (sabbia+pista)
+  const CANAPO_Y=64;       // y della linea del canapo
+  const ZONA_H=H_ZONA;     // tutta l'altezza
+  const HORSE_R=34;        // raggio cavallo — cavalli grandi
+
+  // Posizioni orizzontali cavalli: all'interno della zona sabbia
+  // pos1=dx (rincorsa), pos4=sx — margine HORSE_R garantisce che i cavalli restino dentro i bordi
+  const _ZONA_INNER_MIN = ZONA_X + HORSE_R + 6;
+  const _ZONA_INNER_MAX = ZONA_X + ZONA_W - HORSE_R - 6;
+  const _ZONA_INNER_W   = _ZONA_INNER_MAX - _ZONA_INNER_MIN;
+  const xPositions=[
+    _ZONA_INNER_MIN + _ZONA_INNER_W*0.85,
+    _ZONA_INNER_MIN + _ZONA_INNER_W*0.62,
+    _ZONA_INNER_MIN + _ZONA_INNER_W*0.38,
+    _ZONA_INNER_MIN + _ZONA_INNER_W*0.15,
+  ];
+
+  // Nervosismo del cavallo del giocatore (da stat cavallo, default 3)
+  const nervCav = (F._cavNervosismo !== undefined ? F._cavNervosismo : (F.cav ? (F.cav.ner||3) : 3));
+  // Gestione mossa del fantino giocatore
+  const gestioneMossa = F.mossa || 1;
+  // ── FATTORE DI DIFFICOLTÀ COMBINATO (nervosismo cavallo vs gestione mossa fantino) ──
+  // Scala 0 (cavallo facilissimo da tenere dritto al canapo) → 1 (cavallo ingestibile).
+  // Nervosismo 5 + Gestione mossa 1 → difficoltaMossa = 1 (massima, "a dir poco ingestibile")
+  // Nervosismo 1 + Gestione mossa 5 → difficoltaMossa = 0 (minima, molto facile da posizionare)
+  // Le combinazioni intermedie scalano in proporzione.
+  const difficoltaMossa = clamp((nervCav - gestioneMossa + 4) / 8, 0, 1);
+
+  // Genera i cavalli con stat nervosismo AI
+  const cavalli=posizioniEstratte.map((nome,i)=>{
+    const isPlayer=(nome===miaContrada);
+    const isRincorsa=(i===3);
+    // Nervosismo AI: random tra 1 e 5
+    const nervAI = isPlayer ? nervCav : rnd(1,5);
+    // Fase iniziale del ciclo di camminata (diversa per ogni cavallo)
+    const walkPhaseInit = Math.random()*Math.PI*2;
+    return {
+      nome,
+      isPlayer,
+      isRincorsa,
+      x: clamp(xPositions[i], _ZONA_INNER_MIN, _ZONA_INNER_MAX),
+      y: clamp(CANAPO_Y + (H_ZONA-CANAPO_Y)*0.60 + rf(-12,12), CANAPO_Y+HORSE_R+4, H_ZONA-HORSE_R-4),
+      angolo: rf(-0.3,0.3), // radianti, 0=verso canapo (su), piena rotazione ±PI
+      vel: 0,
+      richiami: 0,
+      zonaLontanaTimer: 0, // secondi consecutivi trascorsi nella zona lontana dal canapo
+      squalificato: false,
+      nerv: nervAI,
+      // AI: target angle e movimento
+      aiTimer: rnd(60,180),
+      aiTargetX: clamp(xPositions[i]+rf(-25,25), _ZONA_INNER_MIN, _ZONA_INNER_MAX),
+      aiTargetY: clamp(CANAPO_Y + (H_ZONA-CANAPO_Y)*0.60 + rf(-15,15), CANAPO_Y+HORSE_R+2, H_ZONA-HORSE_R-4),
+      aiTargetAngle: rf(-0.25,0.25),
+      // Jitter: perturbazione nervosa crescente col tempo
+      jitterTimer: rnd(20,60),
+      // ── MOVIMENTO REALISTICO ──
+      // Velocità reale del cavallo (px/frame)
+      walkVelX: rf(-0.3,0.3),
+      walkVelY: rf(-0.2,0.2),
+      // Fase ciclo di camminata (per animazione zampe e oscillazione)
+      walkPhase: walkPhaseInit,
+      // Timer per cambio direzione organico
+      walkDirTimer: rnd(40,120),
+      // Direzione di marcia (angolo in radianti, indipendente dall'angolo del corpo)
+      walkDir: rf(-0.5,0.5),
+      // Impulsi nervosi: piccole scatti improvvisi
+      nerveImpulseTimer: rnd(30,100),
+      nerveImpulseX: 0,
+      nerveImpulseY: 0,
+      // ── TONDINO (solo cavallo di rincorsa, pos.4) ──
+      // Il cavallo di rincorsa non si ferma al canapo: gira in tondo (senso orario)
+      // nella zona lontana dal canapo, aspettando il momento per "rincorrere" e dare la mossa.
+      tondinoAngle: isRincorsa ? rf(0, Math.PI*2) : 0,
+      tondinoFase: isRincorsa ? 'giro' : null, // 'giro' = sta facendo il tondino, 'rincorsa' = si lancia verso il canapo per dare la mossa
+      // Prossimo istante (in secondi di tempoTrascorso) in cui la rincorsa
+      // uscirà dal tondino e si lancerà verso il canapo per dare la mossa,
+      // a prescindere dal punto del giro in cui si trova: ogni "intervallo
+      // tempo x" (random 20-40s) tenta la mossa, anche a rischio di darla falsa.
+      rincorsaProssimoLancio: isRincorsa ? rf(20,40) : Infinity,
+      // ── DECISIONE DI DARE LA MOSSA (tutte le contrade avversarie) ──
+      // Ogni cavallo avversario valuta periodicamente se "tirare" la mossa
+      // (scattare) per cogliere il giocatore mal posizionato, anche rischiando
+      // la mossa falsa.
+      decisioneMossaTimer: rnd(35,90),
+      vuoleScattare: false,
+    };
+  });
+
+  // Stato joystick
+  let joySX=0, joySY=0; // -1..1
+  let joyActive=false;
+  let joyBaseX=0, joyBaseY=0;
+  const JOY_R=38, JOY_KNOB=16;
+
+  // Elenco contrade squalificate durante questa mossa (richiami → squalifica)
+  F._mossaSqualificate=[];
+
+  // Stato mossa
+  let mossaConteggio=0;
+  let mossaTerminata=false;
+  let mossiereMsgTimer=0;
+  let mossiereMsg='';
+  // Guard anti-rimbalzo: true mentre è in corso il reset (1.5s) dopo una mossa
+  // falsa. Finché è true, NESSUN nuovo tentativo di mossa (né del giocatore,
+  // né dell'AI) può essere registrato. Senza questo guard, mentre il reset
+  // è ancora "in volo" la rincorsa può ritentare la mossa più e più volte
+  // nello stesso istante (decine di volte al secondo), facendo esplodere il
+  // contatore delle mosse false e accavallando più reset di posizione in
+  // contemporanea: il risultato visibile è cavalli che "impazziscono",
+  // si sovrappongono o si ritrovano teletrasportati sopra il tasto SCATTA.
+  let mossaResetPending=false;
+  // Tempo: max 300 secondi (5 minuti)
+  let tempoRimasto=300;
+  let lastTimestamp=null;
+  let gameStarted=false;
+  // Tempo trascorso (per nervosismo crescente)
+  let tempoTrascorso=0;
+  // Timestamp dedicato al calcolo del delta time per i richiami (15 sec consecutivi in zona lontana)
+  let _richiamLastTs=null;
+
+  // Canvas HTML
+  setMain(`<div style="padding:10px 10px 16px">
+    <div style="text-align:center;margin-bottom:8px">
+      <div style="font-size:24px">🏁</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:var(--gold);margin-top:4px">Zona Mossa — ${fase==='finale'?'Finale':'Batteria'}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px">Portati al canapo: dopo i primi 20 secondi solo la rincorsa (pos.4) può tirare la mossa in ogni momento! (max 5 min)</div>
+      <div style="font-size:10px;color:rgba(224,85,85,.65);margin-top:2px">⚡ Attenzione: 15" consecutivi lontano dal canapo = un richiamo. Al 3° richiamo: squalifica!</div>
+    </div>
+    <div style="position:relative;margin:0 auto;display:block;max-width:360px">
+      <canvas id="MOSSA_CVS" width="${W_ZONA}" height="${H_ZONA}" style="display:block;margin:0 auto;border-radius:12px;border:2px solid rgba(201,168,76,.4);touch-action:none;max-width:100%"></canvas>
+    </div>
+    <div id="MOSSA_INFO" style="margin-top:8px;text-align:center;font-family:var(--fn);font-size:12px;color:rgba(201,168,76,.6)">
+      <span id="MOSSA_TIMER" style="color:var(--gold);font-weight:700"></span> &nbsp;
+      <span id="MOSSA_STATUS"></span>
+    </div>
+    <div id="MOSSA_LEGG" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px"></div>
+    <div id="MOSSA_RIS" style="display:none;margin-top:10px"></div>
+  </div>`);
+
+  const canvas=R('MOSSA_CVS');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+
+  // Legenda contrade
+  const leggEl=R('MOSSA_LEGG');
+  if(leggEl){
+    leggEl.innerHTML=posizioniEstratte.map((n,i)=>{
+      const isP=(n===miaContrada);
+      const posLabel=`Pos.${i+1}${i===3?' (rincorsa)':''}`;
+      return `<div style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--fn);color:${isP?'var(--gold)':'rgba(201,168,76,.6)'}">
+        <canvas width="14" height="14" id="MLEG_${n.replace(/[^a-z]/gi,'_')}"></canvas>
+        <span>${n}${isP?' (tu)':''} ${posLabel}</span>
+      </div>`;
+    }).join('');
+    posizioniEstratte.forEach(n=>{
+      const lc=R('MLEG_'+n.replace(/[^a-z]/gi,'_'));
+      if(lc){const lctx=lc.getContext('2d');drawContradaDot(lctx,7,7,6,n);}
+    });
+  }
+
+  // ── afterMossa: risultato finale ──
+  function afterMossa(mult,esito,msg,multByContrada){
+    if(mossaTerminata)return;
+    mossaTerminata=true;
+    if(_raceAnimFrame){cancelAnimationFrame(_raceAnimFrame);_raceAnimFrame=null;}
+    Mos={mult,active:false,multByContrada:multByContrada||{[miaContrada]:mult}};
+    // Aggiorna stat mossa fantino giocatore
+    if(esito==='RINCORSA'||esito==='DRITTO'){F.mossa=clamp(F.mossa+1,1,5);}
+    else if(esito==='PARZIALE'||esito==='LIMITE'||esito==='LONTANO'){F.mossa=clamp(F.mossa-1,1,5);}
+    // FALSA/SQUALIFICATO non cambiano ulteriormente (già penalizzati)
+    fAddLog('Mossa ('+fase+'): '+esito+' ×'+mult+' | Gestione mossa: '+F.mossa+'/5','inf');
+    fSalva();
+    const risEl=R('MOSSA_RIS');
+    if(risEl){
+      risEl.style.display='block';
+      const col=esito==='RINCORSA'||esito==='DRITTO'?'#5DBB63':esito==='PARZIALE'||esito==='LONTANO'?'var(--gold)':'#E05555';
+      risEl.innerHTML=`<div class="card"><div style="font-family:var(--fn);font-size:15px;font-weight:700;color:${col};text-align:center;margin-bottom:6px">${msg}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);text-align:center;margin-bottom:10px">Bonus velocità ×${mult} · Gestione mossa: ${F.mossa}/5</div>
+        <button class="btn gold w" id="MOS_BTN">Continua →</button></div>`;
+      const btn=R('MOS_BTN');
+      if(btn){
+        if(fase==='addestramento'&&F._addestramentoOnComplete){btn.onclick=F._addestramentoOnComplete;}
+        else if(isProvaccia){btn.onclick=()=>fShowAccordiProvaccia(fase);}
+        else if(fase==='batteria'){btn.onclick=()=>fShowAccordiPreGara('batteria');}
+        else{btn.onclick=()=>fShowAccordiPreGara('finale');}
+      }
     }
   }
-  fSalva();
+
+  // Verifica se tutti i cavalli non squalificati puntano verso il canapo
+  // (il cavallo di rincorsa, mentre fa ancora il giro del tondino, non viene
+  // considerato: il suo angolo durante il giro descrive l'intera rotazione
+  // della traiettoria e non rappresenta una posizione di mossa).
+  function isMossaValida(){
+    return cavalli.every(c=>c.squalificato||(c.isRincorsa&&c.tondinoFase==='giro')||Math.abs(c.angolo)<Math.PI/2);
+  }
+  function isMossaFalsa(){
+    return cavalli.some(c=>!c.squalificato&&!(c.isRincorsa&&c.tondinoFase==='giro')&&Math.abs(c.angolo)>=Math.PI/2);
+  }
+  // Verifica se un cavallo si trova nella metà della zona mossa più lontana
+  // dal canapo ("zona 2"): da qui non si può tirare una mossa valida, né
+  // il giocatore né l'avversario possono dare la partenza.
+  function inZonaLontana(cv){
+    if(!cv||cv.squalificato)return false;
+    const metaZona = CANAPO_Y + (H_ZONA-CANAPO_Y)*0.5;
+    return cv.y > metaZona;
+  }
+  // C'è almeno una contrada avversaria non squalificata in zona lontana dal canapo?
+  function cAvversarioInZonaLontana(){
+    return cavalli.some(c=>!c.squalificato&&!c.isPlayer&&inZonaLontana(c));
+  }
+
+  // Calcola bonus per un singolo cavallo in base alla sua posizione e angolo al canapo
+  function calcolaBonusCavallo(cv){
+    if(!cv||cv.squalificato)return{mult:0,esito:'SQUALIFICATO',msg:'🚫 Squalificato! Terzo richiamo.'};
+    const posIdx=posizioniEstratte.indexOf(cv.nome);
+    const distCanapo=cv.y-CANAPO_Y;
+    const vicino=(distCanapo<(H_ZONA-CANAPO_Y)*0.25);
+    const angAbs=Math.abs(cv.angolo);
+    // ── ZONA 1 / ZONA 2 (teoriche, non visibili al giocatore) ──
+    // La zona mossa è divisa a metà: zona 1 = metà più vicina al canapo,
+    // zona 2 = metà più lontana dal canapo.
+    const metaZona = CANAPO_Y + (H_ZONA-CANAPO_Y)*0.5;
+    const inZona2 = cv.y > metaZona;
+    let mult,esito,msg;
+    if(posIdx===3&&vicino&&angAbs<0.3){
+      mult=1.0; esito='RINCORSA'; msg='⚡ MOSSA DI RINCORSA! Bonus massimo!';
+    } else if(angAbs<0.18){
+      mult=0.75; esito='DRITTO'; msg='✦ Partenza al canapo, dritto. Buona mossa!';
+    } else if(angAbs<Math.PI*0.4){
+      mult=0.4; esito='PARZIALE'; msg='⚠ Parzialmente girato. Gestione mossa −1.';
+    } else {
+      mult=0.1; esito='LIMITE'; msg='😬 Al limite della falsa, ma valida. Partenza difficile.';
+    }
+    // Se il cavallo si trova in zona 2 (lontano dal canapo), il bonus è sempre
+    // ×0.4 indipendentemente da quanto sia ben posizionato/dritto: lo scatto
+    // parte comunque svantaggiato perché il cavallo è troppo distante dal canapo.
+    if(inZona2 && mult>0.4){
+      mult=0.4; esito='LONTANO'; msg='📏 Troppo lontano dal canapo. Partenza penalizzata.';
+    }
+    return{mult,esito,msg};
+  }
+  // Calcola bonus giocatore (e, di riflesso, tutti gli altri cavalli presenti al canapo)
+  function calcolaBonusGiocatore(){
+    const mio=cavalli.find(c=>c.isPlayer);
+    if(!mio)return{mult:0,esito:'SQUALIFICATO',msg:'🚫 Squalificato! Terzo richiamo.'};
+    return calcolaBonusCavallo(mio);
+  }
+  // Calcola e restituisce il bonus di velocità per TUTTE le contrade presenti al canapo,
+  // in base alla posizione/angolo di ciascun cavallo nel momento dello scatto
+  function calcolaBonusTutteContrade(){
+    const out={};
+    cavalli.forEach(cv=>{
+      const {mult}=calcolaBonusCavallo(cv);
+      out[cv.nome]=mult;
+    });
+    return out;
+  }
+
+  // ── SCATTO DI UN CAVALLO AI (qualsiasi contrada avversaria, non solo la rincorsa) ──
+  // Una contrada avversaria "tira" la mossa: se in quel momento la mossa risulta
+  // valida (tutti dritti) si parte regolarmente; altrimenti scatta comunque,
+  // rischiando — e spesso causando — la mossa falsa, proprio per cogliere
+  // il giocatore mal posizionato.
+  function scattaAI(c){
+    if(mossaTerminata||!c||c.squalificato)return;
+    // Guard anti-rimbalzo: se un reset per mossa falsa è già stato
+    // pianificato (in attesa dei 1.5s), ignora qualunque nuovo tentativo.
+    // Senza questo controllo la rincorsa può rientrare nella fase
+    // "rincorsa" e richiamare scattaAI() più volte nello stesso istante
+    // (vedi vogliaOpportunista), facendo scattare decine di "mosse false"
+    // al secondo e accavallando più reset di posizione contemporaneamente.
+    if(mossaResetPending)return;
+    // Se la contrada che tenta di dare la mossa si trova nella zona lontana
+    // dal canapo, non può provarla: rimane troppo distante per dare la
+    // partenza (il tentativo non ha alcun effetto, né valido né falso).
+    if(inZonaLontana(c))return;
+    if(isMossaFalsa()){
+      mossaConteggio++;
+      mossaResetPending=true;
+      mossiereMsg='❌ '+c.nome+' ha tirato la mossa... MOSSA FALSA! Da rifare ('+mossaConteggio+')';
+      mossiereMsgTimer=130;
+      setTimeout(()=>{
+        if(mossaTerminata){mossaResetPending=false;return;}
+        tempoRimasto=Math.min(tempoRimasto,180);
+        cavalli.forEach((cc,ii)=>{
+          cc.x=clamp(xPositions[ii]+rf(-10,10), ZONA_X+HORSE_R+4, ZONA_X+ZONA_W-HORSE_R-4);
+          cc.y=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.60+rf(-12,12), CANAPO_Y+HORSE_R+2, H_ZONA-HORSE_R-4);
+          cc.angolo=rf(-0.3,0.3);
+          cc.aiTimer=rnd(40,100);
+          cc.decisioneMossaTimer=rnd(35,90);
+          cc.zonaLontanaTimer=0;
+          cc.vuoleScattare=false;
+          if(cc.isRincorsa){cc.tondinoFase='giro';cc.tondinoAngle=rf(0,Math.PI*2);cc.rincorsaProssimoLancio=tempoTrascorso+rf(20,40);}
+          cc.walkVelX=0; cc.walkVelY=0;
+          cc.nerveImpulseX=0; cc.nerveImpulseY=0;
+          if(cc.aiTargetY!==undefined) cc.aiTargetY=cc.y;
+          if(cc.aiTargetX!==undefined) cc.aiTargetX=cc.x;
+        });
+        mossaResetPending=false;
+      },1500);
+    } else if(isMossaValida()){
+      const multByContrada=calcolaBonusTutteContrade();
+      const mult=multByContrada[miaContrada]!==undefined?multByContrada[miaContrada]:0;
+      const {esito,msg}=calcolaBonusGiocatore();
+      mossiereMsg='🏳️ Mossa data da '+c.nome+'!';
+      mossiereMsgTimer=60;
+      afterMossa(mult,esito,msg,multByContrada);
+    }
+    // Se non è né falsa né valida (qualcuno ancora fuori posizione ma nessuno
+    // girato oltre il limite), il tentativo semplicemente non ha effetto: il
+    // mossiere non dà la mossa e si ricomincia ad aspettare.
+  }
+
+  // Scatta giocatore
+  function scattaGiocatore(){
+    if(mossaTerminata)return;
+    // Guard anti-rimbalzo: vedi commento in scattaAI().
+    if(mossaResetPending)return;
+    const mio=cavalli.find(c=>c.isPlayer);
+    if(!mio||mio.squalificato)return;
+    // Se una contrada avversaria si trova nella zona lontana dal canapo,
+    // la mossa data dal giocatore non è valida: il mossiere non la dà.
+    if(cAvversarioInZonaLontana()){
+      mossiereMsg='⚠ C\'è una contrada troppo lontana dal canapo: mossa non data!';
+      mossiereMsgTimer=80;
+      return;
+    }
+    if(isMossaFalsa()){
+      mossaConteggio++;
+      mossaResetPending=true;
+      mossiereMsg='❌ MOSSA FALSA! Da rifare ('+mossaConteggio+')';
+      mossiereMsgTimer=120;
+      setTimeout(()=>{
+        if(mossaTerminata){mossaResetPending=false;return;}
+        tempoRimasto=Math.min(tempoRimasto,180); // dopo falsa max 90s rimasti
+        cavalli.forEach((c,i)=>{
+          // Riporta tutti i cavalli dentro la zona mossa (sotto il canapo, dentro i bordi laterali)
+          c.x=clamp(xPositions[i]+rf(-10,10), ZONA_X+HORSE_R+4, ZONA_X+ZONA_W-HORSE_R-4);
+          c.y=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.60+rf(-12,12), CANAPO_Y+HORSE_R+2, H_ZONA-HORSE_R-4);
+          c.angolo=rf(-0.3,0.3);
+          c.aiTimer=rnd(40,100);
+          c.decisioneMossaTimer=rnd(35,90);
+          c.zonaLontanaTimer=0;
+          c.vuoleScattare=false;
+          if(c.isRincorsa){c.tondinoFase='giro';c.tondinoAngle=rf(0,Math.PI*2);c.rincorsaProssimoLancio=tempoTrascorso+rf(20,40);}
+          c.walkVelX=0; c.walkVelY=0;
+          c.nerveImpulseX=0; c.nerveImpulseY=0;
+          if(c.aiTargetY!==undefined) c.aiTargetY=c.y;
+          if(c.aiTargetX!==undefined) c.aiTargetX=c.x;
+        });
+        mossaResetPending=false;
+      },1500);
+    } else if(isMossaValida()){
+      const {mult,esito,msg}=calcolaBonusGiocatore();
+      const multByContrada=calcolaBonusTutteContrade();
+      afterMossa(mult,esito,msg,multByContrada);
+    } else {
+      mossiereMsg='⚠ Aspetta che tutti siano pronti!';
+      mossiereMsgTimer=80;
+    }
+  }
+
+  // ── DISEGNO CAVALLO DALL'ALTO (con animazione zampe e oscillazione corpo) ──
+  // walkPhase: fase ciclo camminata (0..2PI), usata per animare zampe e oscillazione
+  function drawHorse(ctx, cx, cy, angle, isPlayer, nomeCont, walkPhase, nerv){
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(angle);
+
+    const R=HORSE_R;
+    // Oscillazione laterale del corpo (rollio) sincronizzata con il passo
+    const rollAmpl = 0.03 + (nerv||1)*0.008; // più nervoso = più oscillazione
+    const bodyRoll = Math.sin(walkPhase)*rollAmpl;
+
+    // Giocatore: marrone chiaro caldo; AI: marrone scuro
+    const colBody=isPlayer?'#C8864A':'#3D1E0A';
+    const colBodyDark=isPlayer?'#9B6230':'#231008';
+    const colOutline=isPlayer?'rgba(220,160,80,0.9)':'rgba(90,50,20,0.85)';
+    const colLeg=isPlayer?'#7A4820':'#1A0A04';
+    const colHoof=isPlayer?'#4A2A10':'#0D0804';
+
+    // Piccola oscillazione verticale (trotto leggero)
+    const bobY = Math.sin(walkPhase*2)*1.2;
+    ctx.translate(0, bobY);
+    ctx.rotate(bodyRoll);
+
+    // ── ZAMPE (disegnate PRIMA del corpo per stare sotto) ──
+    // 4 zampe in posizioni anatomiche: anteriori e posteriori, sinistra e destra
+    // Fase: anteriore sx e posteriore dx si muovono insieme (passo diagonale)
+    const legStride = R*0.30; // ampiezza passo
+    const phase = walkPhase;
+
+    // Posizioni base zampe (in coordinate corpo)
+    const legs=[
+      // [xBase, yBase, phaseOffset]
+      [-R*0.30, -R*0.38, 0],        // anteriore sinistra
+      [ R*0.30, -R*0.38, Math.PI],  // anteriore destra (opposta)
+      [-R*0.30,  R*0.30, Math.PI],  // posteriore sinistra
+      [ R*0.30,  R*0.30, 0],        // posteriore destra
+    ];
+    legs.forEach(([bx,by,ph])=>{
+      const legPhase = phase+ph;
+      const stepX = Math.sin(legPhase)*legStride*0.25;
+      const stepY = Math.cos(legPhase)*legStride*0.18;
+      // Sollevamento zampa: quando è nella fase di swing (sin > 0)
+      const lift = Math.max(0, Math.sin(legPhase))*R*0.14;
+      const lx=bx+stepX, ly=by+stepY;
+      // Gamba: linea dalla base al zoccolo
+      ctx.strokeStyle=colLeg;ctx.lineWidth=R*0.13;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(lx,ly+R*0.22-lift);ctx.stroke();
+      // Zoccolo
+      ctx.fillStyle=colHoof;
+      ctx.beginPath();ctx.ellipse(lx,ly+R*0.22-lift,R*0.09,R*0.055,legPhase*0.15,0,Math.PI*2);ctx.fill();
+    });
+
+    // ── CORPO principale (ovale allungato) ──
+    ctx.fillStyle=colBody;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, R*0.46, R*0.82, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle=colOutline;ctx.lineWidth=1.8;ctx.stroke();
+
+    // Riflesso/dorsale (linea scura centrale)
+    ctx.strokeStyle=colBodyDark;ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.moveTo(0,-R*0.76);ctx.lineTo(0,R*0.72);ctx.stroke();
+
+    // ── CODA (oscillazione naturale, attaccata direttamente al corpo) ──
+    const tailSwing = Math.sin(walkPhase*0.7 + 0.5)*0.22;
+    // Ciocche coda: partono dal bordo posteriore del corpo (niente più giuntura/ellisse separata)
+    ctx.strokeStyle=isPlayer?'#C8834A':'#2A1206';
+    ctx.lineWidth=2.4;
+    ctx.lineCap='round';
+    for(let a=-0.32;a<=0.32;a+=0.16){
+      const tw=tailSwing+a*0.6;
+      ctx.beginPath();
+      ctx.moveTo(Math.sin(tw)*R*0.12, R*0.74);
+      const tailEnd=R*1.18+Math.sin(walkPhase*0.9)*R*0.08;
+      ctx.quadraticCurveTo(
+        Math.sin(tw)*R*0.28, R*0.96,
+        Math.sin(tw+0.15)*R*0.38, tailEnd
+      );
+      ctx.stroke();
+    }
+    // Sfumatura/ciocche più scure sopra, stesso identico tracciato
+    ctx.strokeStyle=isPlayer?'rgba(200,130,60,0.75)':'rgba(55,25,8,0.75)';
+    ctx.lineWidth=1.3;
+    for(let a=-0.32;a<=0.32;a+=0.16){
+      const tw=tailSwing+a*0.6;
+      ctx.beginPath();
+      ctx.moveTo(Math.sin(tw)*R*0.12, R*0.74);
+      const tailEnd=R*1.18+Math.sin(walkPhase*0.9)*R*0.08;
+      ctx.quadraticCurveTo(
+        Math.sin(tw)*R*0.28, R*0.96,
+        Math.sin(tw+0.15)*R*0.38, tailEnd
+      );
+      ctx.stroke();
+    }
+
+    // ── TESTA (leggero ondeggiamento) ──
+    const headBob = Math.sin(walkPhase)*R*0.04;
+    const headLat = Math.cos(walkPhase*0.5)*R*0.03;
+    ctx.fillStyle=colBodyDark;
+    ctx.beginPath();
+    ctx.ellipse(headLat, -R*0.78+headBob, R*0.26, R*0.30, headLat*0.04, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle=colOutline;ctx.lineWidth=1.2;ctx.stroke();
+
+    // Collo (raccorda testa al corpo)
+    ctx.fillStyle=colBody;
+    ctx.beginPath();
+    ctx.moveTo(-R*0.18, -R*0.45);
+    ctx.quadraticCurveTo(headLat*1.5-R*0.04, -R*0.60+headBob, headLat-R*0.22, -R*0.70+headBob);
+    ctx.quadraticCurveTo(headLat*1.5+R*0.04, -R*0.60+headBob, R*0.18, -R*0.45);
+    ctx.fill();
+
+    // Muso/testa
+    ctx.fillStyle=colBodyDark;
+    ctx.beginPath();ctx.ellipse(headLat,-R*1.02+headBob,R*0.13,R*0.18,headLat*0.06,0,Math.PI*2);ctx.fill();
+
+    // Narici
+    ctx.fillStyle=isPlayer?'rgba(120,60,20,0.7)':'rgba(30,10,4,0.7)';
+    ctx.beginPath();ctx.ellipse(headLat-R*0.07,-R*1.12+headBob,R*0.04,R*0.028,0.3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(headLat+R*0.07,-R*1.12+headBob,R*0.04,R*0.028,-0.3,0,Math.PI*2);ctx.fill();
+
+    // Orecchie (due V rovesciate, "^")
+    ctx.strokeStyle=colBodyDark;
+    ctx.lineWidth=R*0.07;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    // Orecchio sinistro
+    ctx.beginPath();
+    ctx.moveTo(headLat-R*0.16,-R*0.90+headBob);
+    ctx.lineTo(headLat-R*0.105,-R*1.05+headBob);
+    ctx.lineTo(headLat-R*0.05,-R*0.90+headBob);
+    ctx.stroke();
+    // Orecchio destro
+    ctx.beginPath();
+    ctx.moveTo(headLat+R*0.05,-R*0.90+headBob);
+    ctx.lineTo(headLat+R*0.105,-R*1.05+headBob);
+    ctx.lineTo(headLat+R*0.16,-R*0.90+headBob);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Pallino contrada AL CENTRO del cavallo (sopra, come fantino in sella)
+    drawContradaDot(ctx, cx, cy, 12, nomeCont);
+  }
+
+  // ── RENDER FRAME ──
+  function draw(timestamp){
+    if(mossaTerminata)return;
+    if(!canvas.isConnected){cancelAnimationFrame(_raceAnimFrame);_raceAnimFrame=null;return;}
+
+    const dt=(lastTimestamp?Math.min((timestamp-lastTimestamp)/1000,0.1):0.016);
+    lastTimestamp=timestamp;
+    if(gameStarted){
+      tempoRimasto=Math.max(0,tempoRimasto-dt);
+      tempoTrascorso+=dt;
+    }
+
+    // Timer display
+    const timerEl=R('MOSSA_TIMER');
+    const mm=Math.floor(tempoRimasto/60), ss=Math.ceil(tempoRimasto%60);
+    if(timerEl)timerEl.textContent='⏱ '+mm+':'+(ss<10?'0':'')+ss;
+    const statusEl=R('MOSSA_STATUS');
+
+    // Timeout
+    if(tempoRimasto<=0&&!mossaTerminata){
+      afterMossa(0.1,'LIMITE','⏰ Tempo scaduto — mossa al limite!',calcolaBonusTutteContrade());
+      return;
+    }
+
+    ctx.clearRect(0,0,W_ZONA,H_ZONA);
+
+    // ── SFONDO ──
+    // Erba a sinistra
+    ctx.fillStyle='#1E4010';
+    ctx.fillRect(0,0,ZONA_X,H_ZONA);
+    // Trattini erba sx
+    ctx.strokeStyle='rgba(60,100,30,0.5)';ctx.lineWidth=1;
+    for(let yy=10;yy<H_ZONA;yy+=14){for(let xx=4;xx<ZONA_X-4;xx+=8){ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+rf(-2,2),yy-5);ctx.stroke();}}
+
+    // Zona mossa (sabbia chiara)
+    const sandGrad=ctx.createLinearGradient(ZONA_X,0,ZONA_X+ZONA_W,0);
+    sandGrad.addColorStop(0,'#D4B483');
+    sandGrad.addColorStop(0.5,'#C8A870');
+    sandGrad.addColorStop(1,'#BFA060');
+    ctx.fillStyle=sandGrad;
+    ctx.fillRect(ZONA_X,0,ZONA_W,H_ZONA);
+
+    // Zona pista oltre il canapo (sabbia più chiara/diversa)
+    ctx.fillStyle='#C8A050';
+    ctx.fillRect(ZONA_X,0,ZONA_W,CANAPO_Y);
+    // Frecce pista
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('↑ PISTA ↑',(ZONA_X+ZONA_X+ZONA_W)/2,CANAPO_Y-8);
+
+    // Texture sabbia (linee sottili orizzontali)
+    ctx.strokeStyle='rgba(160,120,50,0.2)';ctx.lineWidth=1;
+    for(let yy=CANAPO_Y+15;yy<H_ZONA;yy+=18){
+      ctx.beginPath();ctx.moveTo(ZONA_X,yy);ctx.lineTo(ZONA_X+ZONA_W,yy);ctx.stroke();
+    }
+
+    // Erba a destra (tra zona mossa e mossiere)
+    // Il mossiere è a destra fuori — non c'è fascia verde tra zona e mossiere
+    // Quadrato mossiere destra (marrone, a livello del canapo)
+    const MOS_X=ZONA_X+ZONA_W; // inizio quadrato mossiere
+    const MOS_Y=CANAPO_Y-18;   // allineato alla linea del canapo (sopra-sotto)
+    const MOS_H=36;
+    ctx.fillStyle='#4A2A0A';
+    ctx.strokeStyle='rgba(201,168,76,0.7)';ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.rect(MOS_X,MOS_Y,MOSSIERE_W,MOS_H);
+    ctx.fill();ctx.stroke();
+    // Emoji mossiere
+    ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('🏳️',MOS_X+MOSSIERE_W/2,MOS_Y+MOS_H/2+5);
+    // Label MOSSIERE (verticale o piccola)
+    ctx.fillStyle='rgba(201,168,76,0.8)';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+    ctx.fillText('MOSS.',MOS_X+MOSSIERE_W/2,MOS_Y+MOS_H+10);
+
+    // Erba restante a destra sotto il quadrato mossiere
+    ctx.fillStyle='#1E4010';
+    ctx.fillRect(MOS_X,0,MOSSIERE_W,MOS_Y);
+    ctx.fillRect(MOS_X,MOS_Y+MOS_H,MOSSIERE_W,H_ZONA-MOS_Y-MOS_H);
+    // Trattini erba dx
+    ctx.strokeStyle='rgba(60,100,30,0.5)';ctx.lineWidth=1;
+    for(let yy=10;yy<H_ZONA;yy+=14){for(let xx=MOS_X+3;xx<W_ZONA-3;xx+=8){ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+rf(-2,2),yy-5);ctx.stroke();}}
+
+    // ── CANAPO ──
+    ctx.strokeStyle='#F5C842';ctx.lineWidth=4;
+    ctx.shadowColor='#F5C842';ctx.shadowBlur=10;
+    ctx.beginPath();ctx.moveTo(ZONA_X,CANAPO_Y);ctx.lineTo(ZONA_X+ZONA_W,CANAPO_Y);ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(245,200,66,0.35)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(ZONA_X,CANAPO_Y+3);ctx.lineTo(ZONA_X+ZONA_W,CANAPO_Y+3);ctx.stroke();
+    // Label canapo
+    ctx.fillStyle='#F5C842';ctx.font='bold 8px sans-serif';ctx.textAlign='left';
+    ctx.fillText('CANAPO',ZONA_X+3,CANAPO_Y-5);
+
+    // ── MESSAGGIO MOSSIERE ──
+    if(mossiereMsgTimer>0){
+      mossiereMsgTimer--;
+      const msgX=(ZONA_X+ZONA_X+ZONA_W)/2, msgY=CANAPO_Y+22;
+      ctx.fillStyle='rgba(0,0,0,0.78)';
+      ctx.beginPath();ctx.roundRect(ZONA_X+10,msgY-14,ZONA_W-20,22,8);ctx.fill();
+      ctx.fillStyle=mossiereMsg.includes('❌')||mossiereMsg.includes('🚫')?'#E05555':'#F5C842';
+      ctx.font='bold 10px sans-serif';ctx.textAlign='center';
+      ctx.fillText(mossiereMsg,msgX,msgY+3);
+    }
+
+    // ── AI CAVALLI: nervosismo crescente col tempo ──
+    const fattoreTempoNerv=Math.min(1, tempoTrascorso/90);
+    const mioC=cavalli.find(c=>c.isPlayer);
+
+    // ── TROVA CAVALLO NEMICA ──
+    const nemicaContrada = F.nemica || null;
+    const cavNemica = nemicaContrada ? cavalli.find(c=>c.nome===nemicaContrada&&!c.squalificato) : null;
+    // Distanza giocatore-nemica (normalizzata: 0=sovrapposti, 1=distanza massima ~200px)
+    let distNemica = 1.0;
+    if(mioC && cavNemica){
+      const dx=mioC.x-cavNemica.x, dy=mioC.y-cavNemica.y;
+      distNemica = Math.min(1.0, Math.hypot(dx,dy)/160);
+    }
+    // Intensità disturbo nemica: 0 (lontana) → 1 (vicinissima, <20px)
+    const disturbonemica = Math.max(0, 1.0 - distNemica);
+    // Fattore globale di difficoltà: nemica vicina + nervosismo base
+    const nemicaVicinaFactor = disturbonemica * (0.5 + nervCav*0.1);
+
+    // ── TRE LIVELLI DI MALPOSIZIONAMENTO del giocatore ──
+    const _playerDistY = mioC && !mioC.squalificato ? mioC.y - CANAPO_Y : 0;
+    const _playerAngAbs = mioC && !mioC.squalificato ? Math.abs(mioC.angolo) : 0;
+    const playerMalposizionato = mioC && !mioC.squalificato && (
+      _playerDistY > (H_ZONA-CANAPO_Y)*0.50 || _playerAngAbs > 0.40
+    );
+    const playerMalposizionatoGrave = mioC && !mioC.squalificato && (
+      _playerDistY > (H_ZONA-CANAPO_Y)*0.68 || _playerAngAbs > 0.80
+    );
+
+    cavalli.forEach((c,i)=>{
+      if(c.isPlayer)return;
+      if(c.squalificato)return;
+
+      // Inizializza stato AI esteso se mancante
+      if(c.aiVelX===undefined){c.aiVelX=0;c.aiVelY=0;c.aiPhase='approach';c.aiWaitTimer=0;}
+      if(c._aggrOn===undefined) c._aggrOn=false;
+
+      // ── AGGIORNA FASE CAMMINATA (velocità proporzionale al nervosismo) ──
+      // cavallo nervoso cammina più freneticamente
+      const walkSpeed = 0.04 + c.nerv*0.018 + fattoreTempoNerv*0.02;
+      c.walkPhase = (c.walkPhase||0) + walkSpeed;
+
+      c.aiTimer--;
+      c.jitterTimer--;
+      c.walkDirTimer = (c.walkDirTimer||0) - 1;
+
+      // ── CAMBIO DIREZIONE ORGANICO ──
+      // Il cavallo sceglie un nuova direzione di passo ogni walkDirTimer frame
+      if(c.walkDirTimer<=0){
+        const nervFactor=c.nerv/5*(0.3+fattoreTempoNerv*0.7);
+        // Più nervoso = cambia direzione più spesso e più bruscamente
+        c.walkDirTimer = rnd(Math.max(8,40-c.nerv*6), Math.max(20,100-c.nerv*12));
+        // Direzione di passo: preferisce muoversi avanti/indietro (asse Y) con derive laterali
+        const biasVersoCanapo = c._aggrOn ? 0.7 : 0.3;
+        const dy = rf(-1.0, 1.0) - biasVersoCanapo*0.5; // tende ad andare avanti
+        const dx = rf(-0.6, 0.6)*(0.4+nervFactor*0.6);
+        const mag = Math.hypot(dx,dy)||1;
+        const speed = (0.4 + c.nerv*0.25 + (c._aggrOn?0.8:0)) * (1+fattoreTempoNerv*0.5);
+        c.walkVelX = (dx/mag)*speed;
+        c.walkVelY = (dy/mag)*speed;
+        // Impulso nervoso: lo scatto improvviso di un cavallo irrequieto
+        if(Math.random()<nervFactor*0.4){
+          c.nerveImpulseX = rf(-1.8,1.8)*nervFactor*(c._aggrOn?1.6:1.0);
+          c.nerveImpulseY = rf(-1.2,1.2)*nervFactor*(c._aggrOn?1.6:1.0);
+        } else {
+          c.nerveImpulseX*=0.85; c.nerveImpulseY*=0.85;
+        }
+      } else {
+        // Decadimento impulso nervoso
+        c.nerveImpulseX=(c.nerveImpulseX||0)*0.92;
+        c.nerveImpulseY=(c.nerveImpulseY||0)*0.92;
+      }
+
+      // Jitter nervoso (cambio angolo improvviso senza spostamento)
+      if(c.jitterTimer<=0){
+        c.jitterTimer=rnd(12,45);
+        const nervFactor=c.nerv/5*(0.3+fattoreTempoNerv*0.7);
+        if(Math.random()<nervFactor){
+          const jittAng=rf(-Math.PI*0.4*nervFactor, Math.PI*0.4*nervFactor);
+          c.aiTargetAngle=clamp(c.aiTargetAngle+jittAng,-Math.PI,Math.PI);
+        }
+      }
+
+      // ── COMPORTAMENTO AI in base al malposizionamento del giocatore ──
+      // Limiti zona mossa: i cavalli non possono uscire dalla zona delimitata dal canapo
+      const AI_MIN_Y = CANAPO_Y + HORSE_R + 2; // minimo Y: appena sotto il canapo
+      const AI_MAX_Y = H_ZONA - HORSE_R - 4;   // massimo Y: fondo canvas
+      const AI_MIN_X = ZONA_X + HORSE_R + 5;   // minimo X: bordo sinistro zona mossa
+      const AI_MAX_X = ZONA_X + ZONA_W - HORSE_R - 5; // massimo X: bordo destro zona mossa
+
+      if(gameStarted && playerMalposizionatoGrave){
+        c._aggrOn=true;
+        const aggrFactor=0.50+c.nerv*0.09+fattoreTempoNerv*0.22;
+        if(c.aiTimer<=0){
+          c.aiTimer=rnd(6,18);
+          // Clamp aiTargetY: i cavalli restano dentro la zona mossa (sotto il canapo)
+          c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.12+rf(-5,5), AI_MIN_Y, AI_MAX_Y);
+          c.aiTargetX=clamp(xPositions[i]+rf(-10,10), AI_MIN_X, AI_MAX_X);
+          const probFalsa=aggrFactor*(0.40+c.nerv*0.08);
+          if(Math.random()<probFalsa){
+            const lato=Math.random()<0.5?1:-1;
+            c.aiTargetAngle=lato*rf(Math.PI*0.48, Math.PI*0.75);
+          } else {
+            c.aiTargetAngle=rf(-0.14,0.14);
+          }
+          // In questa fase l'AI si avvicina al canapo, overrida il walk
+          c.walkVelY = -1.5 - c.nerv*0.3;
+          c.walkVelX *= 0.4;
+        }
+      } else if(gameStarted && playerMalposizionato){
+        c._aggrOn=true;
+        const aggressione=0.28+c.nerv*0.07+fattoreTempoNerv*0.25;
+        if(c.aiTimer<=0){
+          c.aiTimer=rnd(12,32);
+          // Clamp aiTargetY: i cavalli restano dentro la zona mossa (sotto il canapo)
+          c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.18+rf(-8,8), AI_MIN_Y, AI_MAX_Y);
+          c.aiTargetX=clamp(xPositions[i]+rf(-16,16), AI_MIN_X, AI_MAX_X);
+          const probFalsa=aggressione*0.30+c.nerv*0.04;
+          if(Math.random()<probFalsa){
+            const lato=Math.random()<0.5?1:-1;
+            c.aiTargetAngle=lato*rf(Math.PI*0.44,Math.PI*0.62);
+          } else {
+            c.aiTargetAngle=rf(-0.20,0.20);
+          }
+          c.walkVelY = -0.9 - c.nerv*0.15;
+        }
+      } else {
+        c._aggrOn=false;
+        if(c.aiTimer<=0){
+          c.aiTimer=rnd(45,130);
+          const fase=Math.random();
+          if(fase<0.5){
+            // Clamp aiTargetY: i cavalli restano dentro la zona mossa (sotto il canapo)
+            c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*(0.15+Math.random()*0.25)+rf(-10,10), AI_MIN_Y, AI_MAX_Y);
+          } else if(fase<0.75){
+            c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*(0.4+Math.random()*0.25)+rf(-10,10), AI_MIN_Y, AI_MAX_Y);
+          } else {
+            c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.2+rf(-15,15), AI_MIN_Y, AI_MAX_Y);
+          }
+          c.aiTargetX=clamp(xPositions[i]+rf(-22,22), AI_MIN_X, AI_MAX_X);
+          const probRibelle=0.12+c.nerv*0.05+fattoreTempoNerv*0.18;
+          if(Math.random()<probRibelle){
+            c.aiTargetAngle=rf(-Math.PI*0.8,Math.PI*0.8);
+          } else {
+            c.aiTargetAngle=rf(-0.28,0.28);
+          }
+        }
+      }
+
+      // ── TONDINO DELLA RINCORSA ──
+      // Il cavallo di rincorsa (pos.4) non sta fermo al canapo come gli altri:
+      // resta lontano dal canapo e descrive una traiettoria ovaleggiante in
+      // senso orario ("fa tondino"), aspettando il momento favorevole per
+      // poi lanciarsi verso il canapo con la rincorsa e dare la mossa.
+      if(c.isRincorsa && !c.squalificato){
+        if(c.tondinoFase===undefined||c.tondinoFase===null) c.tondinoFase='giro';
+
+        if(c.tondinoFase==='giro'){
+          c._aggrOn=false;
+          // Centro e raggi dell'ovale: l'ovale è disteso in orizzontale (largo
+          // lungo la pista, basso in altezza) e il suo centro è spostato verso
+          // il lato del canapo vicino al mossiere (destra), così il punto
+          // dell'ovale più vicino al canapo cade in quell'angolo — esattamente
+          // come nella rincorsa reale, dove il cavallo gira in largo prima di
+          // lanciarsi rasente al lato del mossiere.
+          const ovCx = _ZONA_INNER_MIN + _ZONA_INNER_W*0.42;
+          const ovCy = CANAPO_Y + (H_ZONA-CANAPO_Y)*0.58;
+          const ovRx = Math.min(_ZONA_INNER_W*0.40, 70);
+          const ovRy = Math.min((H_ZONA-CANAPO_Y)*0.20, 34);
+          // Velocità angolare del giro: cavalli più nervosi girano più svelti
+          const tondinoSpeed = 0.018 + c.nerv*0.006 + fattoreTempoNerv*0.006;
+          c.tondinoAngle = (c.tondinoAngle||0) + tondinoSpeed; // senso ORARIO (angolo crescente, con asse Y verso il basso sullo schermo)
+          c.aiTargetX = clamp(ovCx + Math.sin(c.tondinoAngle)*ovRx, AI_MIN_X, AI_MAX_X);
+          c.aiTargetY = clamp(ovCy - Math.cos(c.tondinoAngle)*ovRy, AI_MIN_Y, AI_MAX_Y);
+          // Il corpo segue la tangente della traiettoria, ruotando per intero
+          // lungo tutto il giro (non un'oscillazione): a tondinoAngle=0 il
+          // cavallo si trova nel punto dell'ovale più vicino al canapo (lato
+          // mossiere) e lì il suo angolo è sfasato di 180° rispetto al moto,
+          // cioè mostra il POSTERIORE al canapo proprio in quel punto vicino
+          // al mossiere; man mano che il giro avanza in senso orario, il
+          // cavallo si rigira gradualmente fino a ritrovarsi col muso verso
+          // il canapo nel punto opposto, più lontano (pronto a ripartire).
+          c.angolo = (c.tondinoAngle + Math.PI) % (Math.PI*2);
+          if(c.angolo>Math.PI) c.angolo-=Math.PI*2;
+          if(c.angolo<-Math.PI) c.angolo+=Math.PI*2;
+          c.aiTargetAngle = c.angolo;
+
+          // Ogni "intervallo tempo x" (random 20-40 secondi) la rincorsa esce
+          // dal tondino e si lancia verso il canapo per dare la mossa, a
+          // prescindere dal punto del giro in cui si trova: non aspetta più
+          // necessariamente il punto "favorevole" dell'ovale, è disposta a
+          // tentarla comunque — anche a rischio di darla falsa.
+          // In aggiunta, se il giocatore è gravemente mal posizionato, la
+          // rincorsa può comunque approfittarne e lanciarsi in anticipo.
+          const vogliaOpportunista = gameStarted && tempoTrascorso>=20 && playerMalposizionatoGrave && Math.random()<(0.85+c.nerv*0.03);
+          if((gameStarted && tempoTrascorso>=20 && tempoTrascorso>=c.rincorsaProssimoLancio) || vogliaOpportunista){
+            c.tondinoFase='rincorsa';
+            c.decisioneMossaTimer=rnd(18,34); // tempo di rincorsa prima di dare la mossa
+            // Programma il prossimo intervallo (20-40s da ora), nel caso questo
+            // tentativo non vada a buon fine e si torni a fare il tondino.
+            c.rincorsaProssimoLancio = tempoTrascorso + rf(20,40);
+          }
+        } else if(c.tondinoFase==='rincorsa'){
+          // Si lancia dal tondino verso il canapo, in corsia, per dare la mossa
+          c._aggrOn=true;
+          c.aiTargetX=clamp(xPositions[i]+rf(-8,8), AI_MIN_X, AI_MAX_X);
+          c.aiTargetY=clamp(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.13+rf(-5,5), AI_MIN_Y, AI_MAX_Y);
+          c.aiTargetAngle=rf(-0.12,0.12);
+          c.walkVelY = -2.0 - c.nerv*0.3;
+          c.walkVelX *= 0.5;
+          const vicinaAlCanapo = (c.y-CANAPO_Y) < (H_ZONA-CANAPO_Y)*0.22;
+          if(c.decisioneMossaTimer<=0 || vicinaAlCanapo){
+            c.decisioneMossaTimer=0;
+            if(vicinaAlCanapo && tempoTrascorso>=20){
+              // Con la rincorsa lanciata, tira la mossa per coglierla al meglio
+              scattaAI(c);
+              // Se la mossa non è scattata (mossiere non l'ha data), ricomincia il tondino
+              if(!mossaTerminata){ c.tondinoFase='giro'; c.aiTimer=rnd(15,30); }
+            }
+          }
+          c.decisioneMossaTimer--;
+        }
+      } else if(!c.squalificato){
+        // ── DECISIONE DI DARE LA MOSSA (le tre contrade NON di rincorsa) ──
+        // A parte la contrada del giocatore, solo la rincorsa (pos.4) può
+        // tirare la mossa: le altre tre contrade al canapo non tentano mai
+        // di darla da sole, restano semplicemente in attesa.
+      }
+
+      // ── APPLICA MOVIMENTO REALISTICO (walk + impulsi nervosi) ──
+      // Il cavallo si muove con le proprie gambe, non "vola" verso un target
+      const walkFriction = 0.88; // smorzamento naturale
+      c.walkVelX = (c.walkVelX||0)*walkFriction;
+      c.walkVelY = (c.walkVelY||0)*walkFriction;
+
+      // Attrazione morbida verso la propria corsia (x) e zona mossa (y)
+      const dxLane = (c.aiTargetX||xPositions[i]) - c.x;
+      const dyZone = (c.aiTargetY||(CANAPO_Y+(H_ZONA-CANAPO_Y)*0.60)) - c.y;
+      const pullStr = c._aggrOn ? 0.028 : 0.018;
+      c.walkVelX += dxLane * pullStr;
+      c.walkVelY += dyZone * pullStr;
+
+      // ── FORZA REPULSIVA: evita che i cavalli si sovrappongano avvicinandosi ──
+      // Più un altro cavallo è vicino, più forte è la spinta a distanziarsi.
+      // Agisce su un raggio più ampio della sola collisione fisica, così l'AI
+      // "sente" gli altri cavalli avvicinarsi e li evita in modo fluido.
+      const REPEL_RADIUS = HORSE_R * 2.6;
+      let repX=0, repY=0;
+      for(let j=0;j<cavalli.length;j++){
+        if(j===i)continue;
+        const other=cavalli[j];
+        if(other.squalificato)continue;
+        const rdx=c.x-other.x, rdy=c.y-other.y;
+        const rdist=Math.hypot(rdx,rdy)||0.01;
+        if(rdist<REPEL_RADIUS){
+          // Intensità inversamente proporzionale alla distanza (più vicino = più forte)
+          const strength=(1 - rdist/REPEL_RADIUS);
+          const repForce=strength*strength*1.6;
+          repX += (rdx/rdist)*repForce;
+          repY += (rdy/rdist)*repForce;
+        }
+      }
+      c.walkVelX += repX;
+      c.walkVelY += repY;
+
+      // Velocità massima naturale del cavallo
+      const maxWalkSpd = playerMalposizionatoGrave ? 2.8 : playerMalposizionato ? 2.0 : (0.8+c.nerv*0.22);
+      const spdNow=Math.hypot(c.walkVelX,c.walkVelY);
+      if(spdNow>maxWalkSpd){c.walkVelX=c.walkVelX/spdNow*maxWalkSpd;c.walkVelY=c.walkVelY/spdNow*maxWalkSpd;}
+
+      // Clamp finale: i cavalli AI restano SEMPRE dentro la zona mossa (sotto il canapo, dentro i bordi laterali)
+      c.x=clamp(c.x + c.walkVelX + (c.nerveImpulseX||0), ZONA_X+HORSE_R+2, ZONA_X+ZONA_W-HORSE_R-2);
+      c.y=clamp(c.y + c.walkVelY + (c.nerveImpulseY||0), CANAPO_Y+HORSE_R+2, H_ZONA-HORSE_R-4);
+      // Anche il target Y viene clampato per evitare attrazioni fuori zona
+      if(c.aiTargetY!==undefined) c.aiTargetY=clamp(c.aiTargetY, CANAPO_Y+HORSE_R+2, H_ZONA-HORSE_R-4);
+      if(c.aiTargetX!==undefined) c.aiTargetX=clamp(c.aiTargetX, ZONA_X+HORSE_R+2, ZONA_X+ZONA_W-HORSE_R-2);
+
+      // Rotazione fluida verso target (l'angolo di fronte non segue necessariamente il moto)
+      c.angolo+=(c.aiTargetAngle-c.angolo)*0.04;
+      while(c.angolo>Math.PI)c.angolo-=Math.PI*2;
+      while(c.angolo<-Math.PI)c.angolo+=Math.PI*2;
+    });
+
+    // ── AGGIORNA GIOCATORE DA JOYSTICK ──
+    if(mioC&&!mioC.squalificato){
+      gameStarted=true;
+
+      // Aggiorna fase camminata del cavallo giocatore
+      const playerWalkSpeed = 0.035 + nervCav*0.015 + fattoreTempoNerv*0.015;
+      mioC.walkPhase = (mioC.walkPhase||0) + playerWalkSpeed;
+
+      const spd=2.2*(1-difficoltaMossa*0.35);
+      mioC.x=clamp(mioC.x+joySX*spd,ZONA_X+HORSE_R+4,ZONA_X+ZONA_W-HORSE_R-4);
+      mioC.y=clamp(mioC.y-joySY*spd,CANAPO_Y+HORSE_R+2,H_ZONA-HORSE_R-4);
+
+      // ── FORZA REPULSIVA sul cavallo del giocatore ──
+      // Una leggera spinta che si somma al controllo del joystick quando un
+      // altro cavallo si avvicina troppo, per evitare sovrapposizioni innaturali.
+      {
+        const REPEL_RADIUS_P = HORSE_R * 2.4;
+        let repPX=0, repPY=0;
+        cavalli.forEach(other=>{
+          if(other.isPlayer||other.squalificato)return;
+          const rdx=mioC.x-other.x, rdy=mioC.y-other.y;
+          const rdist=Math.hypot(rdx,rdy)||0.01;
+          if(rdist<REPEL_RADIUS_P){
+            const strength=(1-rdist/REPEL_RADIUS_P);
+            const repForce=strength*strength*1.1;
+            repPX += (rdx/rdist)*repForce;
+            repPY += (rdy/rdist)*repForce;
+          }
+        });
+        mioC.x=clamp(mioC.x+repPX,ZONA_X+HORSE_R+4,ZONA_X+ZONA_W-HORSE_R-4);
+        mioC.y=clamp(mioC.y+repPY,CANAPO_Y+HORSE_R+2,H_ZONA-HORSE_R-4);
+      }
+
+      // Rotazione completa con joystick
+      if(Math.abs(joySX)>0.1||Math.abs(joySY)>0.1){
+        const targetAng=joySX*Math.PI;
+        const steerResponse=0.10*(1-difficoltaMossa*0.4); // cavallo difficile = sterzo meno reattivo
+        mioC.angolo+=(targetAng-mioC.angolo)*steerResponse;
+      }
+      while(mioC.angolo>Math.PI)mioC.angolo-=Math.PI*2;
+      while(mioC.angolo<-Math.PI)mioC.angolo+=Math.PI*2;
+
+      // ── JITTER NERVOSO base del giocatore ──
+      // Più nervoso e meno gestione mossa = più difficile tenerlo fermo e dritto al canapo.
+      // Con difficoltaMossa massimo (nervosismo 5 + gestione mossa 1) il cavallo è
+      // pressoché ingestibile fin da subito; con difficoltaMossa minimo (nervosismo 1 +
+      // gestione mossa 5) il cavallo resta quasi sempre fermo e dritto.
+      mioC.jitterTimer--;
+      if(mioC.jitterTimer<=0){
+        // Cavalli più difficili si scompongono più spesso (timer più corto)
+        mioC.jitterTimer=rnd(Math.max(4,12-Math.round(difficoltaMossa*8)), Math.max(10,40-Math.round(difficoltaMossa*28)));
+        // Componente sempre presente (base) + componente che cresce col tempo trascorso
+        const nervJitter=clamp(difficoltaMossa*(0.35+0.65*fattoreTempoNerv), 0, 1);
+        if(Math.random()<0.15+nervJitter*0.85){
+          const sbandamento=rf(-Math.PI*0.4*nervJitter, Math.PI*0.4*nervJitter);
+          mioC.angolo+=sbandamento;
+          while(mioC.angolo>Math.PI)mioC.angolo-=Math.PI*2;
+          while(mioC.angolo<-Math.PI)mioC.angolo+=Math.PI*2;
+        }
+      }
+
+      // ── EFFETTO CONTRADA NEMICA VICINA ──
+      // Più la nemica è vicina, più il cavallo del giocatore diventa difficile da controllare
+      if(nemicaVicinaFactor > 0.05){
+        // 1. Il joystick risponde in modo meno preciso (riduzione sensibilità)
+        // — già gestito parzialmente dal jitter, ma aggiungiamo perturbazione sull'angolo
+        // 2. Impulsi nervosi aggiuntivi (scalpitio, sobbalzi)
+        mioC._nemicaJitterTimer = (mioC._nemicaJitterTimer||0) - 1;
+        if(mioC._nemicaJitterTimer<=0){
+          // Frequenza scatti aumenta con la vicinanza: da ~40 a ~8 frame tra uno scatto e l'altro
+          const freq = Math.round(40 - nemicaVicinaFactor*32);
+          mioC._nemicaJitterTimer = rnd(Math.max(4,freq-4), Math.max(8,freq+8));
+          // Perturbazione angolo: sbandamento proporzionale alla vicinanza e alla difficoltà di gestione del cavallo
+          const intensita = nemicaVicinaFactor * (0.4 + difficoltaMossa*0.6);
+          const sbandNN = rf(-Math.PI*0.45*intensita, Math.PI*0.45*intensita);
+          mioC.angolo += sbandNN;
+          while(mioC.angolo>Math.PI)mioC.angolo-=Math.PI*2;
+          while(mioC.angolo<-Math.PI)mioC.angolo+=Math.PI*2;
+          // Spostamento fisico involontario: il cavallo scalpita lateralmente
+          if(Math.random() < nemicaVicinaFactor*0.5){
+            const scalpito = rf(-2.5,2.5)*nemicaVicinaFactor*(0.5+difficoltaMossa);
+            mioC.x = clamp(mioC.x+scalpito, ZONA_X+HORSE_R+4, ZONA_X+ZONA_W-HORSE_R-4);
+          }
+        }
+
+        // Mostra indicatore di disturbo quando nemica è molto vicina
+        if(nemicaVicinaFactor > 0.45 && mossiereMsgTimer<=0){
+          // Messaggio dinamico proporzionale alla distanza
+          if(nemicaVicinaFactor > 0.75){
+            mossiereMsg='😤 '+nemicaContrada+' troppo vicina! Il tuo cavallo è agitato!';
+          } else {
+            mossiereMsg='⚠ '+nemicaContrada+' nelle vicinanze — cavallo nervoso';
+          }
+          mossiereMsgTimer=18; // breve, non intrusivo
+        }
+      }
+    }
+
+    // ── COLLISIONE: rete di sicurezza anti-sovrapposizione ──
+    // Le forze repulsive morbide calcolate sopra evitano già che i cavalli si
+    // affollino; questa correzione posizionale scatta solo se, nonostante tutto,
+    // due cavalli finiscono comunque troppo vicini, separandoli senza scatti bruschi.
+    const MIN_DIST = HORSE_R * 2.1; // distanza minima tra centri
+    const COLL_MIN_Y = CANAPO_Y+HORSE_R+2; // bordo superiore zona mossa
+    for(let iter=0; iter<3; iter++){
+      for(let a=0;a<cavalli.length;a++){
+        if(cavalli[a].squalificato)continue;
+        for(let b=a+1;b<cavalli.length;b++){
+          if(cavalli[b].squalificato)continue;
+          const dx=cavalli[b].x-cavalli[a].x;
+          const dy=cavalli[b].y-cavalli[a].y;
+          const dist=Math.hypot(dx,dy)||0.01;
+          if(dist<MIN_DIST){
+            const overlap=(MIN_DIST-dist);
+            const nx=dx/dist, ny=dy/dist;
+            const aIsPlayer=cavalli[a].isPlayer, bIsPlayer=cavalli[b].isPlayer;
+            // Se uno dei due è il giocatore, solo l'altro si sposta (il giocatore resta sotto controllo joystick);
+            // altrimenti la correzione si divide equamente tra entrambi.
+            if(aIsPlayer&&!bIsPlayer){
+              cavalli[b].x=clamp(cavalli[b].x+nx*overlap,ZONA_X+HORSE_R+2,ZONA_X+ZONA_W-HORSE_R-2);
+              cavalli[b].y=clamp(cavalli[b].y+ny*overlap,COLL_MIN_Y,H_ZONA-HORSE_R-4);
+            } else if(bIsPlayer&&!aIsPlayer){
+              cavalli[a].x=clamp(cavalli[a].x-nx*overlap,ZONA_X+HORSE_R+2,ZONA_X+ZONA_W-HORSE_R-2);
+              cavalli[a].y=clamp(cavalli[a].y-ny*overlap,COLL_MIN_Y,H_ZONA-HORSE_R-4);
+            } else if(!aIsPlayer&&!bIsPlayer){
+              const push=overlap/2;
+              cavalli[a].x=clamp(cavalli[a].x-nx*push,ZONA_X+HORSE_R+2,ZONA_X+ZONA_W-HORSE_R-2);
+              cavalli[a].y=clamp(cavalli[a].y-ny*push,COLL_MIN_Y,H_ZONA-HORSE_R-4);
+              cavalli[b].x=clamp(cavalli[b].x+nx*push,ZONA_X+HORSE_R+2,ZONA_X+ZONA_W-HORSE_R-2);
+              cavalli[b].y=clamp(cavalli[b].y+ny*push,COLL_MIN_Y,H_ZONA-HORSE_R-4);
+            }
+          }
+        }
+      }
+    }
+
+
+    // ── DISEGNA CAVALLI ──
+    cavalli.forEach(c=>{
+      if(c.squalificato){
+        ctx.fillStyle='rgba(224,85,85,0.6)';
+        ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+        ctx.fillText('✗',c.x,c.y+7);
+        return;
+      }
+      // Aura rossa per la contrada nemica vicina al giocatore
+      if(c.isPlayer && disturbonemica>0.3){
+        const auraPulse=0.5+Math.sin(Date.now()*0.008)*0.5;
+        const auraAlpha=(disturbonemica-0.3)/0.7*0.35*auraPulse;
+        ctx.save();
+        const auraGrad=ctx.createRadialGradient(c.x,c.y,HORSE_R*0.5,c.x,c.y,HORSE_R*1.8);
+        auraGrad.addColorStop(0,`rgba(224,85,85,${auraAlpha.toFixed(2)})`);
+        auraGrad.addColorStop(1,'rgba(224,85,85,0)');
+        ctx.fillStyle=auraGrad;
+        ctx.beginPath();ctx.arc(c.x,c.y,HORSE_R*1.8,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }
+      drawHorse(ctx, c.x, c.y, c.angolo, c.isPlayer, c.nome, c.walkPhase||0, c.nerv||1);
+      // Richiami (pallini rossi sotto)
+      for(let r=0;r<c.richiami;r++){
+        ctx.fillStyle='#E05555';
+        ctx.beginPath();ctx.arc(c.x-6+r*8,c.y+HORSE_R+10,4,0,Math.PI*2);ctx.fill();
+      }
+      if(c.isPlayer){
+        ctx.fillStyle='var(--gold)';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+        ctx.fillText('TU',c.x,c.y+HORSE_R+24);
+      }
+    });
+
+    // ── JOYSTICK ──
+    const jcx=ZONA_X+44, jcy=H_ZONA-54;
+    ctx.fillStyle='rgba(0,0,0,0.38)';
+    ctx.beginPath();ctx.arc(jcx,jcy,JOY_R,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(201,168,76,0.45)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(jcx,jcy,JOY_R,0,Math.PI*2);ctx.stroke();
+    const kx=jcx+joySX*JOY_R*0.6, ky=jcy-joySY*JOY_R*0.6;
+    ctx.fillStyle='rgba(201,168,76,0.75)';
+    ctx.beginPath();ctx.arc(kx,ky,JOY_KNOB,0,Math.PI*2);ctx.fill();
+
+    // ── TASTO SCATTA ──
+    const btx=ZONA_X+ZONA_W-44, bty=H_ZONA-54;
+    ctx.fillStyle='rgba(139,26,26,0.88)';
+    ctx.beginPath();ctx.arc(btx,bty,24,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='var(--gold)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(btx,bty,24,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#F5EDD6';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+    ctx.fillText('SCATTA',btx,bty+3);
+
+    // ── STATUS ──
+    const tuttiPronti=isMossaValida();
+    const qualcunoFalso=isMossaFalsa();
+    if(statusEl){
+      if(qualcunoFalso)statusEl.textContent='⚠ Cavallo girato — mossa NON valida';
+      else if(tuttiPronti)statusEl.textContent='✦ Tutti pronti — puoi scattare!';
+      else statusEl.textContent='Portati al canapo...';
+    }
+
+    _raceAnimFrame=requestAnimationFrame(draw);
+  }
+
+  // ── INPUT ──
+  function getCanvasXY(e){
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=W_ZONA/rect.width, scaleY=H_ZONA/rect.height;
+    const clientX=e.touches?e.touches[0].clientX:e.clientX;
+    const clientY=e.touches?e.touches[0].clientY:e.clientY;
+    return{x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY};
+  }
+
+  function onStart(e){
+    e.preventDefault();
+    const {x,y}=getCanvasXY(e);
+    const jcx=ZONA_X+44, jcy=H_ZONA-54;
+    const btx=ZONA_X+ZONA_W-44, bty=H_ZONA-54;
+    if(Math.hypot(x-jcx,y-jcy)<=JOY_R+10){
+      joyActive=true;joyBaseX=jcx;joyBaseY=jcy;
+      gameStarted=true;
+    }
+    if(Math.hypot(x-btx,y-bty)<=30)scattaGiocatore();
+  }
+  function onMove(e){
+    e.preventDefault();
+    if(!joyActive)return;
+    const {x,y}=getCanvasXY(e);
+    const dx=x-joyBaseX, dy=y-joyBaseY;
+    const dist=Math.hypot(dx,dy);
+    const norm=Math.min(dist,JOY_R)/JOY_R;
+    joySX=dist>2?(dx/dist)*norm:0;
+    joySY=dist>2?(-dy/dist)*norm:0;
+  }
+  function onEnd(e){e.preventDefault();joyActive=false;joySX=0;joySY=0;}
+
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onMove,{passive:false});
+  canvas.addEventListener('touchend',onEnd,{passive:false});
+  canvas.addEventListener('mousedown',onStart);
+  canvas.addEventListener('mousemove',(e)=>{if(e.buttons===1)onMove(e);});
+  canvas.addEventListener('mouseup',onEnd);
+
+  // ── MOSSA AUTOMATICA DA CONTRADA AVVERSARIA ──
+  // Una contrada AI può dare la mossa (se tutti sono pronti)
+  let aiMossaTimer=rnd(300,600); // ~10-20 secondi prima che un'AI possa dare la mossa
+
+  // ── RICHIAMI MOSSIERE ──
+  // Ogni contrada (giocatore o avversaria) che resta per 15 secondi consecutivi
+  // nella zona lontana dal canapo riceve un'ammonizione/richiamo. Se rientra
+  // nella zona vicina il conteggio dei 15" si azzera e riparte da zero.
+  // Al terzo richiamo la contrada è squalificata: se è il giocatore, la mossa
+  // si conclude e arriverà ultimo della batteria/finale; se è una contrada
+  // avversaria, la mossa continua con le contrade rimaste (il giocatore e le
+  // altre due non squalificate).
+  const RICHIAMO_SOGLIA_SEC=15;
+  function checkRichiami(ts){
+    if(mossaTerminata)return;
+
+    // Delta time dedicato (indipendente da quello di draw()) per il conteggio dei 15"
+    const dtR = _richiamLastTs!==null ? Math.min(Math.max((ts-_richiamLastTs)/1000,0),0.1) : 0.016;
+    _richiamLastTs = ts;
+
+    // AI può dare la mossa
+    aiMossaTimer--;
+    if(aiMossaTimer<=0&&!mossaTerminata&&gameStarted&&tempoTrascorso>=20){
+      const mioCR=cavalli.find(c=>c.isPlayer);
+      // Se giocatore è malposizionato, reagisce molto più velocemente
+      const playerMalpos = mioCR && !mioCR.squalificato && (
+        mioCR.y > CANAPO_Y+(H_ZONA-CANAPO_Y)*0.55 ||
+        Math.abs(mioCR.angolo) > 0.45
+      );
+      // Timer molto più corto se giocatore è in difficoltà
+      aiMossaTimer = playerMalpos ? rnd(40,100) : rnd(200,400);
+
+      // Conta quante AI sono pronte (vicine al canapo, dritte) — a parte il
+      // giocatore, solo la rincorsa (pos.4) può dare la mossa.
+      const aiPronti=cavalli.filter(c=>!c.isPlayer&&c.isRincorsa&&!c.squalificato&&
+        c.y<CANAPO_Y+(H_ZONA-CANAPO_Y)*0.35&&Math.abs(c.angolo)<0.4);
+
+      if(playerMalpos && aiPronti.length>=1){
+        // Aggressivo: basta 1 cavallo pronto per dare la mossa quando giocatore è malposizionato
+        const chi=aiPronti[Math.floor(Math.random()*aiPronti.length)];
+        mossiereMsg='🚩 '+chi.nome+' ha dato la mossa!';
+        mossiereMsgTimer=100;
+        const {mult,esito,msg}=calcolaBonusGiocatore();
+        const multByContrada=calcolaBonusTutteContrade();
+        setTimeout(()=>afterMossa(mult,esito,msg,multByContrada),800);
+      } else if(!playerMalpos && isMossaValida()&&!isMossaFalsa()){
+        // Normale: tutti devono essere pronti — anche qui solo la rincorsa può tirarla
+        const aiCav=cavalli.filter(c=>!c.isPlayer&&c.isRincorsa&&!c.squalificato);
+        if(aiCav.length>0){
+          const chi=aiCav[Math.floor(Math.random()*aiCav.length)];
+          mossiereMsg='🚩 '+chi.nome+' ha dato la mossa!';
+          mossiereMsgTimer=100;
+          const {mult,esito,msg}=calcolaBonusGiocatore();
+          const multByContrada=calcolaBonusTutteContrade();
+          setTimeout(()=>afterMossa(mult,esito,msg,multByContrada),800);
+        }
+      }
+    }
+
+    // ── CONTEGGIO 15" CONSECUTIVI IN ZONA LONTANA → AMMONIZIONE/RICHIAMO ──
+    if(gameStarted){
+      cavalli.forEach(c=>{
+        if(c.squalificato)return;
+        if(inZonaLontana(c)){
+          c.zonaLontanaTimer=(c.zonaLontanaTimer||0)+dtR;
+          if(c.zonaLontanaTimer>=RICHIAMO_SOGLIA_SEC){
+            // Scala di 15" (e non azzera del tutto) per non perdere l'eventuale
+            // residuo accumulato nello stesso frame con dt elevato
+            c.zonaLontanaTimer-=RICHIAMO_SOGLIA_SEC;
+            c.richiami=Math.min(3,(c.richiami||0)+1);
+            if(c.richiami>=3){
+              c.squalificato=true;
+              F._mossaSqualificate=F._mossaSqualificate||[];
+              if(!F._mossaSqualificate.includes(c.nome))F._mossaSqualificate.push(c.nome);
+              if(c.isPlayer){
+                mossiereMsg='🚫 SEI SQUALIFICATO! Terzo richiamo.';
+                mossiereMsgTimer=200;
+                setTimeout(()=>{
+                  if(mossaTerminata)return;
+                  afterMossa(0,'SQUALIFICATO','🚫 Squalificato al terzo richiamo! Arrivi ultimo della '+(fase==='finale'?'finale':'batteria')+'.',calcolaBonusTutteContrade());
+                },2000);
+              } else {
+                mossiereMsg='🚫 '+c.nome+' SQUALIFICATA! La mossa continua senza di lei.';
+                mossiereMsgTimer=150;
+              }
+            } else {
+              mossiereMsg = c.isPlayer
+                ? ('⚡ Richiamo n.'+c.richiami+' — Avvicinati al canapo!')
+                : ('⚡ Richiamo '+c.richiami+' a '+c.nome+' — tarda ad avvicinarsi al canapo');
+              mossiereMsgTimer = c.isPlayer?100:80;
+            }
+          }
+        } else {
+          // Fuori dalla zona lontana: il conteggio dei 15" consecutivi si azzera
+          c.zonaLontanaTimer=0;
+        }
+      });
+    }
+  }
+
+  function drawFrame(ts){
+    checkRichiami(ts);
+    draw(ts);
+  }
+  _raceAnimFrame=requestAnimationFrame(drawFrame);
+}
+
+
+function fFermaMossa(fase){
+  // Legacy: non più usato direttamente, ma mantenuto per compatibilità
+  if(Mos&&Mos.active!==undefined){Mos.active=false;}
+  if(MosInt){clearInterval(MosInt);MosInt=null;}
 }
 
 // ── POLITICA FANTINO ──
@@ -3589,7 +5011,10 @@ function fShowSceltaCavalloProvaccia(){
       const isPref=prefCap&&c.nome===prefCap.nome;
       const badge=isPref?'<span class="bdg g">♥ Cap. preferisce</span>'
         :(isContrada?'<span class="bdg o">contrada</span>':'<span class="bdg r">personale</span>');
+      const _provDb=getCavDB(c.nome);const _provImg=_provDb&&_provDb.img?_provDb.img:'';
+      const _provImgHtml=_provImg?`<div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${_provImg}" alt="${c.nome}" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:8px;border:var(--bord)" onerror="this.style.display='none'"></div>`:'';
       return `<div class="card" style="cursor:pointer" onclick="fScegliCavProvaccia(${i},${!!isPref})">
+      ${_provImgHtml}
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
         ${badge}
@@ -3663,62 +5088,19 @@ function fCalcObiettivoCapitanoProvaccia(fase){
 }
 
 function fShowMossaFantinoProvaccia(fase){
-  // Uguale al minigioco mossa standard ma con redirect alla Provaccia
-  setMain(`<div class="pad">
-    <div style="text-align:center;margin-bottom:12px">
-      <div style="font-size:30px">🏁</div>
-      <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
-      <div style="font-size:12px;color:rgba(201,168,76,.5)">Provaccia — ${fase==='finale'?'Finale':'Batteria'} · Ferma il cursore nella zona verde</div>
-    </div>
-    <div class="card"><div class="ct">Fase di mossa</div>
-      <div class="mbar" id="MBAR" onclick="fFermaMossaProvaccia('${fase}')">
-        <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
-      <div style="font-size:11px;color:rgba(201,168,76,.5)">Clicca per scattare</div>
-    </div>
-    <div id="MOS_RIS" style="display:none" class="card">
-      <div id="MOS_T" style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px"></div>
-      <div id="MOS_B" style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px"></div>
-      <button class="btn gold w" id="MOS_BTN">Continua →</button>
-    </div>
-  </div>`);
-  const vel=Math.max(.5,1+(1*.4)-(F.bravura*.1));
-  const amp=Math.max(3,5+(F.mossa*2));
-  const avgAmi=Object.values(F.rivali).reduce((s,r)=>s+r.amicizia,0)/Object.keys(F.rivali).length;
-  const bonusAmi=avgAmi>=70?3:avgAmi>=50?1:0;
-  Mos={tacca:rnd(30,80),amp:Math.max(3,amp+bonusAmi),vel,t:0,pos:50,active:true,mult:1};
-  if(MosInt)clearInterval(MosInt);
-  MosInt=setInterval(()=>{
-    if(!Mos.active)return;Mos.t+=.04;Mos.pos=clamp((Math.sin(Mos.t*Mos.vel*2)+1)*50,0,100);
-    const bar=R('MBAR');if(!bar){clearInterval(MosInt);return;}
-    const w=bar.offsetWidth;
-    const ce=R('MCU'),te=R('MT2'),ze=R('MZ');
-    if(ce)ce.style.left=(Mos.pos/100*w-3)+'px';
-    if(te)te.style.left=(Mos.tacca/100*w-1)+'px';
-    if(ze){const a=Mos.amp/100*w;ze.style.left=(Mos.tacca/100*w-a/2)+'px';ze.style.width=a+'px';}
-  },40);
+  // Usa il nuovo minigioco mossa con redirect alla Provaccia
+  // Passa i partecipanti della batteria/finale corretta (come fShowMossaFantino) invece di
+  // lasciare che _fAvviaMinigiocaMossa usi sempre F._fprovP (causava contrade errate in finale)
+  const batt = fase==='finale'
+    ? [...(F._fprovQP||[]), ...(F._fprovQIA||[])].slice(0,4)
+    : (F._fprovP||[]).slice(0,4);
+  _fAvviaMinigiocaMossa(fase, true, batt.length>=4 ? batt : null);
 }
 
 function fFermaMossaProvaccia(fase){
-  if(!Mos.active)return;Mos.active=false;clearInterval(MosInt);MosInt=null;
-  const d=Math.abs(Mos.pos-Mos.tacca);let esito,mult,msg;
-  if(d<=Mos.amp/2){esito='OTTIMALE';mult=1.15;msg='⚡ PARTENZA A FIONDA!';F.mossa=clamp(F.mossa+1,1,5);}
-  else if(Mos.pos>Mos.tacca+Mos.amp/2){esito='FALSA';mult=.1;msg='✗ PARTENZA FALSA!';F.mossa=clamp(F.mossa-1,1,5);}
-  else{esito='LENTA';mult=.5;msg='⚠ PARTENZA LENTA';F.mossa=clamp(F.mossa-1,1,5);}
-  Mos.mult=mult;
-  R('MOS_RIS').style.display='block';
-  const t=R('MOS_T');t.textContent=msg;
-  t.style.color=esito==='OTTIMALE'?'#5DBB63':esito==='FALSA'?'#E05555':'var(--gold)';
-  R('MOS_B').textContent=`Dist: ${Math.round(d)} · ×${mult} · Gestione mossa: ${F.mossa}/5`;
-  fAddLog('Mossa Provaccia ('+fase+'): '+esito,'inf');
-  const btn=R('MOS_BTN');
-  if(btn){
-    if(fase==='batteria'){
-      btn.onclick=()=>fShowAccordiProvaccia('batteria');
-    } else {
-      btn.onclick=()=>fShowAccordiProvaccia('finale');
-    }
-  }
-  fSalva();
+  // Legacy: non più usato direttamente
+  if(Mos&&Mos.active!==undefined){Mos.active=false;}
+  if(MosInt){clearInterval(MosInt);MosInt=null;}
 }
 
 function fShowAccordiProvaccia(fase){
@@ -3909,11 +5291,22 @@ function fEseguiCorsaProvaccia(){
         const rivalInfo=F.rivali[accordo];
         if(rivalInfo&&rivalInfo.contrada===n) base*=0.5;
       }
-      sc[n]+=base*((g===1&&isP)?Mos.mult:1)+rf(0,3);
+      const multN=(Mos.multByContrada&&Mos.multByContrada[n]!==undefined)?Mos.multByContrada[n]:((isP&&g===1)?Mos.mult:1);
+      sc[n]+=base*(g===1?multN:1)+rf(0,3);
     });
     gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));
   }
-  const classFinale=gpg[gpg.length-1];
+  let classFinale=gpg[gpg.length-1];
+  // Le contrade squalificate in mossa (terzo richiamo) arrivano sempre ultime
+  if(F._mossaSqualificate && F._mossaSqualificate.length){
+    const squalInGara=F._mossaSqualificate.filter(n=>partecipanti.includes(n));
+    if(squalInGara.length){
+      const nonSqual=classFinale.filter(n=>!squalInGara.includes(n));
+      classFinale=[...nonSqual,...squalInGara];
+      gpg[gpg.length-1]=classFinale;
+    }
+  }
+  F._mossaSqualificate=[];
   const pos=classFinale.indexOf(F.contrada)+1;
   const qP=classFinale.slice(0,2);
 
@@ -3927,6 +5320,13 @@ function fEseguiCorsaProvaccia(){
 
   const playerIn=fase==='finale'?true:qP.includes(F.contrada);
   const vinto=fase==='finale'&&pos===1;
+
+  // Registra vincitore del Palio nell'anno corrente (solo in finale)
+  if(fase==='finale'){
+    const vincitorePalio=classFinale[0];
+    if(!F.ultimaVittoriaContrada)F.ultimaVittoriaContrada={};
+    F.ultimaVittoriaContrada[vincitorePalio]=F.anno;
+  }
 
   // Reputazione batteria Provaccia
   if(fase==='batteria'&&playerIn){
@@ -4069,7 +5469,7 @@ function fMostraObiettivoFinaleProvaccia(){
 
 function fProvacciaFinaleSpettatore(){
   const finalisti=[...(F._fprovQP||[]),...(F._fprovQIA||[])];
-  F._fasePalio='finale';Mos.mult=1;
+  F._fasePalio='finale';Mos.mult=1;Mos.multByContrada=null;
   const sc={};finalisti.forEach(n=>sc[n]=0);const gpg=[];
   for(let g=1;g<=5;g++){finalisti.forEach(n=>{sc[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
   fSalva();
@@ -4140,6 +5540,9 @@ function fPalioAutomatico(nomeCompagno){
   // Registra nell'album storico se presente
   if(!F.log)F.log=[];
   fAddLog('Palio '+F.anno+': non scelto dal capitano. Vince '+vincitore,'red');
+  // Aggiorna anno ultima vittoria della contrada vincitrice
+  if(!F.ultimaVittoriaContrada)F.ultimaVittoriaContrada={};
+  F.ultimaVittoriaContrada[vincitore]=F.anno;
   fSalva();
 
   // Mostra schermata risultato palio automatico
@@ -4223,7 +5626,10 @@ function fShowSceltaCavallo(){
       const isPref=prefCap&&c.nome===prefCap.nome;
       const badge=isPref?'<span class="bdg g">♥ Cap. preferisce</span>'
         :(isContrada?'<span class="bdg o">contrada</span>':'<span class="bdg r">personale</span>');
+      const _fpDb=getCavDB(c.nome);const _fpImg=_fpDb&&_fpDb.img?_fpDb.img:'';
+      const _fpImgHtml=_fpImg?`<div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${_fpImg}" alt="${c.nome}" style="max-width:100%;max-height:130px;object-fit:contain;border-radius:8px;border:var(--bord)" onerror="this.style.display='none'"></div>`:'';
       return `<div class="card" style="cursor:pointer" onclick="fScegliCavParlio(${i},${!!isPref})">
+      ${_fpImgHtml}
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}</div>
         ${badge}
@@ -4543,11 +5949,23 @@ function fEseguiCorsa(){
         const rivalInfo=F.rivali[accordo];
         if(rivalInfo&&rivalInfo.contrada===n) base*=0.5;
       }
-      sc[n]+=base*((g===1&&isP)?Mos.mult:1)+rf(0,3);
+      const multN=(Mos.multByContrada&&Mos.multByContrada[n]!==undefined)?Mos.multByContrada[n]:((isP&&g===1)?Mos.mult:1);
+      sc[n]+=base*(g===1?multN:1)+rf(0,3);
     });
     gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));
   }
-  const classFinale=gpg[gpg.length-1];
+  let classFinale=gpg[gpg.length-1];
+  // Le contrade squalificate in mossa (terzo richiamo) arrivano sempre ultime:
+  // la gara procede senza di loro, indipendentemente dal punteggio ottenuto.
+  if(F._mossaSqualificate && F._mossaSqualificate.length){
+    const squalInGara=F._mossaSqualificate.filter(n=>partecipanti.includes(n));
+    if(squalInGara.length){
+      const nonSqual=classFinale.filter(n=>!squalInGara.includes(n));
+      classFinale=[...nonSqual,...squalInGara];
+      gpg[gpg.length-1]=classFinale;
+    }
+  }
+  F._mossaSqualificate=[];
   const pos=classFinale.indexOf(F.contrada)+1;
   const qP=classFinale.slice(0,2);
 
@@ -4580,6 +5998,9 @@ function fEseguiCorsa(){
     F.oro+=500;
     modReputazione(25,'Vittoria del Palio');
     fCheckObiettiviFantino('vinto_palio');
+    // Aggiorna anno ultima vittoria della contrada vincitrice
+    if(!F.ultimaVittoriaContrada)F.ultimaVittoriaContrada={};
+    F.ultimaVittoriaContrada[F.contrada]=F.anno;
     fAddLog('🏆 HAI VINTO IL PALIO '+F.anno+'! +500 oro, +1 Esp, +50 intesa, +50 sostegno · Reputazione +25','grn');
     // Intesa capitani rivali −20 alla vittoria
     Object.keys(F.intesaCapitani).forEach(k=>{if(k!==F.contrada)F.intesaCapitani[k]=clamp(F.intesaCapitani[k]-20,0,100);});
@@ -4929,7 +6350,7 @@ function fLanciaAnimazioneAdd(actionsHtml){
 
 function fFinaleSpettatore(){
   const finalisti=[...(F._fbQP||[]),...(F._fbQIA||[])];
-  F._fasePalio='finale';Mos.mult=1;
+  F._fasePalio='finale';Mos.mult=1;Mos.multByContrada=null;
   fEseguiCorsaSpettatore(finalisti);
 }
 function fEseguiCorsaSpettatore(finalisti){
@@ -5156,10 +6577,13 @@ function fShowAnnoSvincolato(){
     <div id="SVINC_BTN"></div>
   </div>`;
   setMain('<div class="pad">'+html+'</div>');
-  R('SVINC_CT').innerHTML=Object.entries(CDB).map(([k,v])=>
-    `<div class="cc2" onclick="fScegliContrSvinc('${k}')" id="SVINC_${k}">
-      <div class="cc2-name">${k}</div><div class="cc2-desc">${v.desc}</div>
-    </div>`).join('');
+  R('SVINC_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
+    const annUlt=fGetUltimaVittoria(k);
+    return `<div class="cc2" onclick="fScegliContrSvinc('${k}')" id="SVINC_${k}">
+      <div class="cc2-name">${k}</div>
+      <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div>
+    </div>`;
+  }).join('');
 }
 
 function fScegliContrSvinc(k){
@@ -5247,6 +6671,7 @@ function fNuovoAnno(cambia,nuovaContrada){
       c.maxAcc=Math.max(1,c.maxAcc-1);c.maxRes=Math.max(1,c.maxRes-1);
       c.acc=Math.min(c.acc,c.maxAcc);c.res=Math.min(c.res,c.maxRes);
     }
+    c.valoreVendita=calcPrezzoVendita(c);
   });
   // Nemica fantini: −25 amicizia
   Object.entries(F.rivali).forEach(([n,info])=>{if(info.contrada===F.nemica)F.rivali[n].amicizia=clamp(info.amicizia-25,0,100);});
