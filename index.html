@@ -2586,6 +2586,144 @@ function nAggiornaStatus(){
   N.status=N_STATUS_INFO[nuova].label;
 }
 
+// Se il giocatore ricopre uno status speciale, il mandato dura 3 anni (stessa durata delle
+// cariche del Consiglio Direttivo). Allo scadere, il ruolo torna vacante e il giocatore
+// ridiventa Contradaiolo/Cucciolo in base all'età: potrà però ricandidarsi liberamente in
+// Assemblea, anche per lo STESSO ruolo appena lasciato (nessuno storico blocca la rielezione,
+// capitano compreso).
+function nControllaMandatoGiocatore(){
+  if(!N)return;
+  const chiave=nStatusKey();
+  if(!N_STATUS_SPECIALI.includes(chiave))return;
+  if(N.statusMandatoInizio===undefined)N.statusMandatoInizio=N.anno;
+  if(N.anno-N.statusMandatoInizio>=3){
+    const vecchiaLabel=N_STATUS_INFO[chiave].label;
+    N.statusKey=N.eta<=14?'cucciolo':'contradaiolo';
+    N.status=N_STATUS_INFO[N.statusKey].label;
+    N.statusMandatoInizio=undefined;
+    showToast('Il tuo mandato da '+vecchiaLabel+' è terminato. Puoi ricandidarti in Assemblea, anche per lo stesso ruolo.','inf');
+  }
+}
+
+// Ruoli (status "speciali") per cui il giocatore rispetta età minima e prerequisiti in questo
+// momento. Un ruolo già ricoperto in passato (statoStorico) resta candidabile anche in seguito:
+// non esiste alcuna esclusione basata sullo storico, quindi la rielezione è sempre possibile.
+// Il ruolo di Capitano NON compare mai qui: non è mai autocandidabile, si ottiene solo tramite
+// l'elezione automatica dell'Assemblea (vedi nElezioneCapitano) quando se ne hanno i requisiti.
+// Inoltre, finché il giocatore ricopre già un mandato speciale, non può candidarsi a nessun
+// altro ruolo: deve prima attendere la scadenza del mandato corrente.
+function nRuoliCandidabiliGiocatore(){
+  if(!N)return[];
+  if(N_STATUS_SPECIALI.includes(nStatusKey()))return[];
+  return Object.entries(N_STATUS_INFO).filter(([k,info])=>{
+    if(k==='capitano')return false;
+    if(!info.viaAssemblea)return false;
+    if((N.eta||0)<info.etaMin)return false;
+    return info.richiede.every(r=>N.statoStorico&&N.statoStorico[r]);
+  }).map(([k])=>k);
+}
+
+// Anno in cui l'attuale Capitano (giocatore o NPC) è entrato in carica; null se la carica
+// è vacante. Usata per limitare la finestra di candidatura del giocatore in Assemblea.
+function nAnnoElezioneCapitano(){
+  if(!N)return null;
+  if(nStatusKey()==='capitano')return N.statusMandatoInizio!==undefined?N.statusMandatoInizio:N.anno;
+  const cap=N.contradaioli&&N.contradaioli.find(c=>c.badge==='capitano');
+  return cap&&cap.mandatoInizio!==undefined?cap.mandatoInizio:null;
+}
+
+// Il giocatore può candidarsi in Assemblea solo a Gennaio (N.mi===0) dello stesso anno in cui
+// è stato eletto un nuovo Capitano NPC (opzione 2: l'organigramma dev'essere ancora assegnato,
+// vedi N._orgPendenteAnno impostato da nConfermaEsitoElezioneCapitano). Non tutti gli anni:
+// solo quelli con un effettivo cambio di Capitano che comporta anche il cambio organigramma.
+function nCandidaturaFinestraAperta(){
+  if(!N)return false;
+  if(!N._orgPendenteAnno)return false;
+  return (N.mi||0)===0 && N.anno===N._orgPendenteAnno;
+}
+
+// Probabilità (in percentuale) che la candidatura del giocatore venga accettata dall'Assemblea:
+// pari al valore di amicizia con l'attuale Capitano (0 se la carica è vacante).
+function nProbabilitaCandidatura(){
+  if(!N||!N.contradaioli)return 0;
+  const cap=N.contradaioli.find(c=>c.badge==='capitano');
+  return cap?clamp(cap.amicizia||0,0,100):0;
+}
+
+// ── ASSEMBLEA DI CONTRADA (carriera del giocatore) ──
+// Il giocatore può candidarsi una sola volta l'anno a un ruolo dell'organigramma (Capitano
+// escluso: si ottiene solo per elezione automatica) per cui rispetti età minima e prerequisiti.
+// La candidatura è possibile solo a Gennaio dell'anno successivo all'elezione dell'attuale
+// Capitano, e solo se il giocatore non ricopre già un altro mandato speciale in corso.
+// La probabilità di essere accettato è pari al valore di amicizia con l'attuale Capitano.
+function nMostraAssembleaGiocatore(){
+  if(!N)return;
+  const candUsata=(N.candidaturaAnno||0)===N.anno;
+  const chiaveAttuale=nStatusKey();
+  const mandatoInCorso=N_STATUS_SPECIALI.includes(chiaveAttuale);
+  const mandatoRimasto=mandatoInCorso?Math.max(0,3-(N.anno-(N.statusMandatoInizio!==undefined?N.statusMandatoInizio:N.anno))):null;
+  const finestraAperta=nCandidaturaFinestraAperta();
+  const chance=nProbabilitaCandidatura();
+  const cap=N.contradaioli&&N.contradaioli.find(c=>c.badge==='capitano');
+  const ruoli=nRuoliCandidabiliGiocatore();
+  let html=`<div class="card">
+    <div class="ct">🏛 Assemblea di Contrada</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:6px">Status attuale: <strong style="color:var(--gold-l)">${nStatusLabel()}</strong>${mandatoRimasto!==null?' — Anni rimanenti di mandato: '+mandatoRimasto:''}</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:6px">Puoi candidarti a un ruolo (Capitano escluso: si ottiene solo per elezione) una sola volta l'anno, solo a Gennaio dell'anno in cui è stato eletto un nuovo Capitano${cap?' ('+cap.nome+')':''} e prima che l'organigramma venga assegnato ai contradaioli (passaggio a Febbraio), e solo se non ricopri già un altro mandato. La probabilità di essere accettato è pari alla tua amicizia con il Capitano${cap?' ('+chance+'%)':''}.</div>
+    ${candUsata?'<div class="evbox inf">Ti sei già candidato quest\'anno.</div>':''}
+    ${mandatoInCorso?'<div class="evbox inf">Ricopri già un mandato: potrai candidarti solo dopo la sua scadenza.</div>':(!finestraAperta?'<div class="evbox inf">La candidatura è aperta solo a Gennaio dell\'anno in cui cambia il Capitano, prima dell\'assegnazione dell\'organigramma.</div>':'')}
+  </div>`;
+  if(!ruoli.length){
+    html+=`<div class="card"><div style="font-size:12px;color:rgba(201,168,76,.5)">Nessun ruolo disponibile al momento: non rispetti ancora l'età minima o i prerequisiti richiesti, oppure non è il momento di candidarti.</div></div>`;
+  } else {
+    html+='<div class="card">';
+    ruoli.forEach(chiave=>{
+      const info=N_STATUS_INFO[chiave];
+      const giaRicoperto=!!(N.statoStorico&&N.statoStorico[chiave]);
+      html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div>
+          <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:var(--gold-l)">${info.label}${giaRicoperto?' <span class="bdg r">già ricoperto</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Età minima ${info.etaMin}${info.richiede.length?' · richiede: '+info.richiede.map(r=>N_STATUS_INFO[r].label).join(', '):''}</div>
+        </div>
+        <button class="btn" style="font-size:11px;padding:6px 10px;flex-shrink:0" ${(candUsata||!finestraAperta)?'disabled':''} onclick="nCandidatiRuolo('${chiave}')">Candidati</button>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  html+=`<button class="btn w" onclick="nGoTo('mese')" style="justify-content:center">← Torna al Mese</button>`;
+  const el=R('sc-nmese');
+  if(el){el.innerHTML=html;}else{setMain(html);}
+}
+
+// Risolve la candidatura del giocatore per il ruolo scelto. La probabilità di essere accettato
+// è pari al valore di amicizia con l'attuale Capitano. Il ruolo di Capitano non è mai qui tra
+// le opzioni: si ottiene solo tramite l'elezione automatica dell'Assemblea (nElezioneCapitano).
+function nCandidatiRuolo(chiave){
+  if(!N)return;
+  if((N.candidaturaAnno||0)===N.anno){showToast('Puoi candidarti una sola volta l\'anno!','red');return;}
+  if(N_STATUS_SPECIALI.includes(nStatusKey())){showToast('Ricopri già un mandato: attendi la sua scadenza prima di ricandidarti.','red');return;}
+  if(!nCandidaturaFinestraAperta()){showToast('Puoi candidarti solo a Gennaio dell\'anno successivo all\'elezione del Capitano.','red');return;}
+  const info=N_STATUS_INFO[chiave];
+  if(!info||!info.viaAssemblea||chiave==='capitano')return;
+  if((N.eta||0)<info.etaMin){showToast('Non rispetti l\'età minima per questo ruolo.','red');return;}
+  if(!info.richiede.every(r=>N.statoStorico&&N.statoStorico[r])){showToast('Non rispetti i prerequisiti per questo ruolo.','red');return;}
+  N.candidaturaAnno=N.anno;
+  const chance=nProbabilitaCandidatura();
+  const vince=Math.random()*100<chance;
+  if(vince){
+    N.statusKey=chiave;
+    N.status=info.label;
+    N.statusMandatoInizio=N.anno;
+    if(!N.statoStorico)N.statoStorico={};
+    N.statoStorico[chiave]=true;
+    showToast('🏛 L\'Assemblea ti elegge '+info.label+'!','grn');
+  } else {
+    showToast('L\'Assemblea non ti ha eletto '+info.label+'. Riprova il prossimo anno.','red');
+  }
+  nSalva();
+  nMostraAssembleaGiocatore();
+}
+
 function nSalva(){if(!N)return;try{localStorage.setItem('palio_contradaiolo_'+N.slot,JSON.stringify(N));}catch(e){}}
 
 function mostraSlotContradaioloScreen(){
@@ -2659,17 +2797,23 @@ function nInvecchiaContradaioli(){
 // usati nella schermata "Contrade" della carriera Vita da Contradaiolo (incluse gli scherzi)
 function nInizRapportiContrade(){
   const r={};
-  Object.keys(CDB).forEach(k=>{if(k!==N.contrada)r[k]=rnd(0,100);});
+  Object.keys(CDB).forEach(k=>{if(k!==N.contrada)r[k]= k===N.nemica ? 0 : rnd(0,100);});
   return r;
 }
 
 // Assegna (o riassegna) i badge ai contradaioli rispettando i vincoli di sesso e quantità;
-// ogni contradaiolo può avere un solo badge o nessuno
-function nAssegnaBadges(){
+// ogni contradaiolo può avere un solo badge o nessuno.
+// Se escludiCapitano è true, la carica di Capitano non viene toccata qui: resta a chi la
+// detiene già (il suo mandato scade e si rinnova separatamente tramite nElezioneCapitano,
+// che include anche il giocatore tra i possibili candidati).
+function nAssegnaBadges(escludiCapitano){
   if(!N||!N.contradaioli)return;
-  N.contradaioli.forEach(c=>c.badge=null);
+  const capNome=escludiCapitano?((N.contradaioli.find(c=>c.badge==='capitano')||{}).nome):null;
+  N.contradaioli.forEach(c=>{if(!(capNome&&c.nome===capNome))c.badge=null;});
   const usati=new Set();
+  if(capNome)usati.add(capNome);
   Object.entries(BADGE_INFO).forEach(([chiave,info])=>{
+    if(escludiCapitano&&chiave==='capitano')return;
     let papabili=N.contradaioli.filter(c=>!usati.has(c.nome)&&(!info.sesso||c.sesso===info.sesso)&&(!info.etaMin||(c.eta||0)>=info.etaMin));
     // Se per età troppo pochi papabili rispettano il minimo (contrada "giovane"), si ripiega
     // sui candidati disponibili senza vincolo d'età pur di non lasciare la carica vacante
@@ -2681,6 +2825,74 @@ function nAssegnaBadges(){
     scelti.forEach(c=>{c.badge=chiave;c.mandatoInizio=N.anno;usati.add(c.nome);});
   });
   N.badgeUltimoAnno=N.anno;
+}
+
+// ── OPZIONE 2: assegnazione automatica dell'organigramma dopo l'elezione di un Capitano NPC ──
+// Richiamata al passaggio di mese tra Gennaio e Febbraio (vedi nAvanzaMese), solo negli anni in
+// cui N._orgPendenteAnno è impostato (cioè solo quando è cambiato il Capitano ed è stato eletto
+// un contradaiolo, non il giocatore). Assegna le cariche rimaste vacanti ai contradaioli,
+// rispettando l'eventuale carica che il giocatore si è già procurato candidandosi durante
+// questo stesso Gennaio (Assemblea di Contrada).
+function nAssegnaOrganigrammaPendente(){
+  if(!N||!N.contradaioli)return[];
+  const capitano=N.contradaioli.find(c=>c.badge==='capitano');
+  const capNome=capitano?capitano.nome:null;
+  const ruoloGiocatore=(N_STATUS_SPECIALI.includes(nStatusKey())&&nStatusKey()!=='capitano')?nStatusKey():null;
+  N.contradaioli.forEach(c=>{if(c.nome!==capNome)c.badge=null;});
+  const usati=new Set();
+  if(capNome)usati.add(capNome);
+  const assegnati=[];
+  Object.entries(BADGE_INFO).forEach(([chiave,info])=>{
+    if(chiave==='capitano')return;
+    let quanti=info.quanti;
+    if(chiave===ruoloGiocatore)quanti-=1; // una carica già ottenuta dal giocatore in Assemblea
+    if(quanti<=0)return;
+    let papabili=N.contradaioli.filter(c=>!usati.has(c.nome)&&(!info.sesso||c.sesso===info.sesso)&&(!info.etaMin||(c.eta||0)>=info.etaMin));
+    if(papabili.length<quanti){
+      const fallback=N.contradaioli.filter(c=>!usati.has(c.nome)&&(!info.sesso||c.sesso===info.sesso));
+      if(fallback.length>papabili.length)papabili=fallback;
+    }
+    const scelti=sample(papabili,Math.min(quanti,papabili.length));
+    scelti.forEach(c=>{c.badge=chiave;c.mandatoInizio=N.anno;usati.add(c.nome);assegnati.push({chiave,nome:c.nome});});
+  });
+  N.badgeUltimoAnno=N.anno;
+  N._orgPendenteAnno=null;
+  return assegnati;
+}
+
+// Overlay che mostra il nuovo organigramma assegnato automaticamente ai contradaioli (opzione 2)
+// al passaggio di mese tra Gennaio e Febbraio.
+function nMostraEsitoOrganigrammaAuto(assegnati,onClose){
+  const overlay=document.createElement('div');
+  overlay.id='NORG_AUTO_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  const ruoloGiocatore=(N_STATUS_SPECIALI.includes(nStatusKey())&&nStatusKey()!=='capitano')?nStatusKey():null;
+  let righe=assegnati.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#1A0E08;border:var(--bord)">
+      <span style="font-weight:700;color:var(--gold-l)">${BADGE_INFO[a.chiave].label}</span>
+      <span style="font-size:12px;color:rgba(201,168,76,.7)">${a.nome}</span>
+    </div>`).join('');
+  if(ruoloGiocatore){
+    righe=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;border-radius:8px;background:rgba(93,187,99,.15);border:1px solid #5DBB63">
+      <span style="font-weight:700;color:#5DBB63">${N_STATUS_INFO[ruoloGiocatore].label}</span>
+      <span style="font-size:12px;color:#5DBB63">Tu</span>
+    </div>`+righe;
+  }
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">⚜</div>
+        <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);letter-spacing:1px">Nuovo Organigramma</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:4px">Il Capitano ha completato il Consiglio Direttivo con le cariche rimaste vacanti.</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div>${righe||'<div style="font-size:12px;color:rgba(201,168,76,.5)">Nessuna carica da assegnare.</div>'}</div>
+      <button class="btn gold w" id="NORG_AUTO_BTN" style="margin-top:10px;justify-content:center">✓ Continua</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NORG_AUTO_BTN').onclick=function(){
+    overlay.remove();
+    onClose&&onClose();
+  };
 }
 
 function caricaContradaiolo(slot){
@@ -2720,8 +2932,17 @@ function caricaContradaiolo(slot){
     if(N.sostituzioneAnno===undefined)N.sostituzioneAnno=0;
     if(N.pistaImpraticabile===undefined)N.pistaImpraticabile=false;
     if(N.veterinario===undefined)N.veterinario=false;
-    nCheckDecadimentoCapitano();
-    nAvviaUI();showToast('Contradaiolo caricato — '+N.nome,'grn');
+    if(N.candidaturaAnno===undefined)N.candidaturaAnno=0;
+    // Migrazione salvataggi precedenti a questa funzionalità: se il giocatore ricopre già
+    // uno status speciale, gli si assegna un mandato che riparte da quest'anno e si segna
+    // il ruolo come "già ricoperto" (utile per i prerequisiti "richiede" di ruoli successivi).
+    if(N_STATUS_SPECIALI.includes(nStatusKey())){
+      if(N.statusMandatoInizio===undefined)N.statusMandatoInizio=N.anno;
+      if(!N.statoStorico[nStatusKey()])N.statoStorico[nStatusKey()]=true;
+    }
+    nCheckDecadimentoCapitano(()=>{
+      nAvviaUI();showToast('Contradaiolo caricato — '+N.nome,'grn');
+    });
   }catch(e){alert('Errore nel caricamento.');}
 }
 
@@ -2795,7 +3016,9 @@ function creaContradaiolo(contrada){
     manieroManutenzione:false,
     manieroGiornataAperta:false,
     sostituzioneAnno:0,
-    veterinario:false
+    veterinario:false,
+    statusMandatoInizio:undefined,
+    candidaturaAnno:0
   };
   N.contradaioli=nGeneraContradaioli();
   nAssegnaBadges();
@@ -2921,6 +3144,9 @@ function nRenderCavalli(){
   const el=R('sc-ncavalli');if(!el||!N)return;
   const cavalliMode=nPermessiStatus().cavalli; // 'none' | 'proponi' | 'full'
   const puoAcquistare=cavalliMode==='full';
+  // Se il giocatore stesso ricopre la carica di Capitano, non ha senso che proponga
+  // un cavallo "a se stesso": il tasto "Proponi al capitano" viene disattivato.
+  const eGiocatoreCapitano=nStatusKey()==='capitano';
   if(N.oro===undefined)N.oro=1000;
   if(!N.statsCavalli)N.statsCavalli={};
   if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
@@ -2959,7 +3185,7 @@ function nRenderCavalli(){
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" onclick="nProponiCapitano('${nome}')">🤝 Proponi al capitano</button>
+          <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" ${eGiocatoreCapitano?'disabled title="Sei tu il Capitano: non puoi proporre un cavallo a te stesso"':''} onclick="nProponiCapitano('${nome}')">🤝 Proponi al capitano</button>
           ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${N.oro<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${nome}')">💰 Acquista (${prezzo})</button>`:''}
         </div>
       </div>`;
@@ -2973,6 +3199,7 @@ function nRenderCavalli(){
 // se reputazione del giocatore + amicizia del capitano sono >= 155.
 function nProponiCapitano(nome){
   if(!N)return;
+  if(nStatusKey()==='capitano'){showToast('Sei tu il Capitano: non puoi proporre un cavallo a te stesso.','red');return;}
   if(nPermessiStatus().cavalli==='none'){showToast('Il tuo status attuale non ti permette di proporre cavalli.','red');return;}
   const db=getCavDB(nome);if(!db)return;
   if((N.stalla||[]).some(c=>c.nome===nome)){showToast('Il cavallo è già in stalla!','red');return;}
@@ -3018,7 +3245,7 @@ function nRenderContrade(){
   const altre=Object.keys(CDB).filter(k=>k!==N.contrada);
   const righe=altre.map(k=>{
     const isNemica=k===N.nemica;
-    if(N.rapportiContrade[k]===undefined)N.rapportiContrade[k]=rnd(0,100);
+    if(N.rapportiContrade[k]===undefined)N.rapportiContrade[k]= isNemica ? 0 : rnd(0,100);
     const v=N.rapportiContrade[k];
     const col=v>=70?'#5DBB63':v>=40?'var(--gold)':'#E05555';
     return `<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
@@ -3067,9 +3294,15 @@ function n4TrovaMossaVincente(board,player){
   }
   return -1;
 }
-function n4MossaIA(board){
+// forte=true → IA ottimale (prende sempre la vittoria e blocca sempre quella del giocatore).
+// forte=false → IA "morbida": prende comunque le vittorie a sua disposizione, ma blocca
+// quelle del giocatore solo in parte, lasciando spazio a una vittoria del giocatore.
+function n4MossaIA(board,forte){
   let col=n4TrovaMossaVincente(board,2);
-  if(col===-1)col=n4TrovaMossaVincente(board,1);
+  if(col===-1){
+    const bloccaAvversario=forte||Math.random()<0.35;
+    if(bloccaAvversario)col=n4TrovaMossaVincente(board,1);
+  }
   if(col===-1){
     const ordine=[3,2,4,1,5,0,6];
     const disp=ordine.filter(c=>n4RigaLibera(board,c)!==-1);
@@ -3083,6 +3316,9 @@ function nMostraForza4(bersaglio){
   const colGioc=colColori.c1,colIA=colColori.c2;
   const board=Array.from({length:6},()=>Array(7).fill(0));
   let turnoGiocatore=true,finito=false;
+  // Bilanciamento minigioco: nel 60% delle partite l'IA gioca in modo ottimale (vince lei),
+  // nel restante 40% gioca in modo più morbido, dando al giocatore concrete possibilità di vittoria.
+  const iaForte=Math.random()<0.6;
 
   const overlay=document.createElement('div');
   overlay.id='N4_OVL';
@@ -3137,7 +3373,7 @@ function nMostraForza4(bersaglio){
     turnoGiocatore=false;
     status.textContent=bersaglio+' sta pensando alla mossa…';
     setTimeout(()=>{
-      const colIa=n4MossaIA(board);
+      const colIa=n4MossaIA(board,iaForte);
       const rowIa=n4RigaLibera(board,colIa);
       if(rowIa!==-1){
         board[rowIa][colIa]=2;
@@ -3677,34 +3913,278 @@ function nMostraEsitoOffertaFnt(nome,accettato,offerta,soglia){
 // ══════════════════════════════════════════════
 //  MANIERO (Vita da Contradaiolo)
 // ══════════════════════════════════════════════
-// Modifica il morale di contrada e verifica se il Capitano in carica deve decadere
+// Modifica il morale di contrada. Il controllo del decadimento del Capitano NON avviene qui:
+// avviene solo al cambio anno (Gennaio, in nCompletaAnnoDopoPalio), per evitare che un crollo
+// del morale a 0 nella schermata riassuntiva della finale del Palio faccia decadere il Capitano
+// due volte (una volta lì e una volta subito dopo a Gennaio).
 function nModMoraleContrada(delta){
   if(!N)return;
   N.moraleContrada=clamp((N.moraleContrada||0)+delta,0,100);
-  nCheckDecadimentoCapitano();
 }
 
-// Se il morale crolla a 0, il Capitano in carica decade automaticamente,
-// non solo quando viene volontariamente sostituito dal Consiglio Direttivo.
-// Il cambio di Capitano termina anche il mandato di tutte le altre cariche,
-// che riparte da quell'anno (stessa regola di una sostituzione manuale).
-function nCheckDecadimentoCapitano(){
-  if(!N||!N.contradaioli)return;
-  if((N.moraleContrada||0)>0)return;
+// Il giocatore non può mai autocandidarsi a Capitano: entra automaticamente tra i candidati
+// dell'Assemblea solo quando possiede i requisiti (età minima, già stato Gonfaloniere e
+// Addetto Corse) e non ricopre già la carica.
+function nPlayerEleggibileCapitano(){
+  if(!N)return false;
+  if(nStatusKey()==='capitano')return false;
+  const info=N_STATUS_INFO.capitano;
+  if((N.eta||0)<info.etaMin)return false;
+  return info.richiede.every(r=>N.statoStorico&&N.statoStorico[r]);
+}
+
+// Se il morale è a 0, il Capitano in carica decade automaticamente (controllato solo a Gennaio
+// e al caricamento del salvataggio, non ogni volta che il morale cambia). Per eleggere il
+// successore si riunisce l'Assemblea di Contrada (vedi nElezioneCapitano).
+// onDone (opzionale) viene richiamata al termine: subito se non c'è decadimento, oppure dopo
+// che l'Assemblea ha eletto il nuovo Capitano (ed eventualmente il giocatore ha scelto il
+// proprio organigramma, se è lui il vincitore dell'elezione).
+function nCheckDecadimentoCapitano(onDone){
+  if(!N||!N.contradaioli){onDone&&onDone();return;}
+  if((N.moraleContrada||0)>0){onDone&&onDone();return;}
   const capitanoAttuale=N.contradaioli.find(c=>c.badge==='capitano');
-  if(!capitanoAttuale)return;
-  const nomeVecchio=capitanoAttuale.nome;
-  capitanoAttuale.badge=null;
-  const papabili=N.contradaioli.filter(c=>!c.badge&&c.sesso==='M');
-  let nomeNuovo=null;
-  if(papabili.length){
-    const nuovo=papabili[Math.floor(Math.random()*papabili.length)];
-    nuovo.badge='capitano';nuovo.mandatoInizio=N.anno;
-    nomeNuovo=nuovo.nome;
+  const giocatoreCapitano=nStatusKey()==='capitano';
+  if(!capitanoAttuale&&!giocatoreCapitano){onDone&&onDone();return;}
+  const nomeVecchio=giocatoreCapitano?N.nome:capitanoAttuale.nome;
+  if(capitanoAttuale)capitanoAttuale.badge=null;
+  if(giocatoreCapitano){
+    N.statusKey=N.eta<=14?'cucciolo':'contradaiolo';
+    N.status=N_STATUS_INFO[N.statusKey].label;
+    N.statusMandatoInizio=undefined;
   }
-  N.contradaioli.forEach(c=>{if(c.badge)c.mandatoInizio=N.anno;});
+  nElezioneCapitano(nomeVecchio,'Il morale è crollato a 0',onDone);
+}
+
+// ── ELEZIONE DEL CAPITANO IN ASSEMBLEA (automatica) ──
+// Candidati: i contradaioli papabili (maschi, senza altra carica, età minima rispettata) più
+// il giocatore stesso se ne possiede i requisiti. Il giocatore non può mai candidarsi di sua
+// iniziativa a questo ruolo: entra tra i candidati automaticamente se ne ha i requisiti.
+// L'Assemblea è composta da 31 voti totali (30 contradaioli + il giocatore): il giocatore
+// esprime sempre personalmente il proprio voto (vedi nMostraVotoElezioneCapitano) — su se
+// stesso se è tra i candidati, oppure su uno degli altri candidati in caso contrario — prima
+// che l'esito venga proclamato. I restanti 30 voti (uno per contradaiolo) sono simulati in
+// base all'amicizia (per gli NPC) o alla reputazione (per il giocatore candidato), con un
+// fattore casuale.
+function nElezioneCapitano(nomeVecchio,motivo,onDone){
+  if(!N||!N.contradaioli){onDone&&onDone();return;}
+  const etaMinCapitano=(BADGE_INFO.capitano&&BADGE_INFO.capitano.etaMin)||30;
+  const papabili=N.contradaioli.filter(c=>!c.badge&&c.sesso==='M'&&(c.eta||0)>=etaMinCapitano);
+  const candidati=papabili.map(c=>({tipo:'npc',ref:c,nome:c.nome,peso:c.amicizia||0}));
+  const giocatoreCandidabile=nPlayerEleggibileCapitano();
+  if(giocatoreCandidabile)candidati.push({tipo:'player',ref:null,nome:N.nome,peso:N.reputazione||0});
+  if(!candidati.length){
+    // Nessun papabile e giocatore non eleggibile: estrazione casuale senza assemblea
+    const papabiliTutti=N.contradaioli.filter(c=>!c.badge&&c.sesso==='M');
+    let nomeNuovo=null;
+    if(papabiliTutti.length){
+      const nuovo=papabiliTutti[Math.floor(Math.random()*papabiliTutti.length)];
+      nuovo.badge='capitano';nuovo.mandatoInizio=N.anno;
+      nomeNuovo=nuovo.nome;
+    }
+    N.contradaioli.forEach(c=>{if(c.badge)c.mandatoInizio=N.anno;});
+    nSalva();
+    showToast((nomeVecchio?'⚠ '+motivo+': '+nomeVecchio+' decade da Capitano. ':'')+(nomeNuovo?'Nessun papabile: '+nomeNuovo+' viene estratto a sorte!':'Nessun contradaiolo disponibile: la carica resta vacante.'),'red');
+    onDone&&onDone();
+    return;
+  }
+  // Il giocatore fa sempre parte dei 31 elettori dell'Assemblea: vota personalmente uno dei
+  // candidati (se stesso compreso, quando è candidabile) prima che l'esito venga proclamato.
+  nMostraVotoElezioneCapitano(nomeVecchio,motivo,candidati,onDone);
+}
+
+// Distribuisce n voti (uno alla volta, scelta pesata proporzionale al "peso" di ciascun
+// candidato con una componente casuale) tra i candidati indicati. Usata per generare i voti
+// automatici dei contradaioli dell'Assemblea di Contrada per l'elezione del Capitano.
+function nAssegnaVotiAssemblea(candidati,n){
+  candidati.forEach(c=>{if(c.voti===undefined)c.voti=0;});
+  const pesi=candidati.map(c=>Math.max(1,(c.peso||0)*rf(0.7,1.3)));
+  for(let i=0;i<n;i++){
+    const tot=pesi.reduce((a,b)=>a+b,0);
+    let r=Math.random()*tot,idx=0;
+    for(;idx<pesi.length-1;idx++){if(r<pesi[idx])break;r-=pesi[idx];}
+    candidati[idx].voti++;
+  }
+}
+
+// ── VOTO DEL GIOCATORE IN ASSEMBLEA (elezione del Capitano) ──
+// Quando il giocatore è tra i candidati a Capitano, deve esprimere personalmente il proprio
+// voto (anche a se stesso) prima che l'Assemblea proclami l'esito. Il suo voto è 1 dei 31
+// totali: i restanti 30 (uno per ciascun contradaiolo) vengono simulati subito dopo.
+function nMostraVotoElezioneCapitano(nomeVecchio,motivo,candidati,onDone){
+  const overlay=document.createElement('div');
+  overlay.id='NVOTO_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  const seiCandidato=candidati.some(c=>c.tipo==='player');
+  const sottotitolo=seiCandidato
+    ?'Sei tra i candidati a Capitano: esprimi il tuo voto (31 voti totali: 30 contradaioli + il tuo).'
+    :'Si vota il nuovo Capitano: esprimi il tuo voto tra i candidati (31 voti totali: 30 contradaioli + il tuo).';
+  const righe=candidati.map((c,i)=>`
+    <button class="btn w" style="justify-content:space-between;margin-bottom:6px" onclick="nVotaElezioneCapitano(${i})">
+      <span style="font-weight:700;color:var(--gold-l)">${c.nome}${c.tipo==='player'?' <span class="bdg r">tu</span>':''}</span>
+      <span style="font-size:11px;color:rgba(201,168,76,.6)">Vota →</span>
+    </button>`).join('');
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">🗳</div>
+        <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);letter-spacing:1px">Assemblea di Contrada</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:4px">${motivo}${nomeVecchio?': <strong style="color:var(--gold-l)">'+nomeVecchio+'</strong> decade da Capitano.':''} ${sottotitolo}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div>${righe}</div>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  N._votoElCap={nomeVecchio,motivo,candidati,onDone};
+}
+function nVotaElezioneCapitano(idx){
+  if(!N||!N._votoElCap)return;
+  const {nomeVecchio,motivo,candidati,onDone}=N._votoElCap;
+  const overlay=document.getElementById('NVOTO_OVERLAY');
+  if(overlay)overlay.remove();
+  N._votoElCap=null;
+  // Il voto del giocatore è già espresso: i restanti 30 voti (uno per contradaiolo) vengono
+  // simulati ora, per un totale di 31 voti nell'Assemblea.
+  nAssegnaVotiAssemblea(candidati,30);
+  candidati[idx].voti++;
+  candidati.sort((a,b)=>b.voti-a.voti);
+  nMostraEsitoElezioneCapitano(nomeVecchio,motivo,candidati,candidati[0],onDone);
+}
+
+// Mostra l'esito dell'Assemblea di Contrada per eleggere il nuovo Capitano: vince
+// automaticamente il candidato con più voti, giocatore compreso se tra i candidati.
+function nMostraEsitoElezioneCapitano(nomeVecchio,motivo,candidati,vincitore,onDone){
+  const overlay=document.createElement('div');
+  overlay.id='NASSEMBLEA_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  const totVoti=candidati.reduce((s,c)=>s+(c.voti||0),0);
+  const righe=candidati.map(c=>{
+    const vince=c===vincitore;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;margin-bottom:6px;border-radius:8px;background:${vince?'rgba(93,187,99,.15)':'#1A0E08'};border:${vince?'1px solid #5DBB63':'var(--bord)'}">
+      <span style="font-weight:700;color:${vince?'#5DBB63':'var(--gold-l)'}">${c.nome}${vince?' 🏆':''}${c.tipo==='player'?' <span class="bdg r">tu</span>':''}</span>
+      <span style="font-size:11px;color:rgba(201,168,76,.6)">${c.voti} voti</span>
+    </div>`;
+  }).join('');
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">🏛</div>
+        <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);letter-spacing:1px">Assemblea di Contrada</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:4px">${motivo}${nomeVecchio?': <strong style="color:var(--gold-l)">'+nomeVecchio+'</strong> decade da Capitano.':''} Risultato della votazione (${totVoti} voti totali).</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div>${righe}</div>
+      <button class="btn gold w" id="NASSEMBLEA_CONT_BTN" style="margin-top:10px;justify-content:center">✓ Continua</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NASSEMBLEA_CONT_BTN').onclick=function(){
+    overlay.remove();
+    nConfermaEsitoElezioneCapitano(vincitore,onDone);
+  };
+}
+
+// Applica l'esito dell'elezione. Due possibilità:
+// OPZIONE 1 — vince il giocatore: diventa Capitano e sceglie subito, di persona, il resto
+// dell'organigramma (nMostraSceltaOrganigramma).
+// OPZIONE 2 — vince un contradaiolo (NPC): le altre cariche restano vacanti; il giocatore ha
+// prima la possibilità, nello stesso mese di Gennaio, di candidarsi lui stesso per una carica
+// (Assemblea di Contrada, vedi nCandidaturaFinestraAperta); solo al passaggio di mese tra
+// Gennaio e Febbraio il gioco assegna automaticamente ai contradaioli le cariche ancora
+// vacanti (vedi nAssegnaOrganigrammaPendente, richiamata da nAvanzaMese).
+function nConfermaEsitoElezioneCapitano(vincitore,onDone){
+  if(!N||!N.contradaioli)return;
+  const vecchioCap=N.contradaioli.find(c=>c.badge==='capitano');
+  if(vecchioCap)vecchioCap.badge=null;
+  if(vincitore.tipo==='player'){
+    N.statusKey='capitano';
+    N.status=N_STATUS_INFO.capitano.label;
+    N.statusMandatoInizio=N.anno;
+    if(!N.statoStorico)N.statoStorico={};
+    N.statoStorico.capitano=true;
+    // Il nuovo Capitano (giocatore) sceglie da zero il proprio organigramma
+    N.contradaioli.forEach(c=>{c.badge=null;});
+    N._orgPendenteAnno=null; // opzione 1: nessuna assegnazione automatica da fare
+    N.badgeUltimoAnno=N.anno;
+    nSalva();
+    showToast('🏛 L\'Assemblea di Contrada ti elegge Capitano! Scegli ora il tuo organigramma.','grn');
+    nMostraSceltaOrganigramma(onDone);
+    return;
+  }
+  vincitore.ref.badge='capitano';
+  vincitore.ref.mandatoInizio=N.anno;
+  // Opzione 2: le altre cariche dell'organigramma restano vacanti. Verranno assegnate ai
+  // contradaioli solo al passaggio Gennaio → Febbraio, dopo aver dato al giocatore la
+  // possibilità di candidarsi lui stesso durante questo Gennaio.
+  N.contradaioli.forEach(c=>{if(c.badge&&c.badge!=='capitano')c.badge=null;});
+  N._orgPendenteAnno=N.anno;
   nSalva();
-  showToast('⚠ Morale a 0: '+nomeVecchio+' decade da Capitano'+(nomeNuovo?', al suo posto '+nomeNuovo+'!':'!'),'red');
+  showToast('🏛 L\'Assemblea di Contrada elegge '+vincitore.nome+' nuovo Capitano! Puoi ancora candidarti a una carica dell\'organigramma entro fine Gennaio.','grn');
+  onDone&&onDone();
+}
+
+// ── SCELTA DELL'ORGANIGRAMMA (giocatore diventato Capitano) ──
+// A differenza della normale assegnazione automatica, quando il giocatore diventa Capitano
+// sceglie personalmente chi ricopre le altre cariche dell'organigramma.
+const ORGANIGRAMMA_RUOLI_SCELTA=['gonfaloniere','addettoCorse','addettoStalla','granPriore','castellana'];
+function nMostraSceltaOrganigramma(onDone){
+  if(!N||!N.contradaioli)return;
+  N._orgOnDone=onDone||null;
+  if(R('HUD'))R('HUD').style.display='none';
+  if(R('NAV'))R('NAV').style.display='none';
+  let html=`<div class="card">
+    <div class="ct">⚜ Il tuo Organigramma</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:6px">Sei il nuovo Capitano! Scegli personalmente chi ricoprirà le altre cariche della tua contrada.</div>
+  </div>`;
+  ORGANIGRAMMA_RUOLI_SCELTA.forEach(chiave=>{
+    const info=BADGE_INFO[chiave];
+    const titolari=N.contradaioli.filter(c=>c.badge===chiave);
+    const servono=info.quanti-titolari.length;
+    html+=`<div class="card"><div class="ct">${info.label}${servono>0?' <span style="font-size:11px;color:#E05555">('+servono+' da assegnare)</span>':' <span style="font-size:11px;color:#5DBB63">✓ completo</span>'}</div>`;
+    titolari.forEach(c=>{
+      const idx=N.contradaioli.indexOf(c);
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin-bottom:4px;background:#1A0E08;border-radius:8px;border:var(--bord)">
+        <span style="color:var(--gold-l);font-weight:700">${c.nome}</span>
+        <button class="btn" style="font-size:10px;padding:4px 8px" onclick="nOrgRimuovi(${idx})">Rimuovi</button>
+      </div>`;
+    });
+    if(servono>0){
+      const candidati=N.contradaioli.filter(c=>!c.badge&&(!info.sesso||c.sesso===info.sesso)&&(!info.etaMin||(c.eta||0)>=info.etaMin));
+      if(candidati.length){
+        html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">`+candidati.map(c=>{
+          const idx=N.contradaioli.indexOf(c);
+          return `<button class="btn" style="font-size:11px;padding:6px 10px" onclick="nOrgAssegna('${chiave}',${idx})">${c.nome}</button>`;
+        }).join('')+`</div>`;
+      } else {
+        html+=`<div style="font-size:11px;color:rgba(201,168,76,.5)">Nessun contradaiolo disponibile per questa carica.</div>`;
+      }
+    }
+    html+='</div>';
+  });
+  const tutteComplete=ORGANIGRAMMA_RUOLI_SCELTA.every(ch=>N.contradaioli.filter(c=>c.badge===ch).length>=BADGE_INFO[ch].quanti);
+  html+=`<button class="btn gold w" ${tutteComplete?'':'disabled'} onclick="nConfermaOrganigramma()" style="justify-content:center">${tutteComplete?'✓ Conferma Organigramma':'Assegna tutte le cariche per continuare'}</button>`;
+  setMain(html);
+}
+function nOrgAssegna(chiave,idx){
+  if(!N||!N.contradaioli)return;
+  const c=N.contradaioli[idx];
+  if(!c||c.badge)return;
+  c.badge=chiave;c.mandatoInizio=N.anno;
+  nSalva();
+  nMostraSceltaOrganigramma(N._orgOnDone);
+}
+function nOrgRimuovi(idx){
+  if(!N||!N.contradaioli)return;
+  const c=N.contradaioli[idx];
+  if(c)c.badge=null;
+  nSalva();
+  nMostraSceltaOrganigramma(N._orgOnDone);
+}
+function nConfermaOrganigramma(){
+  if(!N)return;
+  const onDone=N._orgOnDone;
+  N._orgOnDone=null;
+  nSalva();
+  showToast('⚜ Organigramma confermato!','grn');
+  onDone&&onDone();
 }
 
 function nManiero(){
@@ -3787,6 +4267,35 @@ function nManieroDaiMano(){
   nManiero();
 }
 
+// Popup guadagno per l'Organizza del Maniero Contradaiolo, identico nello stile a quello
+// della carriera Capitano (mostraPopupGuadagnoManiero), ma richiude tornando alla schermata
+// Organizza del Contradaiolo invece che all'overlay Maniero del Capitano.
+function nMostraPopupGuadagnoManiero(titolo,guadagno,sottotitolo,immagine){
+  const overlay=document.createElement('div');
+  overlay.id='NMANIERO_GUADAGNO_POPUP';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const img=immagine||'cena_propiziatoria.png';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 0 40px rgba(201,168,76,.25)">
+      <div style="font-size:36px;margin-bottom:8px">${titolo.split(' ')[0]}</div>
+      <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);margin-bottom:4px">${titolo.substring(titolo.indexOf(' ')+1)}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">${sottotitolo}</div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:16px"></div>
+      <div style="display:flex;justify-content:center;margin-bottom:14px">
+        <img src="${img}" alt="${titolo}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:var(--bord)" onerror="this.style.display='none'">
+      </div>
+      <div style="font-family:var(--fn);font-size:48px;font-weight:800;color:#5DBB63;letter-spacing:-1px">+${guadagno}</div>
+      <div style="font-size:14px;color:rgba(201,168,76,.6);margin-top:4px;margin-bottom:20px">oro guadagnati</div>
+      <button class="btn gold w" id="NMANIERO_GUADAGNO_BTN" style="margin-top:4px">✓ Continua</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NMANIERO_GUADAGNO_BTN').onclick=function(){
+    const popup=document.getElementById('NMANIERO_GUADAGNO_POPUP');
+    if(popup)popup.remove();
+    nManieroOrganizza();
+  };
+}
+
 // ── Organizza (identica nella struttura al Maniero della carriera Capitano,
 // ma agisce sul budget di contrada e sul morale dei contradaioli) ──
 function nManieroOrganizza(){
@@ -3847,7 +4356,7 @@ function nDoManiero(tipo){
     N.budgetContrada+=guadEff;N.manieroOrganizzaCena=true;
     nSalva();
     showMev('🍷 Cena organizzata! −100 oro, +'+guadEff+' oro guadagnati nel budget','grn');
-    nManieroOrganizza();
+    nMostraPopupGuadagnoManiero('🍷 Cena al Maniero',guadEff,'Incasso dalla cena con i contradaioli','cena_propiziatoria.png');
     return;
   } else if(tipo==='gadget'){
     if(N.manieroVenditaGadget)return;
@@ -3856,7 +4365,7 @@ function nDoManiero(tipo){
     N.budgetContrada+=guad;N.manieroVenditaGadget=true;
     nSalva();
     showMev('💰 Gadget venduti! +'+guad+' oro'+(N.manieroGiornataAperta?' (bonus Giornata Manieri Aperti x1,5)':''),'grn');
-    nManieroOrganizza();
+    nMostraPopupGuadagnoManiero('💰 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada','vendita_gadget.png');
     return;
   } else if(tipo==='manutenzione'){
     if(N.manieroManutenzione)return;
@@ -4394,6 +4903,10 @@ function nRenderMese(){
           <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🏰 Maniero</div>
           <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Budget di contrada, morale dei contradaioli, eventi e consiglio direttivo</div>
         </button>
+        <button class="btn" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px" onclick="nMostraAssembleaGiocatore()">
+          <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🏛 Assemblea di Contrada</div>
+          <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Candidati a un ruolo dell'organigramma, anche per essere rieletto in quello già ricoperto</div>
+        </button>
         <button class="btn ${noRapporto?'nb-off':''}" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px" onclick="nRapportoContradaioli()">
           <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🤝 Rapporto con i contradaioli</div>
           <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Coltiva l'amicizia con i contradaioli della tua contrada</div>
@@ -4477,6 +4990,11 @@ function nAvanzaMese(){
     // Passaggio Marzo → Aprile, dall'undicesimo anno di età (compreso) in poi: si apre
     // "Le Correnti di Contrada" al posto dell'imprevisto mensile "normale" e della Gazzetta.
     const passaggioBivio=(N.mi===2)&&(N.eta>=11);
+    // Passaggio Gennaio → Febbraio: se quest'anno è cambiato il Capitano ed è stato eletto un
+    // contradaiolo (opzione 2), dopo aver dato al giocatore la possibilità di candidarsi
+    // durante Gennaio, il gioco assegna ora automaticamente le cariche dell'organigramma
+    // rimaste vacanti. Non succede tutti gli anni: solo quelli con N._orgPendenteAnno impostato.
+    const passaggioOrganigramma=(N.mi===0)&&N._orgPendenteAnno===N.anno;
     N.mi++;
     N.amiciziaMensile=0;
     N.allenamentoMensile=0;
@@ -4508,6 +5026,16 @@ function nAvanzaMese(){
     if(passaggioBivio){
       nSalva();
       nMostraBivio(()=>{nRenderMese();});
+      return;
+    }
+    if(passaggioOrganigramma){
+      const assegnati=nAssegnaOrganigrammaPendente();
+      nSalva();
+      nMostraEsitoOrganigrammaAuto(assegnati,()=>{
+        if(Math.random()<0.3)nEstraiImprevistoContradaiolo();
+        nSalva();
+        nMostraGazzetta(()=>{nRenderMese();});
+      });
       return;
     }
     // Imprevisti mensili (30% di probabilità, uno solo al mese)
@@ -4920,6 +5448,7 @@ function nCompletaAnnoDopoPalio(){
   N.anno++;
   N.eta++; // l'età aumenta di 1 ogni Gennaio, tranne l'anno di partenza
   nAggiornaStatus(); // ricalcola cucciolo/contradaiolo in base alla nuova età (gli status speciali restano invariati)
+  nControllaMandatoGiocatore(); // scade il mandato (3 anni) di un eventuale status speciale del giocatore
   nInvecchiaContradaioli(); // ogni contradaiolo invecchia di un anno; a 80 anni viene sostituito da uno nuovo
   // Invecchiamento cavalli della stalla di contrada: scatta dal 4° anno consecutivo
   // in stalla (compreso), cioè dopo 3 anni pieni trascorsi dall'acquisto.
@@ -4935,6 +5464,14 @@ function nCompletaAnnoDopoPalio(){
       if(anniInStalla>=3){c.maxAcc=Math.max(1,c.maxAcc-1);c.maxRes=Math.max(1,c.maxRes-1);c.acc=Math.min(c.acc,c.maxAcc);c.res=Math.min(c.res,c.maxRes);}
       c.valoreVendita=calcPrezzoVendita(c);
     });
+  }
+  // Se il nuovo status non permette l'accesso al menù Cavalli, il giocatore non ha alcuna
+  // voce in capitolo su chi corre il Palio: la contrada rinnova ogni anno sia il cavallo di
+  // stalla sia il fantino, esattamente come già avviene per il fantino.
+  if(nPermessiStatus().cavalli==='none'){
+    N.stalla=[nCreaCavalloAuto()];
+    N.cavSelIdx=0;
+    N.fan=nCreaFantinoAuto();
   }
   N.mi=0;
   N.amiciziaMensile=0;
@@ -4955,9 +5492,29 @@ function nCompletaAnnoDopoPalio(){
   // Le statistiche di gare/vittorie di cavalli e fantini si azzerano a ogni nuovo anno
   N.statsCavalli={};
   N.statsFantini={};
-  // I ruoli/badge dei contradaioli vengono rinnovati ogni 3 anni di gioco
-  if(N.badgeUltimoAnno===undefined||N.anno-N.badgeUltimoAnno>=3)nAssegnaBadges();
-  nCheckDecadimentoCapitano();
+  // I ruoli/badge dei contradaioli (Capitano escluso) vengono rinnovati ogni 3 anni di gioco
+  if(N.badgeUltimoAnno===undefined||N.anno-N.badgeUltimoAnno>=3)nAssegnaBadges(true);
+  // Il mandato del Capitano (giocatore o NPC) dura 3 anni a sé stante: alla scadenza si riunisce
+  // l'Assemblea, che include anche il giocatore tra i candidati se ne ha i requisiti.
+  const capNPC=N.contradaioli.find(c=>c.badge==='capitano');
+  const capMandatoInizio=nStatusKey()==='capitano'?N.statusMandatoInizio:(capNPC?capNPC.mandatoInizio:undefined);
+  const capitanoScaduto=capMandatoInizio===undefined||N.anno-capMandatoInizio>=3;
+  if(capitanoScaduto){
+    const nomeVecchio=nStatusKey()==='capitano'?N.nome:(capNPC?capNPC.nome:null);
+    nElezioneCapitano(nomeVecchio,'Scade il mandato triennale del Capitano',()=>{
+      // Il decadimento del Capitano per morale a 0 si verifica solo qui, a Gennaio (non anche
+      // nella schermata riassuntiva della finale del Palio).
+      nCheckDecadimentoCapitano(()=>nCompletaAnnoDopoPaliobis());
+    });
+    return;
+  }
+  // Il decadimento del Capitano per morale a 0 si verifica solo qui, a Gennaio (non anche nella
+  // schermata riassuntiva della finale del Palio). Se serve l'Assemblea per eleggere il successore,
+  // il resto del cambio anno prosegue solo dopo che il giocatore ha scelto.
+  nCheckDecadimentoCapitano(()=>nCompletaAnnoDopoPaliobis());
+}
+function nCompletaAnnoDopoPaliobis(){
+  if(!N)return;
   // Ripulisce lo stato temporaneo della vigilia appena conclusa
   N._strategia=null;N._bP=null;N._bIA=null;N._qP=null;N._qIA=null;N._offerta=null;N._meteo=null;N._esitoBatteria=undefined;
   N._imprevistoUltimaOra=null;N._forzaQuartaBatteria=false;
