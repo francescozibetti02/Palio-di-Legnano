@@ -78,6 +78,7 @@ body{font-family:var(--fs)}
   cursor:pointer;font-family:var(--fn);letter-spacing:.2px;
   display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px}
 .nb.on{color:var(--gold);border-top-color:var(--gold)}
+.nb-off{opacity:.32;filter:grayscale(.6)}
 .nbi{font-size:19px;line-height:1}
 
 /* CARD */
@@ -277,6 +278,7 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 .fnt-star{width:16px;height:16px;border-radius:50%;background:#1A0E08;border:1px solid #5C3D2E}
 .fnt-star.on{background:var(--gold);border-color:var(--gold)}
 .career-choice{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.career-card.cc-solo{grid-column:1/-1;max-width:calc(50% - 6px);margin:0 auto}
 .career-card{padding:16px;background:linear-gradient(135deg,#261508,#1A0E08);border:var(--bord2);border-radius:14px;cursor:pointer;text-align:center}
 .career-card:active{opacity:.75}
 .career-card .cc-icon{font-size:36px;margin-bottom:8px}
@@ -381,6 +383,44 @@ const NF=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Vellu
 // NC rimane per retrocompatibilità
 const NC=CAVALLI_DB.map(c=>c.nome);
 const MESI=["Gennaio","Febbraio","Marzo","Aprile","Maggio"];
+// Nomi dei contradaioli per la carriera Vita da Contradaiolo: 20 maschili, 10 femminili
+const NOMI_CONTRADAIOLI_M=["Marco","Luca","Andrea","Giovanni","Francesco","Alessandro","Matteo","Lorenzo","Simone","Riccardo","Paolo","Stefano","Fabio","Massimo","Giorgio","Roberto","Antonio","Federico","Niccolò","Tommaso"];
+const NOMI_CONTRADAIOLI_F=["Chiara","Giulia","Francesca","Elena","Silvia","Valentina","Laura","Sara","Martina","Beatrice"];
+// Info sui badge assegnabili ai contradaioli: etichetta mostrata, classe colore badge, sesso richiesto ('M','F' o null=indifferente), quanti assegnati, età minima richiesta
+const BADGE_INFO={
+  capitano:      {label:'⚜ Capitano',        cls:'o', sesso:'M', quanti:1, etaMin:30},
+  castellana:    {label:'👑 Castellana',      cls:'o', sesso:'F', quanti:1, etaMin:20},
+  granPriore:    {label:'⛪ Gran Priore',     cls:'g', sesso:null,quanti:1, etaMin:40},
+  gonfaloniere:  {label:'🚩 Gonfaloniere',    cls:'r', sesso:'M', quanti:1, etaMin:20},
+  addettoCorse:  {label:'🏁 Addetto Corse',   cls:'g', sesso:'M', quanti:1, etaMin:25},
+  addettoStalla: {label:'🐎 Addetto Stalla',  cls:'r', sesso:null,quanti:5, etaMin:20}
+};
+// Le tre "correnti" (fazioni) interne alla contrada — meccanica "Le Correnti di Contrada"
+// della carriera Vita da Contradaiolo. Ogni contradaiolo appartiene ad una corrente
+// (assegnata casualmente, non in egual numero), visibile in "Rapporto con i contradaioli".
+// Le scelte del giocatore al bivio di Aprile avvicinano o allontanano ciascuna corrente.
+const FAZIONI_CONTRADAIOLI={
+  corsa:    {label:'Conta solo la corsa',                              cls:'r', icona:'🏇'},
+  maniero:  {label:'Prima il maniero, poi tutto il resto',             cls:'o', icona:'🏰'},
+  politica: {label:'Fondamentale è la politica con le altre contrade', cls:'g', icona:'🤝'}
+};
+// Assegnazione casuale (pesata, non equamente distribuita) della corrente ad un contradaiolo
+function nEstraiFazioneCasuale(){
+  const r=Math.random();
+  if(r<0.4)return'corsa';
+  if(r<0.7)return'maniero';
+  return'politica';
+}
+// Qualità fittizie assegnate ai contradaioli: non incidono sul gioco, servono solo a
+// renderlo più realistico agli occhi del giocatore (visibili in "Rapporto con i contradaioli")
+const QUALITA_CONTRADAIOLI=[
+  "Bravo stratega","Grande abilità politica","Esperto di cavalli","Darebbe la vita per la contrada",
+  "Ottimo organizzatore di eventi","Cuoco eccellente","Gran conoscitore di storia contradaiola",
+  "Instancabile lavoratore","Amato da tutti in piazza","Un po' scaramantico ma efficace",
+  "Voce potente nei cori","Sempre pronto a una scommessa","Memoria storica della contrada",
+  "Diplomatico nato","Cocciuto come un mulo","Generoso con tutti","Chiacchierone impenitente",
+  "Silenzioso ma affidabile","Tifoso sfegatato","Spirito organizzativo indomabile"
+];
 // Stato globale assegnazione cavalli per anno
 let CAVALLI_IA={}; // {nomeContrada: {stats oggetto cavallo DB}}
 let CAVALLI_SVINCOLATI=[]; // array di nomi cavalli non assegnati a nessuna contrada
@@ -478,7 +518,7 @@ function inizia2(k){
   G={nome:k,nemica:db.nemica,bonus:db.bonus,oro:db.budget,morale:db.morale,difesa:0,mi:0,
      stalla:[],cav:null,cavSelIdx:0,fan:null,log:[],trofei:0,anno:2027,slot:n,
      raccoltaUsata:false,cenaUsata:false,sicurezzaUsata:false,eventoUsato:false,
-     condManiero:60,manieroOrganizzaCena:false,manieroVenditaGadget:false,manieroOrganizzaEvento:false,manieroManutenzione:false,
+     condManiero:60,manieroOrganizzaCena:false,manieroVenditaGadget:false,manieroOrganizzaEvento:false,manieroManutenzione:false,manieroGiornataAperta:false,
      puntSfilata:0,_bP:null,_bIA:null,_qP:null,_qIA:null,
      amicizia:{},trofeiPerContrada:tpc,imboscateVinte:{},
      nomeCapitano,prestigio:20,albumStorico:[],fantiniMercato:null,fantiniRifiutati:{},
@@ -757,7 +797,7 @@ function apriManiero(){
         </button>
         <button class="btn w" ${noEvento?'disabled':''} onclick="doManiero('evento')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
           <div style="font-weight:700;color:${noEvento?'rgba(201,168,76,.3)':'var(--gold-l)'}">🍻 Organizza Evento ${noEvento?'<span style="font-size:10px">(già usata)</span>':''}</div>
-          <div style="font-size:11px;color:rgba(201,168,76,.5)">−200 oro · Condizioni −10 · Morale +15</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Scegli tra 3 tipi di evento, ognuno con costi ed effetti diversi</div>
         </button>
         <button class="btn w" ${noManu?'disabled':''} onclick="doManiero('manutenzione')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
           <div style="font-weight:700;color:${noManu?'rgba(201,168,76,.3)':'var(--gold-l)'}">🔨 Manutenzione Maniero ${noManu?'<span style="font-size:10px">(già usata)</span>':''}</div>
@@ -822,23 +862,19 @@ function doManiero(tipo){
     return;
   } else if(tipo==='gadget'){
     if(G.manieroVenditaGadget)return;
-    const guad=Math.floor(G.morale*(G.bonus==='GADGET_EXTRA'?3:2)*rf(.8,1.2));
+    const guadBase=Math.floor(G.morale*(G.bonus==='GADGET_EXTRA'?3:2)*rf(.8,1.2));
+    const guad=G.manieroGiornataAperta?Math.floor(guadBase*1.5):guadBase;
     G.oro+=guad;G.manieroVenditaGadget=true;
-    addLog('Vendita Gadget al Maniero. +'+guad+' oro','inf');
-    showMev('💰 Gadget venduti! +'+guad+' oro','grn');
+    addLog('Vendita Gadget al Maniero. +'+guad+' oro'+(G.manieroGiornataAperta?' (bonus Giornata Manieri Aperti x1,5)':''),'inf');
+    showMev('💰 Gadget venduti! +'+guad+' oro'+(G.manieroGiornataAperta?' (bonus Giornata Manieri Aperti x1,5)':''),'grn');
     // Popup guadagno gadget
     updHUD();salva();
     mostraPopupGuadagnoManiero('💰 Vendita Gadget',guad,'Incasso dalla vendita dei gadget della contrada','vendita_gadget.png');
     return;
   } else if(tipo==='evento'){
     if(G.manieroOrganizzaEvento)return;
-    if(G.oro<200){showMev('Oro insufficiente (200 necessari).','red');return;}
-    G.oro-=200;G.condManiero=clamp(G.condManiero-10,0,100);
-    G.morale=clamp(G.morale+15,0,200);G.manieroOrganizzaEvento=true;
-    addLog('Organizza Evento al Maniero. −200 oro, −10 condizioni, +15 morale','inf');
-    showMev('🍻 Evento organizzato! −200 oro, −10 condizioni, +15 morale','grn');
-    checkObiettivi('evento_maniero');
-    if(G.morale>=200)checkObiettivi('morale_200');
+    apriMenuEvento();
+    return;
   } else if(tipo==='manutenzione'){
     if(G.manieroManutenzione)return;
     if(G.oro<500){showMev('Oro insufficiente (500 necessari).','red');return;}
@@ -855,6 +891,76 @@ function doManiero(tipo){
   apriManiero();
 }
 
+function apriMenuEvento(){
+  if(!G)return;
+  const overlay=document.createElement('div');
+  overlay.id='MANIERO_EVENTO_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">🍻</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Organizza Evento</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Scegli il tipo di evento</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <button class="btn w" onclick="eseguiEvento('aperti')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🏰 Giornata Manieri Aperti</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−200 oro · Condizioni −15 · Se seguita nello stesso mese da Vendita Gadget, il guadagno dei gadget sarà x1,5</div>
+        </button>
+        <button class="btn w" onclick="eseguiEvento('sagra')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🍢 Sagra Medioevale</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−300 oro · Condizioni −20 · Morale +20 (variabile)</div>
+        </button>
+        <button class="btn w" onclick="eseguiEvento('streetfood')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🌭 Street Food</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−500 oro · Morale +50 (variabile)</div>
+        </button>
+      </div>
+      <div id="MANIERO_EVENTO_EV" style="margin-bottom:10px"></div>
+      <button class="btn gold w" onclick="document.getElementById('MANIERO_EVENTO_OVERLAY').remove();">Annulla</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+}
+
+function eseguiEvento(tipo){
+  if(!G)return;
+  if(G.manieroOrganizzaEvento)return;
+  const evEl=document.getElementById('MANIERO_EVENTO_EV');
+  function showMev(msg,cls){if(evEl)evEl.innerHTML=`<div class="evbox ${cls}">${msg}</div>`;}
+  if(tipo==='aperti'){
+    if(G.oro<200){showMev('Oro insufficiente (200 necessari).','red');return;}
+    G.oro-=200;G.condManiero=clamp(G.condManiero-15,0,100);
+    G.manieroOrganizzaEvento=true;G.manieroGiornataAperta=true;
+    addLog('Giornata Manieri Aperti. −200 oro, −15 condizioni','inf');
+  } else if(tipo==='sagra'){
+    if(G.oro<300){showMev('Oro insufficiente (300 necessari).','red');return;}
+    const fatt=rf(0.8,1.2);
+    const guadMorale=Math.round(20*fatt);
+    G.oro-=300;G.condManiero=clamp(G.condManiero-20,0,100);
+    G.morale=clamp(G.morale+guadMorale,0,200);
+    G.manieroOrganizzaEvento=true;
+    addLog('Sagra Medioevale. −300 oro, −20 condizioni, +'+guadMorale+' morale','inf');
+  } else if(tipo==='streetfood'){
+    if(G.oro<500){showMev('Oro insufficiente (500 necessari).','red');return;}
+    const fatt=rf(0.8,1.2);
+    const guadMorale=Math.round(50*fatt);
+    G.oro-=500;
+    G.morale=clamp(G.morale+guadMorale,0,200);
+    G.manieroOrganizzaEvento=true;
+    addLog('Street Food. −500 oro, +'+guadMorale+' morale','inf');
+  } else return;
+  checkObiettivi('evento_maniero');
+  if(G.morale>=200)checkObiettivi('morale_200');
+  updHUD();salva();
+  const subOv=document.getElementById('MANIERO_EVENTO_OVERLAY');
+  if(subOv)subOv.remove();
+  const manieroOv=document.getElementById('MANIERO_OVERLAY');
+  if(manieroOv)manieroOv.remove();
+  apriManiero();
+}
+
 function avanzaMese(){
   if(!G)return;
   if(G.mi===4){showSceltaCavallo();return;}
@@ -863,7 +969,7 @@ function avanzaMese(){
   // Ricalcola il prezzo di vendita dei cavalli ogni mese
   if(G.stalla)G.stalla.forEach(c=>{c.valoreVendita=calcPrezzoVendita(c);});
   // Reset flag mensili maniero
-  G.manieroOrganizzaCena=false;G.manieroVenditaGadget=false;G.manieroOrganizzaEvento=false;G.manieroManutenzione=false;
+  G.manieroOrganizzaCena=false;G.manieroVenditaGadget=false;G.manieroOrganizzaEvento=false;G.manieroManutenzione=false;G.manieroGiornataAperta=false;
   // Degrado mensile condizioni maniero
   if(G.condManiero===undefined)G.condManiero=60;
   G.condManiero=clamp(G.condManiero-5,0,100);
@@ -2226,7 +2332,7 @@ function fineAnno(vinta,cambiaContrada,nuovaContrada){
   G.mi=0;G.difesa=0;G.fan=null;
   G.raccoltaUsata=false;G.cenaUsata=false;G.sicurezzaUsata=false;G.eventoUsato=false;G._fantinoLascia=null;
   // Reset flag mensili maniero (fix: rimangono bloccati se si resta nella stessa contrada)
-  G.manieroOrganizzaCena=false;G.manieroVenditaGadget=false;G.manieroOrganizzaEvento=false;G.manieroManutenzione=false;
+  G.manieroOrganizzaCena=false;G.manieroVenditaGadget=false;G.manieroOrganizzaEvento=false;G.manieroManutenzione=false;G.manieroGiornataAperta=false;
   // Reset imboscate vinte: a fine anno il giocatore deve rifare le imboscate per scoprire i cavalli
   G.imboscateVinte={};
   addLog('Fine anno: le imboscate riuscite sono azzerate. Dovrai scoprire di nuovo i cavalli avversari.','inf');
@@ -2287,12 +2393,18 @@ function renderIntro(){
         <div class="cc-title">Fantino</div>
         <div class="cc-desc">Crea il tuo fantino, costruisci la carriera gara dopo gara</div>
       </div>
+      <div class="career-card cc-solo" onclick="mostraSlotContradaioloScreen()">
+        <div class="cc-icon">⚜️</div>
+        <div class="cc-title">Vita da Contradaiolo</div>
+        <div class="cc-desc">Vivi la contrada dall'interno, tra passione, amicizie e Palio</div>
+      </div>
     </div>
     <div class="deco" style="margin:14px 0">oppure carica partita</div>
     <button class="btn w" onclick="mostraSlotScreen('load')" style="justify-content:center;margin-bottom:6px">Carica carriera Capitano</button>
-    <button class="btn w" onclick="mostraSlotFantinoLoad()" style="justify-content:center;margin-bottom:12px">Carica carriera Fantino</button>
+    <button class="btn w" onclick="mostraSlotFantinoLoad()" style="justify-content:center;margin-bottom:6px">Carica carriera Fantino</button>
+    <button class="btn w" onclick="mostraSlotContradaioloLoad()" style="justify-content:center;margin-bottom:12px">Carica carriera Contradaiolo</button>
     <div class="deco" style="margin:12px 0">tutorial</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
       <button class="btn" onclick="avviaTutorialCapitano()" style="justify-content:center;flex-direction:column;gap:4px;padding:12px">
         <span style="font-size:18px">🏰</span>
         <span style="font-size:12px">Tutorial Capitano</span>
@@ -2300,6 +2412,10 @@ function renderIntro(){
       <button class="btn" onclick="avviaTutorialFantino()" style="justify-content:center;flex-direction:column;gap:4px;padding:12px">
         <span style="font-size:18px">🏇</span>
         <span style="font-size:12px">Tutorial Fantino</span>
+      </button>
+      <button class="btn" onclick="avviaTutorialContradaiolo()" style="justify-content:center;flex-direction:column;gap:4px;padding:12px">
+        <span style="font-size:18px">⚜️</span>
+        <span style="font-size:12px">Tutorial Contradaiolo</span>
       </button>
     </div>
     <div class="install-hint" style="margin-top:16px">
@@ -2372,6 +2488,3082 @@ function caricaFantino(slot){
     if(!F.ultimaVittoriaContrada)F.ultimaVittoriaContrada={};
     fAvviaUI();showToast('Fantino caricato — '+F.nome,'grn');
   }catch(e){alert('Errore nel caricamento.');}
+}
+
+// ══════════════════════════════════════════════
+//  CARRIERA VITA DA CONTRADAIOLO
+// ══════════════════════════════════════════════
+let N=null; // stato contradaiolo
+
+// ══════════════════════════════════════════════
+//  STATUS DEL CONTRADAIOLO — regole di accesso a tasti e menu
+// ══════════════════════════════════════════════
+// "cucciolo" e "contradaiolo" sono automatici in base all'età; tutti gli altri (tranne
+// "castellana", riservato alle NPC e mai ottenibile dal giocatore) si ottengono tramite
+// "assemblea" (meccanica da programmare in seguito), rispettando l'età minima e, per
+// alcuni, l'aver già ricoperto in passato altre cariche.
+const N_STATUS_INFO={
+  cucciolo:      {label:'Cucciolo di contrada', etaMin:0,  viaAssemblea:false, richiede:[]},
+  contradaiolo:  {label:'Contradaiolo',         etaMin:15, viaAssemblea:false, richiede:[]},
+  gonfaloniere:  {label:'Gonfaloniere',         etaMin:20, viaAssemblea:true,  richiede:[]},
+  capitano:      {label:'Capitano',             etaMin:30, viaAssemblea:true,  richiede:['gonfaloniere','addettoCorse']},
+  granPriore:    {label:'Gran Priore',          etaMin:40, viaAssemblea:true,  richiede:['capitano']},
+  addettoStalla: {label:'Addetto Stalla',       etaMin:20, viaAssemblea:true,  richiede:[]},
+  addettoCorse:  {label:'Addetto Corse',        etaMin:25, viaAssemblea:true,  richiede:['addettoStalla']}
+};
+// Status "speciali" (assegnati da assemblea): finché il giocatore li detiene non tornano
+// automaticamente a "contradaiolo" al cambio anno.
+const N_STATUS_SPECIALI=['gonfaloniere','capitano','granPriore','addettoStalla','addettoCorse'];
+
+// Permessi di accesso per ciascuno status.
+// stalla:  'none' (nav bloccata) | 'view' (solo visione cavallo/fantino) |
+//          'train' (visione + allenamenti/minigioco, no vendi/licenzia) | 'full'
+// cavalli: 'none' (nav bloccata) | 'proponi' (solo "Proponi al capitano", no acquisto) | 'full'
+// fantini: 'none' (nav bloccata) | 'full'
+const N_STATUS_PERMESSI={
+  cucciolo:      {nav:['mese','albo'],
+                   mese:['rapportoContradaioli'], maniero:['serata'],
+                   stalla:'none', cavalli:'none', fantini:'none'},
+  contradaiolo:  {nav:['mese','stalla','contrade','albo'],
+                   mese:['rapportoContradaioli'], maniero:['serata','daiMano'],
+                   stalla:'view', cavalli:'none', fantini:'none'},
+  gonfaloniere:  {nav:['mese','stalla','contrade','albo'],
+                   mese:['rapportoContradaioli'], maniero:['serata','daiMano'],
+                   stalla:'view', cavalli:'none', fantini:'none'},
+  capitano:      {nav:['mese','stalla','cavalli','fantini','contrade','albo'],
+                   mese:['rapportoContradaioli','corseAddestramento'], maniero:['serata','daiMano','organizza','consiglio'],
+                   stalla:'full', cavalli:'full', fantini:'full', vet:true},
+  granPriore:    {nav:['mese','stalla','contrade','albo'],
+                   mese:['rapportoContradaioli'], maniero:['serata','daiMano','organizza'],
+                   stalla:'view', cavalli:'none', fantini:'none'},
+  addettoStalla: {nav:['mese','stalla','contrade','albo'],
+                   mese:['rapportoContradaioli'], maniero:['serata','daiMano'],
+                   stalla:'train', cavalli:'none', fantini:'none', vet:true},
+  addettoCorse:  {nav:['mese','stalla','cavalli','fantini','contrade','albo'],
+                   mese:['rapportoContradaioli','corseAddestramento'], maniero:['serata','daiMano'],
+                   stalla:'full', cavalli:'proponi', fantini:'full', vet:true}
+};
+
+// Chiave di status corrente del giocatore (fallback 'contradaiolo'); ricostruita dall'etichetta
+// testuale N.status per compatibilità con i salvataggi precedenti a questa funzionalità.
+function nStatusKey(){
+  if(!N)return'contradaiolo';
+  if(N.statusKey&&N_STATUS_INFO[N.statusKey])return N.statusKey;
+  const trovata=Object.entries(N_STATUS_INFO).find(([,inf])=>inf.label===N.status);
+  return trovata?trovata[0]:'contradaiolo';
+}
+function nPermessiStatus(){return N_STATUS_PERMESSI[nStatusKey()]||N_STATUS_PERMESSI.contradaiolo;}
+function nNavConsentito(id){return nPermessiStatus().nav.includes(id);}
+function nMeseConsentito(az){return nPermessiStatus().mese.includes(az);}
+function nManieroConsentito(az){return nPermessiStatus().maniero.includes(az);}
+function nStatusLabel(){return N_STATUS_INFO[nStatusKey()].label;}
+
+// Breve descrizione (mostrata nella schermata Mese) di ciò che lo status attuale permette
+function nStatusDescrizioneAccesso(){
+  const perm=nPermessiStatus();
+  const noteExtra={
+    view:'Stalla in sola visione',
+    train:'Stalla: solo allenamenti',
+    proponi:'Cavalli: solo proponi al capitano'
+  };
+  const note=[];
+  if(noteExtra[perm.stalla])note.push(noteExtra[perm.stalla]);
+  if(noteExtra[perm.cavalli])note.push(noteExtra[perm.cavalli]);
+  const labels=N_NAV_ITEMS.filter(it=>perm.nav.includes(it.id)).map(it=>it.label);
+  return '🔓 Accesso: '+labels.join(', ')+(note.length?' — '+note.join(', '):'');
+}
+
+// Aggiorna lo status in base all'età: sotto i 15 anni "Cucciolo di contrada", dai 15 anni
+// in su "Contradaiolo" — a meno che il giocatore detenga già uno status speciale ottenuto
+// tramite assemblea (Gonfaloniere, Capitano, Gran Priore, Addetto Stalla, Addetto Corse),
+// nel qual caso resta invariato finché non viene revocato altrove.
+function nAggiornaStatus(){
+  if(!N)return;
+  const attuale=nStatusKey();
+  if(N_STATUS_SPECIALI.includes(attuale))return;
+  const nuova=N.eta<=14?'cucciolo':'contradaiolo';
+  N.statusKey=nuova;
+  N.status=N_STATUS_INFO[nuova].label;
+}
+
+function nSalva(){if(!N)return;try{localStorage.setItem('palio_contradaiolo_'+N.slot,JSON.stringify(N));}catch(e){}}
+
+function mostraSlotContradaioloScreen(){
+  let html=`<div style="text-align:center;margin-bottom:16px">
+    <div style="font-size:13px;color:rgba(201,168,76,.6);font-family:var(--fn)">Scegli slot per la nuova carriera Contradaiolo</div>
+  </div><div class="slot-grid">`;
+  for(let i=1;i<=3;i++){
+    let inf=null;
+    try{const s=localStorage.getItem('palio_contradaiolo_'+i);if(s){const d=JSON.parse(s);inf={nome:d.nome,anno:d.anno};}}catch(e){}
+    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="iniziaCarrieraContradaiolo(${i})">
+      <div class="slot-num">Slot ${i}</div>
+      <div class="slot-info">${inf?inf.nome+'<br>Anno '+inf.anno:'Vuoto'}</div>
+    </div>`;
+  }
+  html+=`</div><button class="btn w" onclick="renderIntro()" style="margin-top:8px">← Indietro</button>`;
+  setMain('<div style="padding:20px 12px">'+html+'</div>');
+}
+
+function mostraSlotContradaioloLoad(){
+  let html=`<div style="text-align:center;margin-bottom:16px">
+    <div style="font-size:13px;color:rgba(201,168,76,.6);font-family:var(--fn)">Carica carriera Contradaiolo</div>
+  </div><div class="slot-grid">`;
+  for(let i=1;i<=3;i++){
+    let inf=null;
+    try{const s=localStorage.getItem('palio_contradaiolo_'+i);if(s){const d=JSON.parse(s);inf={nome:d.nome,anno:d.anno};}}catch(e){}
+    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="caricaContradaiolo(${i})">
+      <div class="slot-num">Slot ${i}</div>
+      <div class="slot-info">${inf?inf.nome+'<br>Anno '+inf.anno:'Vuoto'}</div>
+    </div>`;
+  }
+  html+=`</div><button class="btn w" onclick="renderIntro()" style="margin-top:8px">← Indietro</button>`;
+  setMain('<div style="padding:20px 12px">'+html+'</div>');
+}
+
+// Genera i 30 contradaioli della contrada del giocatore: 20 maschi, 10 femmine,
+// ognuno con amicizia iniziale random tra 10 e 30, nessun badge assegnato, un'età
+// random tra 5 e 55 anni e una qualità fittizia (puramente descrittiva)
+function nGeneraContradaiolo(nome,sesso){
+  return {nome,sesso,amicizia:rnd(10,30),badge:null,eta:rnd(5,55),qualita:sample(QUALITA_CONTRADAIOLI,1)[0],fazione:nEstraiFazioneCasuale()};
+}
+function nGeneraContradaioli(){
+  const list=[];
+  NOMI_CONTRADAIOLI_M.forEach(nome=>list.push(nGeneraContradaiolo(nome,'M')));
+  NOMI_CONTRADAIOLI_F.forEach(nome=>list.push(nGeneraContradaiolo(nome,'F')));
+  return list;
+}
+// Ogni contradaiolo invecchia di un anno; chi raggiunge 80 anni viene sostituito da un
+// nuovo contradaiolo (stesso sesso, per mantenere l'equilibrio 20M/10F), con nuova età
+// giovane, nuova qualità e nessun badge (la carica eventualmente ricoperta resta vacante
+// finché non viene riassegnata dal rinnovo automatico o da una sostituzione manuale)
+function nInvecchiaContradaioli(){
+  if(!N||!N.contradaioli)return;
+  N.contradaioli.forEach(c=>{
+    if(c.eta===undefined)c.eta=rnd(5,55);
+    if(!c.qualita)c.qualita=sample(QUALITA_CONTRADAIOLI,1)[0];
+    c.eta++;
+    if(c.eta>=80){
+      const nomiPool=c.sesso==='M'?NOMI_CONTRADAIOLI_M:NOMI_CONTRADAIOLI_F;
+      c.nome=sample(nomiPool,1)[0];
+      c.eta=rnd(16,30);
+      c.qualita=sample(QUALITA_CONTRADAIOLI,1)[0];
+      c.amicizia=rnd(10,30);
+      c.fazione=nEstraiFazioneCasuale();
+      c.badge=null;
+      c.mandatoInizio=undefined;
+    }
+  });
+}
+
+// Genera i rapporti iniziali (0-100, random) con le 7 contrade diverse dalla propria,
+// usati nella schermata "Contrade" della carriera Vita da Contradaiolo (incluse gli scherzi)
+function nInizRapportiContrade(){
+  const r={};
+  Object.keys(CDB).forEach(k=>{if(k!==N.contrada)r[k]=rnd(0,100);});
+  return r;
+}
+
+// Assegna (o riassegna) i badge ai contradaioli rispettando i vincoli di sesso e quantità;
+// ogni contradaiolo può avere un solo badge o nessuno
+function nAssegnaBadges(){
+  if(!N||!N.contradaioli)return;
+  N.contradaioli.forEach(c=>c.badge=null);
+  const usati=new Set();
+  Object.entries(BADGE_INFO).forEach(([chiave,info])=>{
+    let papabili=N.contradaioli.filter(c=>!usati.has(c.nome)&&(!info.sesso||c.sesso===info.sesso)&&(!info.etaMin||(c.eta||0)>=info.etaMin));
+    // Se per età troppo pochi papabili rispettano il minimo (contrada "giovane"), si ripiega
+    // sui candidati disponibili senza vincolo d'età pur di non lasciare la carica vacante
+    if(papabili.length<info.quanti){
+      const fallback=N.contradaioli.filter(c=>!usati.has(c.nome)&&(!info.sesso||c.sesso===info.sesso));
+      if(fallback.length>papabili.length)papabili=fallback;
+    }
+    const scelti=sample(papabili,Math.min(info.quanti,papabili.length));
+    scelti.forEach(c=>{c.badge=chiave;c.mandatoInizio=N.anno;usati.add(c.nome);});
+  });
+  N.badgeUltimoAnno=N.anno;
+}
+
+function caricaContradaiolo(slot){
+  try{
+    const s=localStorage.getItem('palio_contradaiolo_'+slot);
+    if(!s){showToast('Slot '+slot+' vuoto!','red');return;}
+    N=JSON.parse(s);N.slot=slot;
+    if(!N.ultimaVittoriaContrada)N.ultimaVittoriaContrada={};
+    if(N.eta===undefined)N.eta=1;
+    if(N.etaFine===undefined)N.etaFine=rnd(70,90);
+    if(N.mi===undefined)N.mi=0;
+    if(!N.status)N.status='Cucciolo di contrada';
+    if(!N.statusKey)N.statusKey=nStatusKey();
+    if(!N.statoStorico)N.statoStorico={gonfaloniere:false,capitano:false,granPriore:false,addettoStalla:false,addettoCorse:false};
+    nAggiornaStatus();
+    if(!N.palii)N.palii=[];
+    if(!N.contradaioli){N.contradaioli=nGeneraContradaioli();nAssegnaBadges();}
+    N.contradaioli.forEach(c=>{
+      if(c.eta===undefined)c.eta=rnd(5,55);
+      if(!c.qualita)c.qualita=sample(QUALITA_CONTRADAIOLI,1)[0];
+      if(!c.fazione)c.fazione=nEstraiFazioneCasuale();
+    });
+    if(!N.fazionePunti)N.fazionePunti={corsa:0,maniero:0,politica:0};
+    if(N.badgeUltimoAnno===undefined)N.badgeUltimoAnno=N.anno;
+    if(N.amiciziaMensile===undefined)N.amiciziaMensile=0;
+    if(N.reputazione===undefined)N.reputazione=5;
+    if(N.budgetContrada===undefined)N.budgetContrada=3000;
+    if(N.moraleContrada===undefined)N.moraleContrada=rnd(30,70);
+    if(N.condManiero===undefined)N.condManiero=60;
+    if(N.manieroSerataMensile===undefined)N.manieroSerataMensile=false;
+    if(N.manieroDaiManoMensile===undefined)N.manieroDaiManoMensile=false;
+    if(N.manieroOrganizzaCena===undefined)N.manieroOrganizzaCena=false;
+    if(N.manieroVenditaGadget===undefined)N.manieroVenditaGadget=false;
+    if(N.manieroOrganizzaEvento===undefined)N.manieroOrganizzaEvento=false;
+    if(N.manieroManutenzione===undefined)N.manieroManutenzione=false;
+    if(N.manieroGiornataAperta===undefined)N.manieroGiornataAperta=false;
+    if(N.sostituzioneAnno===undefined)N.sostituzioneAnno=0;
+    if(N.pistaImpraticabile===undefined)N.pistaImpraticabile=false;
+    if(N.veterinario===undefined)N.veterinario=false;
+    nCheckDecadimentoCapitano();
+    nAvviaUI();showToast('Contradaiolo caricato — '+N.nome,'grn');
+  }catch(e){alert('Errore nel caricamento.');}
+}
+
+// Anno dell'ultima vittoria al Palio per contrada, per la carriera Contradaiolo
+function nGetUltimaVittoria(k){
+  if(N&&N.ultimaVittoriaContrada&&N.ultimaVittoriaContrada[k]!==undefined)
+    return N.ultimaVittoriaContrada[k];
+  return ULTIMA_VITTORIA_DEFAULT[k]||'—';
+}
+
+function iniziaCarrieraContradaiolo(slot){
+  setMain(`<div style="padding:20px 12px;text-align:center">
+    <div style="font-size:40px;margin-bottom:8px">⚜️</div>
+    <div style="font-family:var(--fn);font-size:20px;font-weight:800;color:var(--gold);margin-bottom:6px">Vita da Contradaiolo</div>
+    <div style="font-size:13px;color:rgba(201,168,76,.5);margin-bottom:20px">Inserisci il tuo nome</div>
+    <input id="CNT_NOME" type="text" placeholder="Il tuo nome..." maxlength="20"
+      style="width:100%;padding:14px;border-radius:10px;border:var(--bord2);background:#1A0E08;
+             color:var(--gold);font-family:var(--fn);font-size:16px;text-align:center;margin-bottom:12px;
+             -webkit-appearance:none;outline:none">
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:16px">Poi scegli la tua contrada</div>
+    <div class="cg2" id="CNT_CT" style="margin-bottom:14px"></div>
+    <div id="CNT_BTN"></div>
+    <button class="btn w" onclick="mostraSlotContradaioloScreen()" style="margin-top:8px;justify-content:center">← Indietro</button>
+  </div>`);
+  R('CNT_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
+    const annUlt=nGetUltimaVittoria(k);
+    return `<div class="cc2" onclick="selContCt('${k}')" id="CCI_${k}">
+      <div class="cc2-name">${k}</div>
+      <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
+  }).join('');
+  R('CNT_NOME')._slot=slot;
+}
+
+let _contCtSel=null;
+function selContCt(k){
+  document.querySelectorAll('[id^="CCI_"]').forEach(e=>e.classList.remove('sel'));
+  R('CCI_'+k).classList.add('sel');_contCtSel=k;
+  R('CNT_BTN').innerHTML=`<button class="btn gold w" onclick="creaContradaiolo('${k}')" style="justify-content:center">⚜ Diventa contradaiolo di ${k} →</button>`;
+}
+
+function creaContradaiolo(contrada){
+  const nome=(R('CNT_NOME').value||'').trim();
+  if(!nome){showToast('Inserisci un nome!','red');return;}
+  const slot=R('CNT_NOME')._slot||1;
+  const db=CDB[contrada];
+  N={
+    nome,contrada,nemica:db.nemica,slot,
+    anno:2027,
+    eta:1,
+    etaFine:rnd(70,90),
+    mi:0,
+    status:'Cucciolo di contrada',
+    statusKey:'cucciolo',
+    statoStorico:{gonfaloniere:false,capitano:false,granPriore:false,addettoStalla:false,addettoCorse:false},
+    palii:[],
+    ultimaVittoriaContrada:{},
+    amiciziaMensile:0,
+    scherzoMensile:0,
+    reputazione:5,
+    oro:1000,
+    statsCavalli:{},
+    statsFantini:{},
+    budgetContrada:3000,
+    moraleContrada:rnd(30,70),
+    condManiero:60,
+    manieroSerataMensile:false,
+    manieroDaiManoMensile:false,
+    manieroOrganizzaCena:false,
+    manieroVenditaGadget:false,
+    manieroOrganizzaEvento:false,
+    manieroManutenzione:false,
+    manieroGiornataAperta:false,
+    sostituzioneAnno:0,
+    veterinario:false
+  };
+  N.contradaioli=nGeneraContradaioli();
+  nAssegnaBadges();
+  N.rapportiContrade=nInizRapportiContrade();
+  nSalva();
+  // Niente schermata giubba per il Contradaiolo: si passa subito alla schermata Mese
+  nAvviaUI();
+}
+
+// ══════════════════════════════════════════════
+//  CARRIERA CONTRADAIOLO — CICLO DI GIOCO
+// ══════════════════════════════════════════════
+function nAvviaUI(){
+  R('HUD').style.display='none';
+  R('H_ANNO').textContent='Palio di Legnano';
+  R('H_NOME').textContent='Contradaiolo '+N.nome;
+  R('NAV').style.display='flex';
+  applicaColoriContradaN();
+  nRenderNav();
+  if(!N.palii)N.palii=[];
+  if(!N.ultimaVittoriaContrada)N.ultimaVittoriaContrada={};
+  if(N.mi===undefined)N.mi=0;
+  if(!N.status)N.status='Cucciolo di contrada';
+  if(!N.statsCavalli)N.statsCavalli={};
+  if(!N.statsFantini)N.statsFantini={};
+  // Se la carriera è già terminata (es. dopo ricaricamento), mostra subito il riepilogo finale
+  if(N.eta>=N.etaFine){nMostraRiepilogoFinale();return;}
+  if(!R('sc-nmese'))nBuildDOM();
+  nGoTo('mese');
+}
+
+// Costruisce una sola volta le schermate della carriera Contradaiolo
+function nBuildDOM(){
+  R('MAIN').innerHTML=`<div class="pad">
+    <div class="sc on" id="sc-nmese"></div>
+    <div class="sc" id="sc-nstalla">
+      <div class="card" id="CARD_NCAV"></div>
+      <div class="card" id="CARD_NFAN"></div>
+      <div class="card" id="CARD_NVET" style="display:none"></div>
+    </div>
+    <div class="sc" id="sc-ncavalli"></div>
+    <div class="sc" id="sc-nfantini">
+      <div class="card"><div class="ct">Fantini sul mercato</div><div id="NFNT_MKT"></div></div>
+    </div>
+    <div class="sc" id="sc-ncontrade"></div>
+    <div class="sc" id="sc-nalbo"></div>
+  </div>`;
+}
+
+// Elenco (fisso, sempre nello stesso ordine) delle voci della NAV della carriera Contradaiolo
+const N_NAV_ITEMS=[
+  {id:'mese',icon:'📅',label:'Mese'},
+  {id:'stalla',icon:'🐎',label:'Stalla'},
+  {id:'cavalli',icon:'🐴',label:'Cavalli'},
+  {id:'fantini',icon:'🏇',label:'Fantini'},
+  {id:'contrade',icon:'🏰',label:'Contrade'},
+  {id:'albo',icon:'📜',label:'Albo'}
+];
+
+// Ricostruisce la banda di navigazione dedicata alla carriera Contradaiolo, disattivando
+// (visivamente e all'uso) le voci non consentite dallo status attuale del giocatore
+function nRenderNav(){
+  const perm=nPermessiStatus();
+  R('NAV').innerHTML=N_NAV_ITEMS.map((it,i)=>{
+    const consentito=perm.nav.includes(it.id);
+    return `<button class="nb ${i===0?'on':''} ${consentito?'':'nb-off'}" onclick="nGoTo('${it.id}')"><span class="nbi">${it.icon}</span>${it.label}</button>`;
+  }).join('');
+}
+
+// Passa da una schermata all'altra della carriera Contradaiolo
+function nGoTo(id){
+  if(!nNavConsentito(id)){showToast('Il tuo status attuale ('+nStatusLabel()+') non ti permette di accedere a questa sezione.','red');return;}
+  document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  const ids=N_NAV_ITEMS.map(it=>it.id);
+  const el=R('sc-n'+id);if(el)el.classList.add('on');
+  const idx=ids.indexOf(id);
+  if(idx>=0&&document.querySelectorAll('.nb')[idx])document.querySelectorAll('.nb')[idx].classList.add('on');
+  R('MAIN').scrollTop=0;
+  if(id==='mese')nRenderMese();
+  if(id==='stalla')nRenderStalla();
+  if(id==='cavalli')nRenderCavalli();
+  if(id==='fantini')nRenderFantini();
+  if(id==='contrade')nRenderContrade();
+  if(id==='albo')nRenderAlbo();
+}
+
+// Schermate non ancora programmate: placeholder in attesa di contenuti
+function nSchermataInArrivo(el,titolo,icona){
+  if(!el)return;
+  el.innerHTML=`<div class="card" style="text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">${icona}</div>
+    <div class="ct" style="justify-content:center">${titolo}</div>
+    <div style="font-size:13px;color:rgba(201,168,76,.6)">Questa sezione sarà disponibile prossimamente.</div>
+  </div>`;
+}
+// ── SCHERMATA CAVALLI (Vita da Contradaiolo) ──
+// Mostra tutti i cavalli con almeno una presenza alle corse di addestramento dell'anno
+// corrente di gioco. Le statistiche tecniche (velocità/accelerazione/tenuta curva/resistenza)
+// restano nascoste finché il cavallo non entra in Stalla di contrada: qui si vedono solo le
+// corse di addestramento disputate/vinte nell'anno e i Palii disputati/vinti in carriera.
+
+// Prezzo di acquisto di un cavallo: stessa formula della carriera Capitano (media delle 4
+// statistiche tecniche x 450, arrotondata per difetto).
+function nCavCalcPrezzoAcquisto(db){
+  return Math.floor(((db.vel+db.acc+db.ten+db.res)/4)*450);
+}
+
+// Statistiche di carriera (Palii disputati/vinti) di un cavallo — persistono per tutta la
+// carriera e non si azzerano ogni anno (a differenza di N.statsCavalli).
+function nCavCareerStats(nome){
+  if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
+  return N.statsCavalliCarriera[nome]||{palii:0,vinti:0};
+}
+
+function nCavStatsBlock(nome){
+  const stag=(N.statsCavalli&&N.statsCavalli[nome])||{gare:0,vittorie:0};
+  const car=nCavCareerStats(nome);
+  return `${nFntCountRow('Corse addestramento (anno)',stag.gare)}${nFntCountRow('Corse vinte (anno)',stag.vittorie)}${nFntCountRow('Palii disputati (carriera)',car.palii)}${nFntCountRow('Palii vinti (carriera)',car.vinti)}`;
+}
+
+function nRenderCavalli(){
+  const el=R('sc-ncavalli');if(!el||!N)return;
+  const cavalliMode=nPermessiStatus().cavalli; // 'none' | 'proponi' | 'full'
+  const puoAcquistare=cavalliMode==='full';
+  if(N.oro===undefined)N.oro=1000;
+  if(!N.statsCavalli)N.statsCavalli={};
+  if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
+  const nomiStalla=new Set((N.stalla||[]).map(c=>c.nome));
+  const eligibili=Object.keys(N.statsCavalli).filter(nome=>(N.statsCavalli[nome].gare||0)>=1&&!nomiStalla.has(nome));
+  const capitano=(N.contradaioli||[]).find(c=>c.badge==='capitano');
+  const amiCap=capitano?(capitano.amicizia||0):0;
+  const somma=(N.reputazione||0)+amiCap;
+  const colSomma=somma>=155?'#5DBB63':'#E05555';
+
+  let html=`<div class="card">
+    <div class="ct">🐴 Cavalli</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Qui trovi tutti i cavalli con almeno una presenza alle corse di addestramento dell'anno in corso. Le statistiche tecniche (velocità, accelerazione, tenuta curva, resistenza) restano nascoste finché il cavallo non entra in Stalla di contrada.</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:4px">💰 Il tuo oro: <strong style="color:var(--gold)">${N.oro}</strong></div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6)">🤝 Reputazione (${N.reputazione||0}) + Amicizia del capitano${capitano?' — '+capitano.nome+' ('+amiCap+')':' (nessun capitano in carica)'} = <strong style="color:${colSomma}">${somma}/155</strong> per farsi accettare un cavallo</div>
+  </div>`;
+
+  if(!eligibili.length){
+    html+=`<div class="card" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🐴</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.5)">Nessun cavallo con presenze alle corse di addestramento di quest'anno. Disputa le Corse di addestramento dal menù Mese per vederli comparire qui.</div>
+    </div>`;
+  } else {
+    html+='<div class="card"><div class="ct">Cavalli in lizza quest\'anno</div>';
+    eligibili.sort((a,b)=>(N.statsCavalli[b].vittorie-N.statsCavalli[a].vittorie)||(N.statsCavalli[b].gare-N.statsCavalli[a].gare)).forEach(nome=>{
+      const db=getCavDB(nome);
+      if(!db)return;
+      const prezzo=nCavCalcPrezzoAcquisto(db);
+      const _img=db.img?`<img src="${db.img}" alt="${nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:'🐎';
+      html+=`<div class="mi" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div style="display:flex;gap:10px">
+          <div style="width:56px;height:56px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:24px">${_img}</div>
+          <div style="flex:1">
+            <div class="mi-name">${nome}</div>
+            ${nCavStatsBlock(nome)}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" onclick="nProponiCapitano('${nome}')">🤝 Proponi al capitano</button>
+          ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${N.oro<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${nome}')">💰 Acquista (${prezzo})</button>`:''}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+// Il Capitano accetta di prendere in prestito il cavallo (fino a fine anno, gratuitamente)
+// se reputazione del giocatore + amicizia del capitano sono >= 155.
+function nProponiCapitano(nome){
+  if(!N)return;
+  if(nPermessiStatus().cavalli==='none'){showToast('Il tuo status attuale non ti permette di proporre cavalli.','red');return;}
+  const db=getCavDB(nome);if(!db)return;
+  if((N.stalla||[]).some(c=>c.nome===nome)){showToast('Il cavallo è già in stalla!','red');return;}
+  const capitano=(N.contradaioli||[]).find(c=>c.badge==='capitano');
+  if(!capitano){showToast('Nessun capitano in carica: non può accettare cavalli!','red');return;}
+  const somma=(N.reputazione||0)+(capitano.amicizia||0);
+  if(somma>=155){
+    if(!N.stalla)N.stalla=[];
+    const cav={nome:db.nome,vel:db.vel,acc:db.acc,ten:db.ten,res:db.res,ner:db.ner,maxAcc:5,maxRes:5,annoAcquisto:N.anno,prestito:true};
+    cav.valoreVendita=calcPrezzoVendita(cav);
+    N.stalla.push(cav);
+    nSalva();
+    showToast('✦ '+capitano.nome+' accetta '+nome+' in stalla fino a fine anno!','grn');
+    nRenderCavalli();nRenderStalla();
+  } else {
+    showToast('✗ '+capitano.nome+' rifiuta: servono almeno 155 punti tra reputazione e amicizia (hai '+somma+').','red');
+  }
+}
+
+// Acquisto definitivo del cavallo: il prezzo viene scalato dal budget personale e il cavallo
+// resta in stalla finché il giocatore non decide di venderlo.
+function nAcquistaCavMercato(nome){
+  if(!N)return;
+  if(nPermessiStatus().cavalli!=='full'){showToast('Il tuo status attuale ti permette solo di proporre il cavallo al capitano.','red');return;}
+  const db=getCavDB(nome);if(!db)return;
+  if((N.stalla||[]).some(c=>c.nome===nome)){showToast('Il cavallo è già in stalla!','red');return;}
+  const prezzo=nCavCalcPrezzoAcquisto(db);
+  if(N.oro<prezzo){showToast('Oro insufficiente!','red');return;}
+  N.oro-=prezzo;
+  if(!N.stalla)N.stalla=[];
+  const cav={nome:db.nome,vel:db.vel,acc:db.acc,ten:db.ten,res:db.res,ner:db.ner,maxAcc:5,maxRes:5,annoAcquisto:N.anno,acquistato:true};
+  cav.valoreVendita=calcPrezzoVendita(cav);
+  N.stalla.push(cav);
+  nSalva();
+  showToast('✦ Acquistato '+nome+' per '+prezzo+' oro!','grn');
+  nRenderCavalli();nRenderStalla();
+}
+// ── SCHERMATA CONTRADE (Vita da Contradaiolo): rapporti con le 7 contrade e scherzo ──
+function nRenderContrade(){
+  const el=R('sc-ncontrade');if(!el||!N)return;
+  if(!N.rapportiContrade)N.rapportiContrade=nInizRapportiContrade();
+  const scherzoUsato=(N.scherzoMensile||0)>=1;
+  const altre=Object.keys(CDB).filter(k=>k!==N.contrada);
+  const righe=altre.map(k=>{
+    const isNemica=k===N.nemica;
+    if(N.rapportiContrade[k]===undefined)N.rapportiContrade[k]=rnd(0,100);
+    const v=N.rapportiContrade[k];
+    const col=v>=70?'#5DBB63':v>=40?'var(--gold)':'#E05555';
+    return `<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:var(--gold-l)">${k}${isNemica?' <span class="bdg r">nemica</span>':''}</div>
+        <div style="font-size:13px;font-weight:700;color:${col}">${v}/100</div>
+      </div>
+      <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${v}%"></div></div>
+      <button class="btn" style="font-size:11px;padding:6px 10px;margin-top:8px" ${scherzoUsato?'disabled':''} onclick="nAvviaScherzo('${k}')">🎭 Scherzo</button>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="card">
+    <div class="ct">🏰 Rapporti con le contrade</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Osserva il rapporto (0-100) con le contrade rivali, inclusa la tua nemica. Puoi organizzare un solo scherzo al mese: se riesci guadagni reputazione, se fallisci ne perdi.</div>
+    ${scherzoUsato?'<div class="evbox inf">Hai già tentato uno scherzo questo mese.</div>':''}
+  </div>
+  <div class="card">${righe}</div>`;
+}
+
+function nAvviaScherzo(bersaglio){
+  if(!N)return;
+  if((N.scherzoMensile||0)>=1){showToast('Puoi tentare un solo scherzo al mese!','red');return;}
+  nMostraForza4(bersaglio);
+}
+
+// ── MINIGIOCO FORZA 4 (scherzo alle contrade, Vita da Contradaiolo) ──
+function n4RigaLibera(board,col){for(let r=5;r>=0;r--)if(board[r][col]===0)return r;return -1;}
+function n4CheckVittoria(board,row,col,player){
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for(const[dr,dc]of dirs){
+    let count=1;
+    for(let s=1;s<4;s++){const r=row+dr*s,c=col+dc*s;if(r<0||r>5||c<0||c>6||board[r][c]!==player)break;count++;}
+    for(let s=1;s<4;s++){const r=row-dr*s,c=col-dc*s;if(r<0||r>5||c<0||c>6||board[r][c]!==player)break;count++;}
+    if(count>=4)return true;
+  }
+  return false;
+}
+function n4TrovaMossaVincente(board,player){
+  for(let col=0;col<7;col++){
+    const row=n4RigaLibera(board,col);
+    if(row===-1)continue;
+    board[row][col]=player;
+    const vince=n4CheckVittoria(board,row,col,player);
+    board[row][col]=0;
+    if(vince)return col;
+  }
+  return -1;
+}
+function n4MossaIA(board){
+  let col=n4TrovaMossaVincente(board,2);
+  if(col===-1)col=n4TrovaMossaVincente(board,1);
+  if(col===-1){
+    const ordine=[3,2,4,1,5,0,6];
+    const disp=ordine.filter(c=>n4RigaLibera(board,c)!==-1);
+    col=disp[Math.floor(Math.random()*disp.length)];
+  }
+  return col;
+}
+
+function nMostraForza4(bersaglio){
+  const colColori=CONTRADA_COLORI[N.contrada]||{c1:'#C9A84C',c2:'#5DBB63'};
+  const colGioc=colColori.c1,colIA=colColori.c2;
+  const board=Array.from({length:6},()=>Array(7).fill(0));
+  let turnoGiocatore=true,finito=false;
+
+  const overlay=document.createElement('div');
+  overlay.id='N4_OVL';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML=`
+    <div id="N4_BOX" style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:18px;padding:16px;max-width:360px;width:100%;position:relative;box-shadow:0 0 50px rgba(201,168,76,.25);transition:border-color .5s,box-shadow .5s">
+      <div style="text-align:center;margin-bottom:8px">
+        <div style="font-size:26px">🎭</div>
+        <div style="font-family:var(--fn);font-size:16px;font-weight:800;color:var(--gold);letter-spacing:.5px;margin-top:4px">Scherzo a ${bersaglio}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px;font-family:var(--fn)">Vinci a Forza 4 per riuscire nello scherzo</div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:10px;margin-bottom:8px;font-size:11px;font-family:var(--fn)">
+        <div style="display:flex;align-items:center;gap:4px;color:var(--parch2)"><span style="width:12px;height:12px;border-radius:50%;background:${colGioc};display:inline-block;border:1px solid rgba(255,255,255,.4)"></span>Tu</div>
+        <div style="display:flex;align-items:center;gap:4px;color:var(--parch2)"><span style="width:12px;height:12px;border-radius:50%;background:${colIA};display:inline-block;border:1px solid rgba(255,255,255,.4)"></span>${bersaglio}</div>
+      </div>
+      <div id="N4_GRID" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:#0D0806;border-radius:10px;padding:8px;border:var(--bord)"></div>
+      <div id="N4_STATUS" style="font-family:var(--fn);font-size:12px;color:rgba(201,168,76,.6);text-align:center;margin-top:10px">Tocca a te: scegli una colonna</div>
+      <div id="N4_RESULT" style="display:none;text-align:center;margin-top:10px">
+        <div style="font-size:38px;margin-bottom:6px" id="N4_RES_ICON"></div>
+        <div style="font-family:var(--fn);font-size:16px;font-weight:800;margin-bottom:8px" id="N4_RES_TITLE"></div>
+        <div style="font-size:13px;color:var(--parch2);line-height:1.6;padding:10px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid #888;margin-bottom:10px" id="N4_RES_MSG"></div>
+        <button id="N4_CLOSE_BTN" class="btn gold w">Continua →</button>
+      </div>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+
+  const grid=document.getElementById('N4_GRID');
+  const status=document.getElementById('N4_STATUS');
+  const cellCol=(r,c)=>board[r][c]===1?colGioc:board[r][c]===2?colIA:'#1A0E08';
+
+  function disegna(){
+    grid.innerHTML='';
+    for(let r=0;r<6;r++){
+      for(let c=0;c<7;c++){
+        const cell=document.createElement('div');
+        cell.style.cssText=`width:100%;aspect-ratio:1;border-radius:50%;background:${cellCol(r,c)};border:1.5px solid #5C3D2E;transition:background .15s;cursor:${finito?'default':'pointer'}`;
+        cell.onclick=()=>giocaColonna(c);
+        grid.appendChild(cell);
+      }
+    }
+  }
+  disegna();
+
+  function giocaColonna(col){
+    if(finito||!turnoGiocatore)return;
+    const row=n4RigaLibera(board,col);
+    if(row===-1)return;
+    board[row][col]=1;
+    disegna();
+    if(n4CheckVittoria(board,row,col,1)){concludi(true);return;}
+    if(board.every(riga=>riga.every(v=>v!==0))){concludi(false);return;}
+    turnoGiocatore=false;
+    status.textContent=bersaglio+' sta pensando alla mossa…';
+    setTimeout(()=>{
+      const colIa=n4MossaIA(board);
+      const rowIa=n4RigaLibera(board,colIa);
+      if(rowIa!==-1){
+        board[rowIa][colIa]=2;
+        disegna();
+        if(n4CheckVittoria(board,rowIa,colIa,2)){concludi(false);return;}
+      }
+      if(board.every(riga=>riga.every(v=>v!==0))){concludi(false);return;}
+      turnoGiocatore=true;
+      status.textContent='Tocca a te: scegli una colonna';
+    },500);
+  }
+
+  function concludi(vinto){
+    finito=true;
+    disegna();
+    document.getElementById('N4_STATUS').style.display='none';
+    const box=document.getElementById('N4_BOX');
+    const resEl=document.getElementById('N4_RESULT');
+    resEl.style.display='';
+    const icon=document.getElementById('N4_RES_ICON');
+    const title=document.getElementById('N4_RES_TITLE');
+    const msg=document.getElementById('N4_RES_MSG');
+
+    N.scherzoMensile=(N.scherzoMensile||0)+1;
+    const isNemica=bersaglio===N.nemica;
+
+    if(vinto){
+      box.style.borderColor='#5DBB63';box.style.boxShadow='0 0 50px rgba(93,187,99,.35)';
+      icon.textContent='😂';title.style.color='#5DBB63';title.textContent='Scherzo riuscito!';
+      const repGain=isNemica?10:5;
+      N.reputazione=clamp((N.reputazione||0)+repGain,0,100);
+      let extra='';
+      if(!isNemica){
+        const nemicaDelBersaglio=CDB[bersaglio]?CDB[bersaglio].nemica:null;
+        if(nemicaDelBersaglio&&nemicaDelBersaglio!==N.contrada&&N.rapportiContrade[nemicaDelBersaglio]!==undefined){
+          N.rapportiContrade[nemicaDelBersaglio]=clamp(N.rapportiContrade[nemicaDelBersaglio]+5,0,100);
+          extra=` La contrada di <strong>${nemicaDelBersaglio}</strong>, nemica di ${bersaglio}, apprezza il gesto: rapporto +5.`;
+        }
+      }
+      msg.style.borderLeftColor='#5DBB63';
+      msg.innerHTML=`Lo scherzo ai danni di <strong>${bersaglio}</strong> è riuscito alla perfezione! Reputazione +${repGain}.${extra}`;
+      showToast('✦ Scherzo riuscito su '+bersaglio+'! +'+repGain+' reputazione','grn');
+    } else {
+      box.style.borderColor='#E05555';box.style.boxShadow='0 0 50px rgba(224,85,85,.3)';
+      icon.textContent='😬';title.style.color='#E05555';title.textContent='Scherzo fallito!';
+      const repLoss=isNemica?10:5;
+      N.reputazione=clamp((N.reputazione||0)-repLoss,0,100);
+      N.rapportiContrade[bersaglio]=clamp((N.rapportiContrade[bersaglio]||0)-10,0,100);
+      msg.style.borderLeftColor='#E05555';
+      msg.innerHTML=`Lo scherzo ai danni di <strong>${bersaglio}</strong> è stato scoperto! Reputazione −${repLoss}, rapporto con ${bersaglio} −10.`;
+      showToast('✗ Scherzo fallito su '+bersaglio+'! −'+repLoss+' reputazione','red');
+    }
+    nSalva();
+    document.getElementById('N4_CLOSE_BTN').onclick=()=>{overlay.remove();nRenderContrade();};
+  }
+}
+function nRenderAlbo(){
+  const el=R('sc-nalbo');if(!el)return;
+  if(!N){el.innerHTML='<div class="le">Nessun dato.</div>';return;}
+  const storico=N.albumStorico||[];
+  let listHtml;
+  if(!storico.length){
+    listHtml='<div class="le">Nessun Palio ancora disputato.</div>';
+  } else {
+    listHtml='';
+    storico.forEach(entry=>{
+      const isPlayer=entry.isPlayerVictory===true;
+      listHtml+=`<div class="le ${isPlayer?'grn':''}">
+        <strong style="color:var(--gold)">${entry.anno}</strong> — 
+        ${isPlayer
+          ?`<strong style="color:#5DBB63">🏆 ${entry.vincitore} (TU)</strong>`
+          :`${entry.vincitore}${entry.vincitore===N.nemica?' <span class="bdg r">nemica</span>':''}`
+        }
+      </div>`;
+    });
+  }
+  el.innerHTML=`<div class="card"><div class="ct">Albo d'Oro — Palii per Anno</div><div>${listHtml}</div></div>`;
+}
+
+// ── STALLA DEL CONTRADAIOLO (cavalli acquistati + fantino ingaggiato) ──
+function nRenderStalla(){
+  if(!N)return;
+  const cv=R('CARD_NCAV'),cf=R('CARD_NFAN');
+  if(!cv||!cf)return;
+  if(!N.stalla)N.stalla=[];
+  const stallaMode=nPermessiStatus().stalla; // 'none' | 'view' | 'train' | 'full'
+  const puoAllenare=stallaMode==='train'||stallaMode==='full';
+  const puoGestire=stallaMode==='full'; // vendi cavallo / licenzia fantino
+  const allenatoQuestoMese=(N.allenamentoMensile||0)>=1;
+  const avviso=(puoAllenare&&allenatoQuestoMese)?'<div style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px;font-family:var(--fn)">Hai già allenato un cavallo questo mese — riprova il mese prossimo.</div>':'';
+  const avvisoSoloVisione=stallaMode==='view'?'<div style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px;font-family:var(--fn)">Il tuo status attuale ti permette solo di visionare cavallo e fantino, senza poter decidere allenamenti, vendite o licenziamenti.</div>':'';
+  if(N.stalla.length){
+    let html='<div class="ct">I tuoi destrieri</div>'+avviso+avvisoSoloVisione;
+    N.stalla.forEach((c,idx)=>{
+      const accAtMax=c.acc>=c.maxAcc,resAtMax=c.res>=c.maxRes;
+      const eta=c.maxAcc<5||c.maxRes<5?`<div style="font-size:11px;color:#E05555;margin-bottom:6px">⚠ ${5-Math.min(c.maxAcc,c.maxRes)} anno/i — acc e res al massimo attuale.</div>`:'';
+      const _dbCavS=getCavDB(c.nome);const _imgSrcS=_dbCavS&&_dbCavS.img?_dbCavS.img:'';const _imgHtmlS=_imgSrcS?`<img src="${_imgSrcS}" alt="${c.nome}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='🐎'">`:' 🐎';
+      const stanC=c.stanchezza||0,intC=c.intesaFant||0,troppoStancoC=stanC>=3;
+      html+=`<div style="border:var(--bord);border-radius:10px;padding:12px;margin-bottom:10px;background:#1A0E08">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div style="width:72px;height:72px;flex-shrink:0;border-radius:8px;overflow:hidden;border:var(--bord);background:#1A0E08;display:flex;align-items:center;justify-content:center;font-size:28px">${_imgHtmlS}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold)">${c.nome}${c.prestito?' <span class="bdg o" style="font-size:9px">prestito capitano</span>':''}</div>
+              ${(c.prestito||!puoGestire)?'':`<button class="btn" style="font-size:11px;padding:5px 10px" onclick="nVendiCav(${idx})">Vendi (${c.valoreVendita!==undefined?c.valoreVendita:(c.valoreVendita=calcPrezzoVendita(c))} oro)</button>`}
+            </div>
+            ${c.prestito?'<div style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:6px">Resta in stalla fino a fine anno, poi torna al Capitano.</div>':''}
+            ${eta}
+            <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+              <div><div class="fpip-label" style="text-align:center;margin-bottom:2px">STAN</div>${fPipsGrn(stanC,3)}</div>
+              <div><div class="fpip-label" style="text-align:center;margin-bottom:2px">INT</div>${fPipsBlu(intC,3)}</div>
+            </div>
+          </div>
+        </div>
+        ${sRow('Velocità',c.vel)}${sRowCapped('Accelerazione',c.acc,c.maxAcc)}
+        ${sRow('Tenuta curva',c.ten)}${sRowCapped('Resistenza',c.res,c.maxRes)}
+        ${sRow('Nervosismo',c.ner,5,true)}
+        ${troppoStancoC?'<div style="font-size:11px;color:#E05555;margin-top:6px">⚠ Cavallo troppo stanco per allenarsi o correre</div>':''}
+        ${(puoAllenare&&!troppoStancoC)?`<div style="font-size:10px;color:rgba(201,168,76,.5);margin-top:8px;margin-bottom:4px;font-family:var(--fn);letter-spacing:1px;text-transform:uppercase">Allenamento · max 1 al mese</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <button class="train-btn" ${allenatoQuestoMese?'disabled':''} onclick="nAllena('forza',${idx})"><div class="train-title">Forza pura</div><div class="train-desc">+1 Velocità, +1 Nervosismo</div></button>
+          <button class="train-btn" ${(accAtMax||allenatoQuestoMese)?'disabled':''} onclick="nAllena('controllo',${idx})"><div class="train-title">Controllo e ritmo</div><div class="train-desc ${accAtMax?'cap':''}">${accAtMax?'Accelerazione al massimo ('+c.maxAcc+')':'+1 Accelerazione, −1 Nervosismo'}</div></button>
+          <button class="train-btn" ${(resAtMax||allenatoQuestoMese)?'disabled':''} onclick="nAllena('fondo',${idx})"><div class="train-title">Fondo e curve</div><div class="train-desc ${resAtMax?'cap':''}">${resAtMax?'Resistenza al massimo ('+c.maxRes+')':'+1 Tenuta curva, +1 Resistenza'}</div></button>
+        </div>`:''}
+      </div>`;
+    });
+    cv.innerHTML=html;
+  } else {
+    cv.innerHTML='<div class="ct">I tuoi destrieri</div><div style="font-size:14px;color:rgba(201,168,76,.5)">Nessun cavallo in stalla. Vai al menù Cavalli.</div>';
+  }
+  if(N.fan){
+    const f=N.fan;
+    cf.innerHTML=`<div class="ct">Il tuo fantino</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:var(--gold);margin-bottom:10px">${f.nome}</div>
+      ${sRow('Bravura',f.bravura)}${sRow('Esperienza',f.esp)}
+      ${sRow('Gestione mossa',f.mossa)}${sRow('Empatia',f.emp)}
+      ${puoGestire?`<button class="btn w" onclick="nLicFan()">Licenzia fantino</button>`:''}`;
+  } else {
+    cf.innerHTML='<div class="ct">Il tuo fantino</div><div style="font-size:14px;color:rgba(201,168,76,.5)">Nessun fantino. Vai al menù Fantini.</div>';
+  }
+  const vetBox=R('CARD_NVET');
+  if(vetBox){
+    if(nPermessiStatus().vet){
+      vetBox.style.display='';
+      vetBox.innerHTML=N.veterinario
+        ? `<div class="ct">Veterinario</div><div class="evbox grn">✦ Veterinario attivo fino a fine anno paliesco — stanchezza −1/mese a tutti i cavalli in stalla.</div>`
+        : `<div class="ct">Veterinario</div><button class="btn w" onclick="nIngaggiaVeterinario()">🏥 Ingaggia veterinario<div style="font-size:11px;font-weight:400;margin-top:2px">Dura fino a fine anno paliesco · Stanchezza −1/mese a tutti i cavalli in stalla</div></button>`;
+    } else {
+      vetBox.style.display='none';
+      vetBox.innerHTML='';
+    }
+  }
+}
+
+function nIngaggiaVeterinario(){
+  if(!N)return;
+  if(!nPermessiStatus().vet){showToast('Il tuo status attuale non ti permette di ingaggiare il veterinario.','red');return;}
+  if(N.veterinario){showToast('Veterinario già ingaggiato per quest\'anno.','red');return;}
+  N.veterinario=true;
+  showToast('✦ Veterinario ingaggiato! Stanchezza −1/mese a tutti i cavalli in stalla.','grn');
+  nSalva();
+  nRenderStalla();
+}
+
+function nAllena(tipo,idx){
+  if(!N.stalla||!N.stalla[idx])return;
+  const sm=nPermessiStatus().stalla;
+  if(sm!=='train'&&sm!=='full'){showToast('Il tuo status attuale non ti permette di allenare i cavalli.','red');return;}
+  if((N.allenamentoMensile||0)>=1){showToast('Puoi allenare un solo cavallo al mese!','red');return;}
+  if((N.stalla[idx].stanchezza||0)>=3){showToast('Cavallo troppo stanco per allenarsi!','red');return;}
+  nMostraMinigioco(tipo,idx);
+}
+
+// ── MINIGIOCO ALLENAMENTO (Contradaiolo) ──
+function nMostraMinigioco(tipo,idx){
+  const MOSSE=['🥕','⚡','🏇','🍏','🍎','🐎'];
+  const NMOVES=6;
+  const seqLen=5;
+  const sequenza=[];
+  for(let i=0;i<NMOVES;i++) sequenza.push(Math.floor(Math.random()*MOSSE.length));
+
+  const titoliTipo={forza:'Forza Pura 💪',controllo:'Controllo e Ritmo 🎯',fondo:'Fondo e Curve 🏇'};
+  const overlay=document.createElement('div');
+  overlay.id='NMINIGIOCO_OVL';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px';
+
+  overlay.innerHTML=`
+    <div id="NMG_BOX" style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:18px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 50px rgba(201,168,76,.25);transition:border-color .5s,box-shadow .5s">
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="font-size:26px">🏋️</div>
+        <div style="font-family:var(--fn);font-size:16px;font-weight:800;color:var(--gold);letter-spacing:.5px;margin-top:4px">Minigioco Allenamento</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px;font-family:var(--fn)">${titoliTipo[tipo]||tipo}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:12px 0"></div>
+
+      <div id="NMG_PHASE_SHOW" style="">
+        <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);text-align:center;margin-bottom:10px">Osserva la combinazione!</div>
+        <div style="display:flex;justify-content:center;gap:10px;margin-bottom:14px" id="NMG_DOTS"></div>
+        <div style="text-align:center;min-height:52px;display:flex;align-items:center;justify-content:center">
+          <div id="NMG_CUR_MOVE" style="font-size:44px;opacity:0;transition:opacity .2s"></div>
+        </div>
+        <div style="font-family:var(--fn);font-size:11px;color:rgba(201,168,76,.4);text-align:center;margin-top:8px" id="NMG_SHOW_STATUS">Preparati…</div>
+      </div>
+
+      <div id="NMG_PHASE_PLAY" style="display:none">
+        <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);text-align:center;margin-bottom:10px">Replica la sequenza!</div>
+        <div style="display:flex;justify-content:center;gap:6px;margin-bottom:12px" id="NMG_REPLAY_DOTS"></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px" id="NMG_BTNS"></div>
+        <div style="font-family:var(--fn);font-size:11px;color:rgba(201,168,76,.4);text-align:center" id="NMG_PLAY_STATUS">Mossa 1 di ${NMOVES}</div>
+      </div>
+
+      <div id="NMG_PHASE_RESULT" style="display:none;text-align:center">
+        <div style="font-size:42px;margin-bottom:6px" id="NMG_RES_ICON"></div>
+        <div style="font-family:var(--fn);font-size:17px;font-weight:800;margin-bottom:8px" id="NMG_RES_TITLE"></div>
+        <div style="font-size:13px;color:var(--parch2);line-height:1.6;padding:10px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid #888;margin-bottom:14px" id="NMG_RES_MSG"></div>
+        <button id="NMG_CLOSE_BTN" class="btn gold w">Continua →</button>
+      </div>
+    </div>`;
+
+  document.getElementById('APP').appendChild(overlay);
+
+  const dotsEl=document.getElementById('NMG_DOTS');
+  const curMoveEl=document.getElementById('NMG_CUR_MOVE');
+
+  for(let i=0;i<seqLen;i++){
+    const d=document.createElement('div');
+    d.style.cssText='width:16px;height:16px;border-radius:50%;background:#1A0E08;border:1.5px solid #5C3D2E;transition:background .2s,border-color .2s';
+    d.id='NMG_DOT_'+i;
+    dotsEl.appendChild(d);
+  }
+
+  function mostraMossaIdx(moveIdx){
+    if(moveIdx>=NMOVES){
+      document.getElementById('NMG_PHASE_SHOW').style.display='none';
+      mostraFaseGioco();
+      return;
+    }
+    const dotIdx=Math.min(moveIdx,seqLen-1);
+    const colors=['#C9A84C','#5DBB63','#378ADD','#E05555','#B07BD4','#FF9B30'];
+    for(let i=0;i<seqLen;i++){
+      const d=document.getElementById('NMG_DOT_'+i);
+      if(d){d.style.background='#1A0E08';d.style.borderColor='#5C3D2E';}
+    }
+    const d=document.getElementById('NMG_DOT_'+dotIdx);
+    if(d){d.style.background=colors[sequenza[moveIdx]];d.style.borderColor=colors[sequenza[moveIdx]];}
+    curMoveEl.style.opacity='0';
+    setTimeout(()=>{
+      curMoveEl.textContent=MOSSE[sequenza[moveIdx]];
+      curMoveEl.style.opacity='1';
+      setTimeout(()=>{
+        curMoveEl.style.opacity='0';
+        setTimeout(()=>mostraMossaIdx(moveIdx+1),200);
+      },650);
+    },100);
+  }
+
+  setTimeout(()=>mostraMossaIdx(0),700);
+
+  let playerSeq=[];
+  function mostraFaseGioco(){
+    document.getElementById('NMG_PHASE_PLAY').style.display='';
+    const replayDots=document.getElementById('NMG_REPLAY_DOTS');
+    const btnsEl=document.getElementById('NMG_BTNS');
+    const playStatus=document.getElementById('NMG_PLAY_STATUS');
+
+    replayDots.innerHTML='';
+    for(let i=0;i<NMOVES;i++){
+      const d=document.createElement('div');
+      d.style.cssText='width:14px;height:14px;border-radius:50%;background:#1A0E08;border:1.5px solid #5C3D2E;transition:background .15s';
+      d.id='NMG_PDOT_'+i;
+      replayDots.appendChild(d);
+    }
+
+    btnsEl.innerHTML='';
+    const colors=['#C9A84C','#5DBB63','#378ADD','#E05555','#B07BD4','#FF9B30'];
+    MOSSE.forEach((m,i)=>{
+      const b=document.createElement('button');
+      b.style.cssText=`padding:12px 6px;border-radius:10px;border:1.5px solid ${colors[i]};background:rgba(0,0,0,.3);
+        cursor:pointer;font-size:26px;font-family:var(--fn);text-align:center;min-height:54px;
+        transition:transform .1s,background .1s;-webkit-appearance:none`;
+      b.textContent=m;
+      b.onclick=()=>registraMossa(i);
+      btnsEl.appendChild(b);
+    });
+
+    function registraMossa(moveIdx){
+      const step=playerSeq.length;
+      playerSeq.push(moveIdx);
+      const pd=document.getElementById('NMG_PDOT_'+step);
+      if(pd){pd.style.background=colors[moveIdx];pd.style.borderColor=colors[moveIdx];}
+      if(playerSeq.length<NMOVES){
+        playStatus.textContent='Mossa '+(playerSeq.length+1)+' di '+NMOVES;
+      } else {
+        btnsEl.querySelectorAll('button').forEach(b2=>b2.disabled=true);
+        const vinto=playerSeq.every((v,i)=>v===sequenza[i]);
+        setTimeout(()=>mostraRisultato(vinto),300);
+      }
+    }
+  }
+
+  function mostraRisultato(vinto){
+    document.getElementById('NMG_PHASE_PLAY').style.display='none';
+    document.getElementById('NMG_PHASE_RESULT').style.display='';
+    const mgBox=document.getElementById('NMG_BOX');
+    const resIcon=document.getElementById('NMG_RES_ICON');
+    const resTitle=document.getElementById('NMG_RES_TITLE');
+    const resMsg=document.getElementById('NMG_RES_MSG');
+
+    const c=N.stalla[idx];
+    N.allenamentoMensile=(N.allenamentoMensile||0)+1;
+    c.stanchezza=Math.min(3,(c.stanchezza||0)+1);
+
+    if(vinto){
+      mgBox.style.borderColor='#5DBB63';
+      mgBox.style.boxShadow='0 0 50px rgba(93,187,99,.35)';
+      resIcon.textContent='🏆';
+      resTitle.style.color='#5DBB63';
+      resTitle.textContent='Allenamento Riuscito!';
+      let descMiglioramento='';
+      if(tipo==='forza'){c.vel=clamp(c.vel+1,1,5);c.ner=clamp(c.ner+1,1,5);descMiglioramento='+1 Velocità, +1 Nervosismo';}
+      else if(tipo==='controllo'){c.acc=clamp(c.acc+1,1,c.maxAcc);c.ner=clamp(c.ner-1,1,5);descMiglioramento='+1 Accelerazione, −1 Nervosismo';}
+      else if(tipo==='fondo'){c.ten=clamp(c.ten+1,1,5);c.res=clamp(c.res+1,1,c.maxRes);descMiglioramento='+1 Tenuta curva, +1 Resistenza';}
+      c.valoreVendita=calcPrezzoVendita(c);
+      resMsg.style.borderLeftColor='#5DBB63';
+      resMsg.innerHTML=`Il cavallo <strong>${c.nome}</strong> ha risposto magnificamente all'allenamento!<br><span style="color:#5DBB63;font-weight:700">${descMiglioramento}</span>`;
+    } else {
+      mgBox.style.borderColor='#E05555';
+      mgBox.style.boxShadow='0 0 50px rgba(224,85,85,.3)';
+      resIcon.textContent='😤';
+      resTitle.style.color='#E05555';
+      resTitle.textContent='Allenamento Fallito!';
+      resMsg.style.borderLeftColor='#E05555';
+      resMsg.innerHTML=`<strong>${c.nome}</strong> non ha eseguito correttamente gli esercizi. Il cavallo non migliora.<br><span style="color:#E05555">Nessun miglioramento alle statistiche.</span>`;
+    }
+
+    nSalva();
+
+    document.getElementById('NMG_CLOSE_BTN').onclick=()=>{
+      overlay.remove();
+      nRenderStalla();
+    };
+  }
+}
+
+function nVendiCav(idx){
+  if(!N.stalla||!N.stalla[idx])return;
+  if(nPermessiStatus().stalla!=='full'){showToast('Il tuo status attuale non ti permette di vendere cavalli.','red');return;}
+  const c=N.stalla[idx];const v=c.valoreVendita!==undefined?c.valoreVendita:calcPrezzoVendita(c);
+  N.oro+=v;
+  N.stalla.splice(idx,1);
+  nSalva();
+  showToast('Venduto '+c.nome+' per '+v+' oro','grn');
+  nRenderStalla();
+}
+function nLicFan(){
+  if(!N.fan)return;
+  if(nPermessiStatus().stalla!=='full'){showToast('Il tuo status attuale non ti permette di licenziare il fantino.','red');return;}
+  showToast(N.fan.nome+' licenziato','inf');
+  N.fan=null;
+  nSalva();
+  nRenderStalla();
+}
+
+// ── FANTINI SUL MERCATO (Contradaiolo) ──
+function nGenFantiniMercato(){
+  const tuttiNomi=[...NF];
+  const shuffled=[...tuttiNomi].sort(()=>Math.random()-.5);
+  const altreContrade=Object.keys(CDB).filter(k=>k!==N.contrada);
+  const shuffContrade=[...altreContrade].sort(()=>Math.random()-.5).slice(0,7);
+  const fantiniContratti=shuffled.slice(0,7).map((nome,i)=>{
+    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
+    return {nome,bravura:db.bravura,esp:db.esp,mossa:db.mossa,emp:db.emp,contrada:shuffContrade[i]};
+  });
+  const fantiniSvincolati=shuffled.slice(7).map(nome=>{
+    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
+    return {nome,bravura:db.bravura,esp:db.esp,mossa:db.mossa,emp:db.emp,contrada:null};
+  });
+  return {contratti:fantiniContratti,svincolati:fantiniSvincolati};
+}
+
+// Riga statistica "a contatore" (non a puntini) per i dati pubblici dei fantini sul mercato
+function nFntCountRow(label,val){return `<div class="sr"><span class="sl">${label}</span><span style="font-size:13px;color:var(--gold-l);font-weight:700;font-family:var(--fn)">${val}</span></div>`;}
+
+// Statistiche di carriera (Palii disputati/vinti) di un fantino — persistono per tutta la carriera, non si azzerano ogni anno
+function nFntCareerStats(nome){
+  if(!N.statsFantiniCarriera)N.statsFantiniCarriera={};
+  return N.statsFantiniCarriera[nome]||{palii:0,vinti:0};
+}
+
+// Dati pubblici di un fantino sul mercato: finché non è ingaggiato (in Stalla), le 4 statistiche
+// (Bravura, Esperienza, Gestione mossa, Empatia) restano nascoste al giocatore. Si vedono al loro posto
+// le gare/vittorie della stagione corrente e i Palii disputati/vinti in carriera.
+function nFntStatsBlock(nome){
+  const stag=(N.statsFantini&&N.statsFantini[nome])||{gare:0,vittorie:0};
+  const car=nFntCareerStats(nome);
+  return `${nFntCountRow('Gare disputate (anno)',stag.gare)}${nFntCountRow('Vittorie (anno)',stag.vittorie)}${nFntCountRow('Palii disputati (carriera)',car.palii)}${nFntCountRow('Palii vinti (carriera)',car.vinti)}`;
+}
+
+function nRenderFantini(){
+  if(!N)return;
+  if(N.oro===undefined)N.oro=1000;
+  if(!N.fantiniMercato)N.fantiniMercato=nGenFantiniMercato();
+  const el=R('NFNT_MKT');if(!el)return;
+  const {contratti,svincolati}=N.fantiniMercato;
+
+  let html=`<div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px;font-family:var(--fn)">💰 Il tuo oro: <strong style="color:var(--gold)">${N.oro}</strong></div>`;
+  if(N.fan){
+    html+=`<div class="evbox inf" style="margin-bottom:10px">
+      <strong>Fantino attuale: ${N.fan.nome}</strong><br>
+      <span style="font-size:12px">Devi licenziarlo dalla Stalla prima di ingaggiarne un altro.</span>
+    </div>`;
+  }
+
+  if(!N.fantiniRifiutati)N.fantiniRifiutati={};
+  html+=`<div style="font-family:var(--fn);font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:4px">Svincolati (ingaggiabili)</div>`;
+  if(svincolati.length===0){
+    html+=`<div style="font-size:13px;color:rgba(201,168,76,.4)">Nessun fantino svincolato disponibile.</div>`;
+  } else {
+    svincolati.forEach((f,i)=>{
+      const media=(f.bravura+f.esp+f.mossa+f.emp)/4;
+      const offSugg=Math.round(media*500+100);
+      const haRifiutato=!!N.fantiniRifiutati[f.nome];
+      html+=`<div class="mi" style="flex-direction:column;gap:8px" id="NFNT_ITEM_${i}">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1">
+            <div class="mi-name">${f.nome} <span class="bdg g">Svincolato</span>${haRifiutato?' <span class="bdg r">Ha rifiutato</span>':''}</div>
+            ${nFntStatsBlock(f.nome)}
+            <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:6px;font-family:var(--fn);font-style:italic">Bravura, Esperienza, Gestione mossa ed Empatia si scoprono solo dopo l'ingaggio, una volta che il fantino è in Stalla.</div>
+            <div style="font-size:11px;color:var(--gold-l);margin-top:6px;font-family:var(--fn)">💡 Offerta suggerita: ${offSugg} oro</div>
+            ${haRifiutato?`<div style="font-size:11px;color:#E05555;margin-top:2px">Non può essere contattato fino al prossimo anno.</div>`:''}
+          </div>
+          <div>
+            <button class="btn pr" style="font-size:12px;padding:9px 11px" onclick="nApriOffertaFnt(${i})" ${(N.fan||haRifiutato)?'disabled':''}>Offerta</button>
+          </div>
+        </div>
+        <div id="NFNT_OFFERTA_${i}" style="display:none"></div>
+      </div>`;
+    });
+  }
+
+  html+=`<div style="font-family:var(--fn);font-size:11px;color:rgba(201,168,76,.4);letter-spacing:1px;text-transform:uppercase;margin:14px 0 8px">Già ingaggiati da altre contrade</div>`;
+  contratti.forEach(f=>{
+    html+=`<div class="mi" style="opacity:.55">
+      <div style="flex:1">
+        <div class="mi-name">${f.nome} <span class="bdg r">${f.contrada}</span></div>
+        ${nFntStatsBlock(f.nome)}
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML=html;
+}
+
+function nApriOffertaFnt(i){
+  if(N.fan){showToast('Licenzia prima il fantino attuale dalla Stalla!','red');return;}
+  const f=N.fantiniMercato&&N.fantiniMercato.svincolati[i];
+  if(!f)return;
+  if(!N.fantiniRifiutati)N.fantiniRifiutati={};
+  if(N.fantiniRifiutati[f.nome]){showToast(f.nome+' ha rifiutato: non può essere contattato fino al prossimo anno.','red');return;}
+  const el=R('NFNT_OFFERTA_'+i);if(!el)return;
+  const media=(f.bravura+f.esp+f.mossa+f.emp)/4;
+  const offSugg=Math.min(N.oro,Math.round(media*500+100));
+  const maxOfferta=N.oro;
+  el.style.display='block';
+  el.innerHTML=`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:12px;border:var(--bord)">
+    <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);margin-bottom:8px">💰 Quanto vuoi offrire? <span style="color:rgba(201,168,76,.5);text-transform:none;font-weight:400">(suggerita: ${Math.round(media*500+100)} oro)</span></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <input type="range" min="0" max="${maxOfferta}" step="50" value="${offSugg}" id="NFNT_SL_${i}"
+        oninput="document.getElementById('NFNT_SL_V_${i}').textContent=this.value+' oro'" style="flex:1;accent-color:var(--gold)">
+      <span style="font-family:var(--fn);font-size:13px;color:var(--gold);min-width:70px;text-align:right" id="NFNT_SL_V_${i}">${offSugg} oro</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn gold" style="flex:1;font-size:13px;padding:10px" onclick="nInviaOffertaFnt(${i})">✦ Fai l'offerta</button>
+      <button class="btn" style="font-size:13px;padding:10px" onclick="document.getElementById('NFNT_OFFERTA_${i}').style.display='none'">Annulla</button>
+    </div>
+  </div>`;
+}
+
+function nInviaOffertaFnt(i){
+  if(N.fan){showToast('Hai già un fantino in stalla! Licenzialo prima.','red');return;}
+  const f=N.fantiniMercato.svincolati[i];
+  if(!f)return;
+  const slEl=R('NFNT_SL_'+i);
+  if(!slEl)return;
+  const offerta=parseInt(slEl.value)||0;
+  if(offerta>N.oro){showToast('Oro insufficiente!','red');return;}
+  if(offerta===0){showToast('L\'offerta deve essere maggiore di 0!','red');return;}
+
+  const mediaStats=(f.bravura+f.esp+f.mossa+f.emp)/4;
+  const prestigioMod=(N.reputazione||5)/100;
+  const fattoreRandom=0.8+Math.random()*0.4;
+  const soglia=(mediaStats-prestigioMod)*500*fattoreRandom;
+
+  const accetta=offerta>=soglia;
+
+  if(accetta){
+    N.oro-=offerta;
+    N.fan={nome:f.nome,bravura:f.bravura,esp:f.esp,mossa:f.mossa,emp:f.emp,costo:offerta};
+    N.fantiniMercato.svincolati.splice(i,1);
+    nSalva();
+    nMostraEsitoOffertaFnt(f.nome,true,offerta,Math.round(soglia));
+  } else {
+    if(!N.fantiniRifiutati)N.fantiniRifiutati={};
+    N.fantiniRifiutati[f.nome]=true;
+    nSalva();
+    nMostraEsitoOffertaFnt(f.nome,false,offerta,Math.round(soglia));
+  }
+}
+
+function nMostraEsitoOffertaFnt(nome,accettato,offerta,soglia){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const colBorder=accettato?'#5DBB63':'#E05555';
+  const titolo=accettato?'Offerta Accettata!':'Offerta Rifiutata';
+  const icona=accettato?'🤝':'❌';
+  const msg=accettato
+    ?`<strong>${nome}</strong> ha accettato il tuo ingaggio per <strong>${offerta} oro</strong>!`
+    :`<strong>${nome}</strong> ha rifiutato la tua offerta di ${offerta} oro e non vuole più essere contattato per quest'anno. Potrai riprovare dal prossimo anno, a meno che non venga assegnato ad un'altra contrada.`;
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="text-align:center;font-size:32px;margin-bottom:8px">${icona}</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:${colBorder};margin-bottom:10px;text-align:center">${titolo}</div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid ${colBorder};margin-bottom:12px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">${msg}</div>
+      </div>
+      <button id="NESO_FNT_BTN" class="btn gold w" style="margin-top:4px">Chiudi</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NESO_FNT_BTN').onclick=()=>{overlay.remove();nRenderFantini();};
+}
+
+// ══════════════════════════════════════════════
+//  MANIERO (Vita da Contradaiolo)
+// ══════════════════════════════════════════════
+// Modifica il morale di contrada e verifica se il Capitano in carica deve decadere
+function nModMoraleContrada(delta){
+  if(!N)return;
+  N.moraleContrada=clamp((N.moraleContrada||0)+delta,0,100);
+  nCheckDecadimentoCapitano();
+}
+
+// Se il morale crolla a 0, il Capitano in carica decade automaticamente,
+// non solo quando viene volontariamente sostituito dal Consiglio Direttivo.
+// Il cambio di Capitano termina anche il mandato di tutte le altre cariche,
+// che riparte da quell'anno (stessa regola di una sostituzione manuale).
+function nCheckDecadimentoCapitano(){
+  if(!N||!N.contradaioli)return;
+  if((N.moraleContrada||0)>0)return;
+  const capitanoAttuale=N.contradaioli.find(c=>c.badge==='capitano');
+  if(!capitanoAttuale)return;
+  const nomeVecchio=capitanoAttuale.nome;
+  capitanoAttuale.badge=null;
+  const papabili=N.contradaioli.filter(c=>!c.badge&&c.sesso==='M');
+  let nomeNuovo=null;
+  if(papabili.length){
+    const nuovo=papabili[Math.floor(Math.random()*papabili.length)];
+    nuovo.badge='capitano';nuovo.mandatoInizio=N.anno;
+    nomeNuovo=nuovo.nome;
+  }
+  N.contradaioli.forEach(c=>{if(c.badge)c.mandatoInizio=N.anno;});
+  nSalva();
+  showToast('⚠ Morale a 0: '+nomeVecchio+' decade da Capitano'+(nomeNuovo?', al suo posto '+nomeNuovo+'!':'!'),'red');
+}
+
+function nManiero(){
+  if(!N)return;
+  if(N.budgetContrada===undefined)N.budgetContrada=3000;
+  if(N.moraleContrada===undefined)N.moraleContrada=rnd(30,70);
+  const morale=N.moraleContrada;
+  const colMor=morale>=70?'#5DBB63':morale>=40?'var(--gold)':'#E05555';
+  const noSerata=N.manieroSerataMensile;
+  const noMano=N.manieroDaiManoMensile;
+  const permM=nPermessiStatus().maniero;
+  const bloccaSerata=!permM.includes('serata');
+  const bloccaMano=!permM.includes('daiMano');
+  const bloccaOrganizza=!permM.includes('organizza');
+  const bloccaConsiglio=!permM.includes('consiglio');
+  setMain(`
+    <div class="card">
+      <div class="ct">🏰 Il Maniero</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:12px">Gestisci il maniero della tua contrada: cura il morale dei contradaioli, il budget comune e l'organigramma.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-size:12px;color:rgba(201,168,76,.6)">💰 Budget di contrada</div>
+        <div style="font-size:15px;font-weight:700;color:var(--gold)">${N.budgetContrada} oro</div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:12px;color:rgba(201,168,76,.6)">😊 Morale dei contradaioli</div>
+          <div style="font-size:13px;font-weight:700;color:${colMor}">${morale}/100</div>
+        </div>
+        <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${morale}%"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Azioni</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn w" ${(noSerata||bloccaSerata)?'disabled':''} onclick="nManieroSerata()" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${(noSerata||bloccaSerata)?'rgba(201,168,76,.3)':'var(--gold-l)'}">🍷 Serata in contrada ${noSerata?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Guadagna un po' di reputazione tra i contradaioli</div>
+        </button>
+        <button class="btn w" ${(noMano||bloccaMano)?'disabled':''} onclick="nManieroDaiMano()" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${(noMano||bloccaMano)?'rgba(201,168,76,.3)':'var(--gold-l)'}">🤲 Dai una mano ${noMano?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Rimboccati le maniche e guadagna più reputazione</div>
+        </button>
+        <button class="btn w" ${bloccaOrganizza?'disabled':''} onclick="nManieroOrganizza()" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${bloccaOrganizza?'rgba(201,168,76,.3)':'var(--gold-l)'}">🎪 Organizza</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Cena, vendita gadget, eventi e manutenzione del maniero</div>
+        </button>
+        <button class="btn w" ${bloccaConsiglio?'disabled':''} onclick="nConsiglioDirettivo()" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${bloccaConsiglio?'rgba(201,168,76,.3)':'var(--gold-l)'}">🏛 Consiglio Direttivo</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Organigramma di contrada e mandati delle cariche</div>
+        </button>
+      </div>
+    </div>
+    <button class="btn w" onclick="nBuildDOM();nGoTo('mese')" style="justify-content:center">← Torna al mese</button>
+  `);
+}
+
+function nManieroSerata(){
+  if(!N)return;
+  if(!nManieroConsentito('serata'))return;
+  if(N.manieroSerataMensile)return;
+  const fatt=rf(0.5,1.5);
+  const guad=Math.round(2*fatt);
+  N.reputazione=clamp((N.reputazione||0)+guad,0,100);
+  N.manieroSerataMensile=true;
+  nSalva();
+  showToast('🍷 Serata in contrada! +'+guad+' reputazione','grn');
+  nManiero();
+}
+
+function nManieroDaiMano(){
+  if(!N)return;
+  if(!nManieroConsentito('daiMano'))return;
+  if(N.manieroDaiManoMensile)return;
+  const fatt=rf(0.8,1.2);
+  const guad=Math.round(5*fatt);
+  N.reputazione=clamp((N.reputazione||0)+guad,0,100);
+  N.manieroDaiManoMensile=true;
+  nSalva();
+  showToast('🤲 Hai dato una mano! +'+guad+' reputazione','grn');
+  nManiero();
+}
+
+// ── Organizza (identica nella struttura al Maniero della carriera Capitano,
+// ma agisce sul budget di contrada e sul morale dei contradaioli) ──
+function nManieroOrganizza(){
+  if(!N)return;
+  if(!nManieroConsentito('organizza')){showToast('Il tuo status attuale ('+nStatusLabel()+') non ti permette di accedere a questa sezione.','red');return;}
+  if(N.condManiero===undefined)N.condManiero=60;
+  const cond=N.condManiero;
+  const noCena=N.manieroOrganizzaCena;
+  const noGadget=N.manieroVenditaGadget;
+  const noEvento=N.manieroOrganizzaEvento;
+  const noManu=N.manieroManutenzione;
+  const colCond=cond>=70?'#5DBB63':cond>=40?'var(--gold)':'#E05555';
+  setMain(`
+    <div class="card">
+      <div class="ct">🎪 Organizza</div>
+      <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Attività mensili — max 1 volta ciascuna</div>
+      <div style="margin-bottom:14px">
+        <div style="font-family:var(--fn);font-size:10px;color:rgba(201,168,76,.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:flex;justify-content:space-between"><span>Condizioni del Maniero</span><span style="color:${colCond}">${cond}/100</span></div>
+        <div style="height:10px;background:#1A0E08;border-radius:5px;overflow:hidden;border:var(--bord)"><div style="height:100%;border-radius:5px;background:linear-gradient(90deg,${cond>=70?'#2E7D32,#5DBB63':cond>=40?'var(--gold-d),var(--gold)':'#8B1A1A,#E05555'});width:${cond}%;transition:width .4s"></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn w" ${noCena?'disabled':''} onclick="nDoManiero('cena')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${noCena?'rgba(201,168,76,.3)':'var(--gold-l)'}">🍷 Organizza Cena ${noCena?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−100 oro dal budget · Guadagno variabile in base a morale e condizioni</div>
+        </button>
+        <button class="btn w" ${noGadget?'disabled':''} onclick="nDoManiero('gadget')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${noGadget?'rgba(201,168,76,.3)':'var(--gold-l)'}">💰 Vendita Gadget ${noGadget?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Guadagno variabile in base al morale</div>
+        </button>
+        <button class="btn w" ${noEvento?'disabled':''} onclick="nApriMenuEvento()" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${noEvento?'rgba(201,168,76,.3)':'var(--gold-l)'}">🍻 Organizza Evento ${noEvento?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">Scegli tra 3 tipi di evento, ognuno con costi ed effetti diversi</div>
+        </button>
+        <button class="btn w" ${noManu?'disabled':''} onclick="nDoManiero('manutenzione')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:${noManu?'rgba(201,168,76,.3)':'var(--gold-l)'}">🔨 Manutenzione Maniero ${noManu?'<span style="font-size:10px">(già usata)</span>':''}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−500 oro dal budget · Condizioni +20 · Morale +5</div>
+        </button>
+      </div>
+      <div id="NMANIERO_EV" style="margin-top:10px"></div>
+    </div>
+    <button class="btn w" onclick="nManiero()" style="justify-content:center">← Torna al Maniero</button>
+  `);
+}
+
+function nDoManiero(tipo){
+  if(!N)return;
+  if(N.condManiero===undefined)N.condManiero=60;
+  const evEl=R('NMANIERO_EV');
+  function showMev(msg,cls){if(evEl)evEl.innerHTML=`<div class="evbox ${cls}">${msg}</div>`;}
+  if(tipo==='cena'){
+    if(N.manieroOrganizzaCena)return;
+    if(N.budgetContrada<100){showMev('Budget insufficiente (100 necessari).','red');return;}
+    N.budgetContrada-=100;
+    const cond=N.condManiero;
+    const fatt=rf(0.8,1.2);
+    const guad=Math.floor((N.moraleContrada-(100-cond))*8*fatt);
+    const guadEff=Math.max(0,guad);
+    N.budgetContrada+=guadEff;N.manieroOrganizzaCena=true;
+    nSalva();
+    showMev('🍷 Cena organizzata! −100 oro, +'+guadEff+' oro guadagnati nel budget','grn');
+    nManieroOrganizza();
+    return;
+  } else if(tipo==='gadget'){
+    if(N.manieroVenditaGadget)return;
+    const guadBase=Math.floor(N.moraleContrada*2*rf(.8,1.2));
+    const guad=N.manieroGiornataAperta?Math.floor(guadBase*1.5):guadBase;
+    N.budgetContrada+=guad;N.manieroVenditaGadget=true;
+    nSalva();
+    showMev('💰 Gadget venduti! +'+guad+' oro'+(N.manieroGiornataAperta?' (bonus Giornata Manieri Aperti x1,5)':''),'grn');
+    nManieroOrganizza();
+    return;
+  } else if(tipo==='manutenzione'){
+    if(N.manieroManutenzione)return;
+    if(N.budgetContrada<500){showMev('Budget insufficiente (500 necessari).','red');return;}
+    N.budgetContrada-=500;N.condManiero=clamp(N.condManiero+20,0,100);
+    nModMoraleContrada(5);N.manieroManutenzione=true;
+    nSalva();
+    showMev('🔨 Manutenzione completata! −500 oro, +20 condizioni, +5 morale','grn');
+    nManieroOrganizza();
+    return;
+  }
+}
+
+function nApriMenuEvento(){
+  if(!N)return;
+  if(N.manieroOrganizzaEvento)return;
+  const overlay=document.createElement('div');
+  overlay.id='NMANIERO_EVENTO_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">🍻</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Organizza Evento</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Scegli il tipo di evento</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <button class="btn w" onclick="nEseguiEvento('aperti')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🏰 Giornata Manieri Aperti</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−200 oro · Condizioni −15 · Se seguita nello stesso mese da Vendita Gadget, il guadagno dei gadget sarà x1,5</div>
+        </button>
+        <button class="btn w" onclick="nEseguiEvento('sagra')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🍢 Sagra Medioevale</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−300 oro · Condizioni −20 · Morale +20 (variabile)</div>
+        </button>
+        <button class="btn w" onclick="nEseguiEvento('streetfood')" style="text-align:left;flex-direction:column;align-items:flex-start;gap:2px;padding:12px">
+          <div style="font-weight:700;color:var(--gold-l)">🌭 Street Food</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.5)">−500 oro · Morale +50 (variabile)</div>
+        </button>
+      </div>
+      <div id="NMANIERO_EVENTO_EV" style="margin-bottom:10px"></div>
+      <button class="btn gold w" onclick="document.getElementById('NMANIERO_EVENTO_OVERLAY').remove();">Annulla</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+}
+
+function nEseguiEvento(tipo){
+  if(!N)return;
+  if(N.manieroOrganizzaEvento)return;
+  const evEl=document.getElementById('NMANIERO_EVENTO_EV');
+  function showMev(msg,cls){if(evEl)evEl.innerHTML=`<div class="evbox ${cls}">${msg}</div>`;}
+  if(tipo==='aperti'){
+    if(N.budgetContrada<200){showMev('Budget insufficiente (200 necessari).','red');return;}
+    N.budgetContrada-=200;N.condManiero=clamp(N.condManiero-15,0,100);
+    N.manieroOrganizzaEvento=true;N.manieroGiornataAperta=true;
+  } else if(tipo==='sagra'){
+    if(N.budgetContrada<300){showMev('Budget insufficiente (300 necessari).','red');return;}
+    const fatt=rf(0.8,1.2);
+    const guadMorale=Math.round(20*fatt);
+    N.budgetContrada-=300;N.condManiero=clamp(N.condManiero-20,0,100);
+    nModMoraleContrada(guadMorale);
+    N.manieroOrganizzaEvento=true;
+  } else if(tipo==='streetfood'){
+    if(N.budgetContrada<500){showMev('Budget insufficiente (500 necessari).','red');return;}
+    const fatt=rf(0.8,1.2);
+    const guadMorale=Math.round(50*fatt);
+    N.budgetContrada-=500;
+    nModMoraleContrada(guadMorale);
+    N.manieroOrganizzaEvento=true;
+  } else return;
+  nSalva();
+  const subOv=document.getElementById('NMANIERO_EVENTO_OVERLAY');
+  if(subOv)subOv.remove();
+  nManieroOrganizza();
+}
+
+// ── Consiglio Direttivo: organigramma di contrada e mandati ──
+const CONSIGLIO_RUOLI=['capitano','castellana','granPriore','gonfaloniere','addettoCorse','addettoStalla'];
+function nConsiglioDirettivo(){
+  if(!N||!N.contradaioli)return;
+  if(!nManieroConsentito('consiglio')){showToast('Il tuo status attuale ('+nStatusLabel()+') non ti permette di accedere al Consiglio Direttivo.','red');return;}
+  const sostUsata=(N.sostituzioneAnno||0)===N.anno;
+  let html=`<div class="card">
+    <div class="ct">🏛 Consiglio Direttivo</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:6px">Organigramma della tua contrada: capitano, castellana, gran priore, gonfaloniere, addetto corse e addetti stalla. Ogni carica dura 3 anni (compreso quello dell'assegnazione). Se cambi il capitano, il mandato di tutte le altre cariche termina e riparte da subito.</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:6px">Puoi sostituire una sola figura all'anno.</div>
+    ${sostUsata?'<div class="evbox inf">Hai già effettuato una sostituzione quest\'anno.</div>':''}
+  </div>`;
+  CONSIGLIO_RUOLI.forEach(chiave=>{
+    const info=BADGE_INFO[chiave];
+    const titolari=N.contradaioli.filter(c=>c.badge===chiave);
+    if(!titolari.length){
+      html+=`<div class="card">
+        <div class="ct">${info.label}</div>
+        <div style="font-size:12px;color:rgba(201,168,76,.5)">Carica vacante.</div>
+      </div>`;
+      return;
+    }
+    html+=`<div class="card"><div class="ct">${info.label}</div>`;
+    titolari.forEach(c=>{
+      if(c.mandatoInizio===undefined)c.mandatoInizio=N.badgeUltimoAnno!==undefined?N.badgeUltimoAnno:N.anno;
+      const rimasti=Math.max(0,3-(N.anno-c.mandatoInizio));
+      const col=c.amicizia>=70?'#5DBB63':c.amicizia>=40?'var(--gold)':'#E05555';
+      const idx=N.contradaioli.indexOf(c);
+      html+=`<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:var(--gold-l)">${c.nome}</div>
+          <div style="font-size:13px;font-weight:700;color:${col}">${c.amicizia}/100</div>
+        </div>
+        <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${c.amicizia}%"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div style="font-size:11px;color:${rimasti<=0?'#E05555':'rgba(201,168,76,.6)'}">${rimasti<=0?'Mandato scaduto':'Anni rimanenti di mandato: '+rimasti}</div>
+          <button class="btn" style="font-size:11px;padding:6px 10px" ${sostUsata?'disabled':''} onclick="nApriSostituzione('${chiave}',${idx})">Sostituisci</button>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  html+=`<button class="btn w" onclick="nManiero()" style="justify-content:center">← Torna al Maniero</button>`;
+  setMain(html);
+}
+
+function nApriSostituzione(chiave,idxAttuale){
+  if(!N||!N.contradaioli)return;
+  if((N.sostituzioneAnno||0)===N.anno){showToast('Puoi sostituire una sola figura all\'anno!','red');return;}
+  const info=BADGE_INFO[chiave];
+  const attuale=N.contradaioli[idxAttuale];
+  let candidati=N.contradaioli.filter(c=>!c.badge&&(!info.sesso||c.sesso===info.sesso)&&(!info.etaMin||(c.eta||0)>=info.etaMin));
+  if(!candidati.length){
+    // Nessuno rispetta l'età minima: si mostrano comunque i papabili per sesso, per non bloccare la carica
+    candidati=N.contradaioli.filter(c=>!c.badge&&(!info.sesso||c.sesso===info.sesso));
+  }
+  const overlay=document.createElement('div');
+  overlay.id='NSOST_OVERLAY';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  const righe=candidati.length?candidati.map((c,i)=>{
+    const idx=N.contradaioli.indexOf(c);
+    return `<button class="btn w" style="text-align:left;padding:10px;margin-bottom:6px" onclick="nConfermaSostituzione('${chiave}',${idx})">
+      <span style="font-weight:700;color:var(--gold-l)">${c.nome}</span>
+      <span style="font-size:11px;color:rgba(201,168,76,.5);float:right">${c.amicizia}/100 amicizia</span>
+    </button>`;
+  }).join(''):'<div style="font-size:12px;color:rgba(201,168,76,.5)">Nessun contradaiolo disponibile per questa carica.</div>';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-family:var(--fn);font-size:17px;font-weight:800;color:var(--gold);letter-spacing:1px">Sostituisci ${info.label}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:4px">Attuale: ${attuale?attuale.nome:'—'}. Scegli chi prenderà il suo posto.</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div>${righe}</div>
+      <button class="btn gold w" style="margin-top:8px" onclick="document.getElementById('NSOST_OVERLAY').remove();">Annulla</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+}
+
+function nConfermaSostituzione(chiave,idxNuovo){
+  if(!N||!N.contradaioli)return;
+  if((N.sostituzioneAnno||0)===N.anno){showToast('Puoi sostituire una sola figura all\'anno!','red');return;}
+  const nuovo=N.contradaioli[idxNuovo];
+  if(!nuovo)return;
+  const vecchio=N.contradaioli.find(c=>c.badge===chiave);
+  if(vecchio){vecchio.badge=null;vecchio.amicizia=0;}
+  nuovo.badge=chiave;
+  nuovo.mandatoInizio=N.anno;
+  N.sostituzioneAnno=N.anno;
+  // Se cambia il capitano, il mandato di tutte le altre cariche termina e riparte da ora
+  if(chiave==='capitano'){
+    N.contradaioli.forEach(c=>{if(c.badge)c.mandatoInizio=N.anno;});
+  }
+  nSalva();
+  const ov=document.getElementById('NSOST_OVERLAY');
+  if(ov)ov.remove();
+  showToast('✦ '+nuovo.nome+' è ora '+BADGE_INFO[chiave].label,'grn');
+  nConsiglioDirettivo();
+}
+
+function nRapportoContradaioli(){
+  if(!N)return;
+  if(!nMeseConsentito('rapportoContradaioli')){showToast('Il tuo status attuale ('+nStatusLabel()+') non ti permette di accedere a questa sezione.','red');return;}
+  if(!N.contradaioli){N.contradaioli=nGeneraContradaioli();nAssegnaBadges();nSalva();}
+  const azUsata=(N.amiciziaMensile||0)>=1;
+  const contaFazioni={corsa:0,maniero:0,politica:0};
+  N.contradaioli.forEach(c=>{if(!c.fazione)c.fazione=nEstraiFazioneCasuale();contaFazioni[c.fazione]=(contaFazioni[c.fazione]||0)+1;});
+  const legendaHtml=Object.entries(FAZIONI_CONTRADAIOLI).map(([k,fz])=>
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span class="bdg ${fz.cls}">${fz.icona} ${fz.label}</span>
+      <span style="font-size:11px;color:rgba(201,168,76,.6)">${contaFazioni[k]||0} contradaioli</span>
+    </div>`).join('');
+  const righe=N.contradaioli.map((c,i)=>{
+    const col=c.amicizia>=70?'#5DBB63':c.amicizia>=40?'var(--gold)':'#E05555';
+    const bi=c.badge?BADGE_INFO[c.badge]:null;
+    const badgeHtml=bi?` <span class="bdg ${bi.cls}">${bi.label}</span>`:'';
+    const fz=FAZIONI_CONTRADAIOLI[c.fazione];
+    const fazioneHtml=fz?`<div style="margin-top:4px"><span class="bdg ${fz.cls}">${fz.icona} ${fz.label}</span></div>`:'';
+    return `<div style="border:var(--bord);border-radius:10px;padding:11px;margin-bottom:8px;background:#1A0E08">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div>
+          <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:var(--gold-l)">${c.nome}${badgeHtml}</div>
+          <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">${c.eta} anni · <em>${c.qualita||''}</em></div>
+          ${fazioneHtml}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:700;color:${col}">${c.amicizia}/100</div>
+          ${!azUsata?`<button class="btn" style="font-size:10px;padding:5px 8px;margin-top:3px" onclick="nAmiAzione(${i})">+5 amicizia</button>`:''}
+        </div>
+      </div>
+      <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${c.amicizia}%"></div></div>
+    </div>`;
+  }).join('');
+  setMain(`
+    <div class="card">
+      <div class="ct">🤝 Rapporto con i contradaioli</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Coltiva l'amicizia con i contradaioli della tua contrada: puoi usare il tasto amicizia con una sola persona al mese.</div>
+      ${azUsata?'<div class="evbox inf">Hai già usato il tasto amicizia questo mese.</div>':''}
+    </div>
+    <div class="card">
+      <div class="ct">⚖️ Le correnti della contrada</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Ogni contradaiolo segue una corrente: le tue scelte al bivio di Aprile ne modificano l'amicizia.</div>
+      ${legendaHtml}
+    </div>
+    <div class="card">${righe}</div>
+    <button class="btn w" onclick="nBuildDOM();nGoTo('mese')" style="justify-content:center">← Torna al mese</button>
+  `);
+}
+
+function nAmiAzione(idx){
+  if(!N||!N.contradaioli)return;
+  if((N.amiciziaMensile||0)>=1){showToast('Puoi usare il tasto amicizia solo una volta al mese!','red');return;}
+  const c=N.contradaioli[idx];
+  if(!c)return;
+  c.amicizia=clamp(c.amicizia+5,0,100);
+  N.amiciziaMensile=(N.amiciziaMensile||0)+1;
+  nSalva();
+  showToast('+5 amicizia con '+c.nome,'grn');
+  nRapportoContradaioli();
+}
+// ══════════════════════════════════════════════
+//  CORSE DI ADDESTRAMENTO (Contradaiolo)
+//  12 cavalli + 12 fantini dal database esterno, accoppiati a caso,
+//  divisi in 3 gare da 4. Ogni gara: 4 giri calcolati, si vede solo il
+//  risultato finale (nessuna simulazione grafica).
+// ══════════════════════════════════════════════
+let CORSE_ADD=null;
+
+// Pesca 12 cavalli e 12 fantini dal DB esterno, li accoppia a caso
+// e li divide in 3 gare da 4 coppie cavallo-fantino.
+// cavalliForzati: eventuali cavalli della stalla di contrada scelti dal giocatore
+// (tramite l'Addetto Corse) che devono entrare nel lotto al posto di cavalli casuali del DB.
+function nGeneraCorseAddestramento(cavalliForzati){
+  if(!CAVALLI_DB||!CAVALLI_DB.length||!NF||!NF.length)return null;
+  cavalliForzati=(cavalliForzati||[]).filter(Boolean);
+  const n=Math.min(12,CAVALLI_DB.length+cavalliForzati.length,NF.length);
+  if(n<3)return null;
+  const nomiForzati=new Set(cavalliForzati.map(c=>c.nome));
+  const forzatiSel=cavalliForzati.slice(0,n);
+  const restanti=Math.max(0,n-forzatiSel.length);
+  const poolDb=CAVALLI_DB.filter(c=>!nomiForzati.has(c.nome));
+  const cavSelDb=[...poolDb].sort(()=>Math.random()-.5).slice(0,restanti);
+  const cavSel=[...forzatiSel,...cavSelDb];
+  const fanSel=[...NF].sort(()=>Math.random()-.5).slice(0,n);
+  const coppie=cavSel.map((c,i)=>({cavallo:c.nome,fantino:fanSel[i],cav:c,daStalla:nomiForzati.has(c.nome)}));
+  const shuff=[...coppie].sort(()=>Math.random()-.5);
+  const nGare=3,perGara=Math.floor(n/nGare);
+  const gare=[];
+  for(let i=0;i<nGare;i++){
+    gare.push(shuff.slice(i*perGara,i===nGare-1?shuff.length:(i+1)*perGara));
+  }
+  return gare;
+}
+
+// Stanchezza/intesa dei cavalli in Carriera Contradaiolo — bonus/malus sulle statistiche,
+// esattamente come nella Carriera Fantino (v. fApplicaStanchezzaEffetti/fApplicaIntesaEffetti).
+function nApplicaStanchezzaEffetti(c){
+  // stanchezza 2 → -1 res temporanea; stanchezza 3 → non può correre né allenarsi
+  c._penRes = (c.stanchezza||0)>=2 ? 1 : 0;
+}
+function nApplicaIntesaEffetti(c){
+  // intesa 2 → +1 ten; intesa 3 → +1 ten, -1 ner
+  c._bonTen = (c.intesaFant||0)>=2 ? 1 : 0;
+  c._bonNer = (c.intesaFant||0)>=3 ? 1 : 0;
+}
+function nStatCorsaEffettiva(c){
+  nApplicaStanchezzaEffetti(c);nApplicaIntesaEffetti(c);
+  return {
+    vel:c.vel||3, acc:c.acc||3,
+    ten:(c.ten||3)+(c._bonTen||0),
+    res:Math.max(1,(c.res||3)-(c._penRes||0)),
+    ner:Math.max(1,(c.ner||3)-(c._bonNer||0))
+  };
+}
+
+// Punteggio di un singolo giro per una coppia cavallo-fantino
+function nScoreGiroAllenamento(cav,fan,giro){
+  const st=nStatCorsaEffettiva(cav);
+  const vel=st.vel,acc=st.acc,ten=st.ten,res=st.res;
+  const fatica=Math.max(0,(giro-1)*(6-res)*.2);
+  const base=(vel+acc+ten)-fatica+((fan.bravura||3)*.5+(fan.emp||3)*.2+(fan.mossa||3)*.3);
+  return base+rf(0,3);
+}
+
+// Simula i 4 giri di una gara e restituisce la classifica finale (dal 1° al 4° posto)
+function nSimulaGaraAddestramento(coppie){
+  const punti={};
+  coppie.forEach(cp=>punti[cp.cavallo]=0);
+  for(let g=1;g<=4;g++){
+    coppie.forEach(cp=>{
+      const fanStats=FANTINI_MAP[cp.fantino]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
+      punti[cp.cavallo]+=nScoreGiroAllenamento(cp.cav,fanStats,g);
+    });
+  }
+  return coppie.map(cp=>({...cp,punti:+punti[cp.cavallo].toFixed(1)})).sort((a,b)=>b.punti-a.punti);
+}
+
+// Registra gare disputate e vittorie di cavalli e fantini (dati stagionali, si azzerano ogni anno)
+function nRegistraStatsGara(classifica){
+  if(!N.statsCavalli)N.statsCavalli={};
+  if(!N.statsFantini)N.statsFantini={};
+  classifica.forEach((cp,idx)=>{
+    if(!N.statsCavalli[cp.cavallo])N.statsCavalli[cp.cavallo]={gare:0,vittorie:0};
+    if(!N.statsFantini[cp.fantino])N.statsFantini[cp.fantino]={gare:0,vittorie:0};
+    N.statsCavalli[cp.cavallo].gare++;
+    N.statsFantini[cp.fantino].gare++;
+    if(idx===0){
+      N.statsCavalli[cp.cavallo].vittorie++;
+      N.statsFantini[cp.fantino].vittorie++;
+    }
+  });
+  nSalva();
+}
+
+function nCorseAddestramento(){
+  if(!N)return;
+  if(!nMeseConsentito('corseAddestramento')){showToast('Il tuo status attuale ('+nStatusLabel()+') non ti permette di accedere a questa sezione.','red');return;}
+  if(N.pistaImpraticabile){showToast('La pista è impraticabile questo mese: nessuna corsa di addestramento!','red');return;}
+  if(N.stalla&&N.stalla.length){
+    N._corseStallaSel=[];
+    nMostraSelezioneStallaCorse();
+    return;
+  }
+  nAvviaCorseAddestramento([]);
+}
+
+// Prima delle corse, se ci sono cavalli in stalla, l'Addetto Corse chiede al giocatore
+// se e quali di quei cavalli far entrare nel lotto per l'estrazione dei 12 partecipanti.
+function nMostraSelezioneStallaCorse(){
+  if(!N)return;
+  if(!N._corseStallaSel)N._corseStallaSel=[];
+  const addetto=(N.contradaioli||[]).find(c=>c.badge==='addettoCorse');
+  const nomeAddetto=addetto?addetto.nome:'l\'Addetto Corse';
+  const righe=N.stalla.map((c,i)=>{
+    const sel=N._corseStallaSel.includes(i);
+    const troppoStancoLotto=(c.stanchezza||0)>=3;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;border:var(--bord);border-radius:8px;padding:9px 10px;margin-bottom:6px;background:${sel?'rgba(93,187,99,.1)':'#1A0E08'}">
+      <div style="font-family:var(--fn);font-size:13px;color:var(--gold-l)">🐎 ${c.nome}${troppoStancoLotto?' <span style="color:#E05555;font-size:11px">⚠ troppo stanco</span>':''}</div>
+      ${troppoStancoLotto?'<span style="font-size:11px;color:rgba(201,168,76,.4)">Non disponibile</span>':`<button class="btn ${sel?'gold':''}" style="font-size:11px;padding:6px 10px" onclick="nToggleStallaCorsa(${i})">${sel?'✓ Nel lotto':'Aggiungi al lotto'}</button>`}
+    </div>`;
+  }).join('');
+  setMain(`
+    <div class="card">
+      <div class="ct">🏁 Addetto Corse</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.7);margin-bottom:10px"><strong>${nomeAddetto}</strong> ti chiede se vuoi far partecipare qualche cavallo della stalla di contrada al lotto da cui verranno estratti i 12 cavalli in gara. I cavalli scelti manterranno le statistiche allenate.</div>
+      ${righe}
+    </div>
+    <button class="btn pr w" onclick="nAvviaCorseAddestramento(N._corseStallaSel)">✔ Conferma e genera le corse →</button>
+    <button class="btn w" onclick="CORSE_ADD=null;nBuildDOM();nGoTo('mese')" style="justify-content:center;margin-top:8px">← Annulla e torna al mese</button>
+  `);
+}
+
+function nToggleStallaCorsa(idx){
+  if(!N)return;
+  const cvSel=N.stalla&&N.stalla[idx];
+  if(cvSel&&(cvSel.stanchezza||0)>=3){showToast('Cavallo troppo stanco per correre!','red');return;}
+  if(!N._corseStallaSel)N._corseStallaSel=[];
+  const p=N._corseStallaSel.indexOf(idx);
+  if(p>=0)N._corseStallaSel.splice(p,1);else N._corseStallaSel.push(idx);
+  nMostraSelezioneStallaCorse();
+}
+
+function nAvviaCorseAddestramento(stallaIdxs){
+  if(!N)return;
+  const cavalliStalla=(stallaIdxs||[]).map(i=>N.stalla[i]).filter(Boolean);
+  N._corseStallaSel=[];
+  const gare=nGeneraCorseAddestramento(cavalliStalla);
+  if(!gare){showToast('Il database di cavalli e fantini non è sufficiente per le corse!','red');return;}
+  // Stanchezza/intesa: i cavalli di stalla che corrono l'addestramento +1 stanchezza, +1 intesa;
+  // gli altri cavalli di stalla che non corrono questo mese -1 stanchezza.
+  if(N.stalla&&N.stalla.length){
+    N.stalla.forEach(cv=>{
+      if(cavalliStalla.includes(cv)){
+        cv.stanchezza=Math.min(3,(cv.stanchezza||0)+1);
+        cv.intesaFant=Math.min(3,(cv.intesaFant||0)+1);
+      } else {
+        cv.stanchezza=Math.max(0,(cv.stanchezza||0)-1);
+      }
+    });
+    nSalva();
+  }
+  CORSE_ADD={gare,idx:0,risultati:[]};
+  nRenderCorseIntro();
+}
+
+// Mostra le 4 coppie cavallo-fantino della gara corrente, prima di disputarla
+function nRenderCorseIntro(){
+  if(!CORSE_ADD)return;
+  const {gare,idx}=CORSE_ADD;
+  const gara=gare[idx];
+  const righe=gara.map(cp=>`<div style="display:flex;justify-content:space-between;align-items:center;border:var(--bord);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#1A0E08">
+      <div style="font-family:var(--fn);font-size:13px;color:var(--gold-l)">🐎 ${cp.cavallo}${cp.daStalla?' <span class="bdg g" style="font-size:9px">di contrada</span>':''}</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6)">🏇 ${cp.fantino}</div>
+    </div>`).join('');
+  setMain(`
+    <div class="card">
+      <div class="ct">🏁 Corse di addestramento — Gara ${idx+1} di ${gare.length}</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">4 giri di allenamento a porte chiuse: vedrai solo il risultato finale.</div>
+      ${righe}
+      <button class="btn pr w" style="margin-top:10px" onclick="nDisputaGara()">⚔ Via! Disputa la gara →</button>
+    </div>
+    <button class="btn w" onclick="CORSE_ADD=null;nBuildDOM();nGoTo('mese')" style="justify-content:center">← Annulla e torna al mese</button>
+  `);
+}
+
+// Calcola i 4 giri della gara corrente e mostra il risultato
+function nDisputaGara(){
+  if(!CORSE_ADD)return;
+  const {gare,idx}=CORSE_ADD;
+  const classifica=nSimulaGaraAddestramento(gare[idx]);
+  nRegistraStatsGara(classifica);
+  CORSE_ADD.risultati.push(classifica);
+  nRenderCorseRisultato();
+}
+
+function nRenderCorseRisultato(){
+  if(!CORSE_ADD)return;
+  const {gare,idx,risultati}=CORSE_ADD;
+  const classifica=risultati[idx];
+  const medaglie=['🥇','🥈','🥉','4°'];
+  const righe=classifica.map((cp,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;border:var(--bord);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:${i===0?'rgba(93,187,99,.1)':'#1A0E08'}">
+      <div style="font-family:var(--fn);font-size:13px;color:${i===0?'#5DBB63':'var(--gold-l)'}">${medaglie[i]||(i+1)+'°'} 🐎 ${cp.cavallo} · 🏇 ${cp.fantino}</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6)">${cp.punti} pt</div>
+    </div>`).join('');
+  const isUltima=idx>=gare.length-1;
+  setMain(`
+    <div class="card">
+      <div class="ct">🏁 Risultato Gara ${idx+1} di ${gare.length}</div>
+      <div style="font-size:13px;color:#5DBB63;margin-bottom:10px">Vince <strong>${classifica[0].cavallo}</strong> con il fantino <strong>${classifica[0].fantino}</strong>!</div>
+      ${righe}
+      <button class="btn pr w" style="margin-top:10px" onclick="${isUltima?'nRenderCorseRiepilogo()':'nCorseAvanti()'}">${isUltima?'Vedi il riepilogo →':'Prossima gara →'}</button>
+    </div>
+  `);
+}
+
+function nCorseAvanti(){
+  if(!CORSE_ADD)return;
+  CORSE_ADD.idx++;
+  nRenderCorseIntro();
+}
+
+// Riepilogo finale: statistiche stagionali (gare disputate/vittorie) di cavalli e fantini
+function nRenderCorseRiepilogo(){
+  if(!N)return;
+  const cavRows=Object.entries(N.statsCavalli||{}).sort((a,b)=>b[1].vittorie-a[1].vittorie||b[1].gare-a[1].gare)
+    .map(([nm,s])=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(201,168,76,.7);padding:4px 0;border-bottom:1px solid rgba(201,168,76,.1)"><span>🐎 ${nm}</span><span>${s.vittorie}V / ${s.gare}G</span></div>`).join('');
+  const fanRows=Object.entries(N.statsFantini||{}).sort((a,b)=>b[1].vittorie-a[1].vittorie||b[1].gare-a[1].gare)
+    .map(([nm,s])=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(201,168,76,.7);padding:4px 0;border-bottom:1px solid rgba(201,168,76,.1)"><span>🏇 ${nm}</span><span>${s.vittorie}V / ${s.gare}G</span></div>`).join('');
+  setMain(`
+    <div class="card">
+      <div class="ct">🏁 Corse di addestramento concluse</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Le statistiche stagionali di cavalli e fantini sono state aggiornate. Si azzerano a ogni nuovo anno.</div>
+    </div>
+    <div class="card">
+      <div class="ct">Statistiche cavalli (stagione)</div>
+      ${cavRows||'<div style="font-size:12px;color:rgba(201,168,76,.5)">Nessun dato</div>'}
+    </div>
+    <div class="card">
+      <div class="ct">Statistiche fantini (stagione)</div>
+      ${fanRows||'<div style="font-size:12px;color:rgba(201,168,76,.5)">Nessun dato</div>'}
+    </div>
+    <button class="btn w" onclick="CORSE_ADD=null;nBuildDOM();nGoTo('mese')" style="justify-content:center">← Torna al mese</button>
+  `);
+}
+
+// Applica lo sfondo a strisce con i colori della contrada anche nella carriera Contradaiolo
+function applicaColoriContradaN(){
+  if(!N||!N.contrada)return;
+  const col=CONTRADA_COLORI[N.contrada];
+  const app=R('APP');
+  if(!col||!app)return;
+  const c1=col.c1,c2=col.c2,c3=col.c3||null;
+  let grad;
+  if(c3){
+    grad=`repeating-linear-gradient(135deg,${c1} 0px,${c1} 18px,${c2} 18px,${c2} 36px,${c3} 36px,${c3} 54px)`;
+  } else {
+    grad=`repeating-linear-gradient(135deg,${c1} 0px,${c1} 24px,${c2} 24px,${c2} 48px)`;
+  }
+  app.style.background=`linear-gradient(rgba(15,10,5,.82),rgba(15,10,5,.82)),${grad}`;
+  document.body.style.background='#0D0806';
+}
+
+function nRenderMese(){
+  if(!N)return;
+  const el=R('sc-nmese');if(!el)return;
+  R('H_MESE').textContent=MESI[Math.min(N.mi,4)]+' '+N.anno;
+  const isMaggio=N.mi===4;
+  const numPalii=(N.palii||[]).length;
+  const rep=N.reputazione||0;
+  const repCol=rep>=70?'#5DBB63':rep>=40?'var(--gold)':'#E05555';
+  const permMese=nPermessiStatus();
+  const noRapporto=!permMese.mese.includes('rapportoContradaioli');
+  const noCorse=!permMese.mese.includes('corseAddestramento')||N.pistaImpraticabile;
+  el.innerHTML=`
+    <div class="card">
+      <div class="ct">La tua vita da contradaiolo</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:var(--gold);margin-bottom:6px">${N.nome}</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.7);margin-bottom:4px">Contrada: <strong>${N.contrada}</strong></div>
+      <div style="font-size:13px;color:rgba(201,168,76,.7);margin-bottom:4px">Status: <strong style="color:var(--gold)">${N.status}</strong></div>
+      <div style="font-size:11px;color:rgba(201,168,76,.45);margin-bottom:4px">${nStatusDescrizioneAccesso()}</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.7);margin-bottom:4px">Età: <strong>${N.eta} anni</strong></div>
+      <div style="font-size:13px;color:rgba(201,168,76,.7);margin-bottom:4px">Anno: <strong>${N.anno}</strong></div>
+      <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:8px">🏆 Palii vinti finora: ${numPalii}</div>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:12px;color:rgba(201,168,76,.6)">⭐ Reputazione</div>
+          <div style="font-size:13px;font-weight:700;color:${repCol}">${rep}/100</div>
+        </div>
+        <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${rep}%"></div></div>
+      </div>
+    </div>
+    <div class="mt" id="NMTRACK"></div>
+    ${(isMaggio&&N._imprevistoUltimaOra)?nImprevistoUltimaOraCardHTML():''}
+    <div class="card">
+      <div class="ct">Azioni del mese</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px" onclick="nManiero()">
+          <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🏰 Maniero</div>
+          <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Budget di contrada, morale dei contradaioli, eventi e consiglio direttivo</div>
+        </button>
+        <button class="btn ${noRapporto?'nb-off':''}" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px" onclick="nRapportoContradaioli()">
+          <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🤝 Rapporto con i contradaioli</div>
+          <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">Coltiva l'amicizia con i contradaioli della tua contrada</div>
+        </button>
+        <button class="btn ${noCorse?'nb-off':''}" style="text-align:left;padding:14px;display:flex;flex-direction:column;gap:6px" onclick="nCorseAddestramento()">
+          <div style="font-weight:700;font-size:15px;color:var(--gold-l)">🏁 Corse di addestramento</div>
+          <div style="font-size:12px;color:rgba(201,168,76,.5);line-height:1.4">${N.pistaImpraticabile?'🌧️ Pista impraticabile questo mese: nessuna corsa possibile':'3 gare da 4 cavalli, 12 cavalli e 12 fantini estratti a sorte'}</div>
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Il mese in contrada</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.6);margin-bottom:12px">Vivi da vero contradaiolo, mese dopo mese, sostenendo la tua contrada nel cammino verso il Palio.</div>
+      <button class="btn pr w" onclick="nAvanzaMese()">${isMaggio?'⚔ Si corre il Palio! →':'Passa al mese successivo →'}</button>
+      <button class="btn w" onclick="nSalva();renderIntro()" style="margin-top:8px;justify-content:center;border-color:rgba(201,168,76,.27);color:rgba(201,168,76,.6)">🏠 Salva e torna ad Home</button>
+    </div>`;
+  nRenderMtrack();
+}
+
+function nRenderMtrack(){
+  const el=R('NMTRACK');if(!el||!N)return;
+  el.innerHTML=MESI.map((m,i)=>`<div class="md ${i<N.mi?'done':''} ${i===N.mi?'cur':''}">${m.substr(0,3).toUpperCase()}</div>`).join('');
+}
+
+// Simula il Palio di fine anno (Maggio): estrae la contrada vincitrice e, se coincide
+// con la contrada del giocatore, registra la vittoria nell'albo personale
+function nSimulaPalioAnno(){
+  if(!N)return;
+  const contrade=Object.keys(CDB);
+  const vincitrice=contrade[Math.floor(Math.random()*contrade.length)];
+  if(!N.ultimaVittoriaContrada)N.ultimaVittoriaContrada={};
+  N.ultimaVittoriaContrada[vincitrice]=N.anno;
+
+  // Albo d'Oro: registra anno per anno chi vince il Palio, come per la carriera Capitano
+  if(!N.albumStorico)N.albumStorico=[];
+  N.albumStorico.push({anno:N.anno,vincitore:vincitrice,isPlayerVictory:vincitrice===N.contrada});
+
+  // Aggiorna le statistiche di carriera (Palii disputati/vinti) dei fantini attualmente
+  // ingaggiati da una contrada: i fantini "già ingaggiati da altre contrade" e, se presente,
+  // il fantino del giocatore corrono il Palio di quest'anno. Questi dati persistono per
+  // tutta la carriera e non si azzerano ogni anno (a differenza di N.statsFantini).
+  if(!N.statsFantiniCarriera)N.statsFantiniCarriera={};
+  const registraPalio=(nome,haVinto)=>{
+    if(!nome)return;
+    if(!N.statsFantiniCarriera[nome])N.statsFantiniCarriera[nome]={palii:0,vinti:0};
+    N.statsFantiniCarriera[nome].palii++;
+    if(haVinto)N.statsFantiniCarriera[nome].vinti++;
+  };
+  if(N.fantiniMercato&&N.fantiniMercato.contratti){
+    N.fantiniMercato.contratti.forEach(f=>registraPalio(f.nome,f.contrada===vincitrice));
+  }
+  if(N.fan)registraPalio(N.fan.nome,N.contrada===vincitrice);
+
+  // Aggiorna le statistiche di carriera (Palii disputati/vinti) dei cavalli: si considerano
+  // "in lizza" per il Palio tutti i cavalli che hanno corso almeno una corsa di addestramento
+  // quest'anno. Questi dati persistono per tutta la carriera (a differenza di N.statsCavalli).
+  if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
+  const poolCavalli=Object.keys(N.statsCavalli||{});
+  const cavalloVincitore=poolCavalli.length?poolCavalli[Math.floor(Math.random()*poolCavalli.length)]:NC[Math.floor(Math.random()*NC.length)];
+  poolCavalli.forEach(nome=>{
+    if(!N.statsCavalliCarriera[nome])N.statsCavalliCarriera[nome]={palii:0,vinti:0};
+    N.statsCavalliCarriera[nome].palii++;
+  });
+  if(!N.statsCavalliCarriera[cavalloVincitore])N.statsCavalliCarriera[cavalloVincitore]={palii:0,vinti:0};
+  N.statsCavalliCarriera[cavalloVincitore].vinti++;
+
+  if(vincitrice===N.contrada){
+    const fantino=N.fan?N.fan.nome:NF[Math.floor(Math.random()*NF.length)];
+    const cavallo=cavalloVincitore;
+    if(!N.palii)N.palii=[];
+    N.palii.push({anno:N.anno,status:N.status,fantino,cavallo});
+  }
+}
+
+function nAvanzaMese(){
+  if(!N)return;
+  if(N.mi<4){
+    // Passaggio Aprile → Maggio, riservato al Capitano: si apre l'Imprevisto dell'Ultima Ora
+    // al posto dell'imprevisto mensile "normale" e della Gazzetta del Palio.
+    const passaggioUltimaOra=(N.mi===3)&&nRuoloIn('capitano');
+    // Passaggio Marzo → Aprile, dall'undicesimo anno di età (compreso) in poi: si apre
+    // "Le Correnti di Contrada" al posto dell'imprevisto mensile "normale" e della Gazzetta.
+    const passaggioBivio=(N.mi===2)&&(N.eta>=11);
+    N.mi++;
+    N.amiciziaMensile=0;
+    N.allenamentoMensile=0;
+    N.scherzoMensile=0;
+    N.manieroSerataMensile=false;
+    N.manieroDaiManoMensile=false;
+    N.manieroOrganizzaCena=false;
+    N.manieroVenditaGadget=false;
+    N.manieroOrganizzaEvento=false;
+    N.manieroManutenzione=false;
+    N.manieroGiornataAperta=false;
+    if(N.condManiero===undefined)N.condManiero=60;
+    N.condManiero=clamp(N.condManiero-5,0,100);
+    // Reputazione: lento logorio mensile della vita da contradaiolo
+    N.reputazione=clamp((N.reputazione||0)-5,0,100);
+    N.pistaImpraticabile=false;
+    N._eventoMese=null;
+    // Veterinario: -1 stanchezza a tutti i cavalli in stalla
+    if(N.veterinario&&N.stalla&&N.stalla.length){
+      N.stalla.forEach(cv=>{cv.stanchezza=Math.max(0,(cv.stanchezza||0)-1);});
+      showToast('Veterinario: stanchezza −1 a tutti i cavalli','grn');
+    }
+    if(passaggioUltimaOra){
+      nGeneraImprevistoUltimaOra();
+      nSalva();
+      nMostraImprevistoUltimaOra(()=>{nRenderMese();});
+      return;
+    }
+    if(passaggioBivio){
+      nSalva();
+      nMostraBivio(()=>{nRenderMese();});
+      return;
+    }
+    // Imprevisti mensili (30% di probabilità, uno solo al mese)
+    if(Math.random()<0.3)nEstraiImprevistoContradaiolo();
+    nSalva();
+    // Mostra Gazzetta del Palio all'inizio del nuovo mese
+    nMostraGazzetta(()=>{nRenderMese();});
+    return;
+  }
+  // Maggio: prima di entrare nella Vigilia del Palio, risolve l'eventuale Imprevisto dell'Ultima Ora
+  nRisolviImprevistoUltimaOra();
+  nSalva();
+  nAvviaVigiliaPalio();
+}
+
+// ── IMPREVISTO DELL'ULTIMA ORA (Aprile → Maggio, solo Capitano) — CARRIERA "VITA DA CONTRADAIOLO" ──
+// Ogni imprevisto è legato a una carica del Consiglio Direttivo (badge) e ha una condizione
+// di risoluzione: il giocatore può evitare le conseguenze negative sostituendo la persona
+// coinvolta (opzione 1) oppure risolvendo la condizione richiesta (opzione 2) entro la fine
+// di Maggio. Se non fa nulla (opzione 3), subisce le conseguenze negative.
+const N_IMPREVISTI_ULTIMA_ORA={
+  castellana:{
+    badge:'castellana',
+    titolo:'👑 Congiura della Castellana!',
+    testo:"La castellana sta cercando di mettere una parte dei contradaioli contro di te!"
+  },
+  gonfaloniere:{
+    badge:'gonfaloniere',
+    titolo:'🚩 Rissa del Gonfaloniere!',
+    testo:"Il gonfaloniere ha fatto rissa con la dirigenza nemica, rischi l'esclusione dal Palio!"
+  },
+  finanze:{
+    badge:'granPriore',
+    titolo:'⛪ Allarme del Gran Priore!',
+    testo:"Il gran priore non concorda con la tua gestione delle finanze, rischi la bancarotta!"
+  },
+  addettoCorse:{
+    badge:'addettoCorse',
+    titolo:'🏁 Alto Tradimento!',
+    testo:"L'addetto corse è stato visto a casa del capitano della nemica, alto tradimento!"
+  }
+};
+function nGeneraImprevistoUltimaOra(){
+  if(!N)return;
+  const tipi=Object.keys(N_IMPREVISTI_ULTIMA_ORA);
+  const tipo=tipi[rnd(0,tipi.length-1)];
+  const def=N_IMPREVISTI_ULTIMA_ORA[tipo];
+  const titolare=(N.contradaioli||[]).find(c=>c.badge===def.badge);
+  N._imprevistoUltimaOra={
+    tipo,
+    badge:def.badge,
+    titolo:def.titolo,
+    testo:def.testo,
+    nomeOriginale:titolare?titolare.nome:null
+  };
+}
+function nMostraImprevistoUltimaOra(onClose){
+  if(!N)return onClose&&onClose();
+  const imp=N._imprevistoUltimaOra;
+  if(!imp)return onClose&&onClose();
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#3D1F0A,#5C0000);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(139,26,26,.35)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">⚠️</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Imprevisto dell'Ultima Ora</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Maggio ${N.anno} · Contradaiolo</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:#E05555;margin-bottom:8px">${imp.titolo}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7;margin-bottom:10px">${imp.testo}</div>
+      <div style="font-size:12px;color:rgba(201,168,76,.6);line-height:1.6">Hai tutto il mese di Maggio per intervenire: sostituisci il responsabile nel Consiglio Direttivo, oppure risolvi la situazione, prima di andare alla Vigilia del Palio. Se non farai nulla, subirai le conseguenze.</div>
+      <button id="NIMPULT_BTN" class="btn gold w" style="margin-top:16px">Ho capito →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NIMPULT_BTN').onclick=()=>{overlay.remove();onClose&&onClose();};
+}
+// Verifica se la condizione di risoluzione (opzione 2) è stata raggiunta
+function nImprevistoRisolto(){
+  const imp=N&&N._imprevistoUltimaOra;if(!imp)return false;
+  if(imp.tipo==='castellana'){
+    const c=(N.contradaioli||[]).find(x=>x.badge==='castellana');
+    return !!c&&c.amicizia>=90;
+  }
+  if(imp.tipo==='addettoCorse'){
+    const c=(N.contradaioli||[]).find(x=>x.badge==='addettoCorse');
+    return !!c&&c.amicizia>=90;
+  }
+  if(imp.tipo==='finanze'){
+    return (N.budgetContrada||0)>=5000;
+  }
+  if(imp.tipo==='gonfaloniere'){
+    const altre=Object.keys(CDB).filter(k=>k!==N.contrada&&k!==N.nemica);
+    const rap=N.rapportiContrade||{};
+    return altre.length>0&&altre.every(k=>(rap[k]||0)>=90);
+  }
+  return false;
+}
+// Verifica se la persona coinvolta nell'imprevisto è stata sostituita (opzione 1)
+function nImprevistoSostituito(){
+  const imp=N&&N._imprevistoUltimaOra;if(!imp)return false;
+  const c=(N.contradaioli||[]).find(x=>x.badge===imp.badge);
+  const nomeAttuale=c?c.nome:null;
+  return nomeAttuale!==imp.nomeOriginale;
+}
+// Applica le conseguenze negative dell'imprevisto (opzione 3: nessuna azione presa)
+function nImprevistoApplicaEffettoNegativo(){
+  const imp=N&&N._imprevistoUltimaOra;if(!imp)return;
+  if(imp.tipo==='castellana'){
+    const pool=N.contradaioli||[];
+    const scelti=sample(pool,Math.min(10,pool.length));
+    scelti.forEach(c=>{c.amicizia=0;});
+  } else if(imp.tipo==='finanze'){
+    N.budgetContrada=0;
+  } else if(imp.tipo==='gonfaloniere'||imp.tipo==='addettoCorse'){
+    // La contrada viene esclusa dal Palio dell'anno corrente: arriverà automaticamente
+    // quarta (ultima) della propria batteria.
+    N._forzaQuartaBatteria=true;
+  }
+}
+// Da chiamare al passaggio Maggio → Vigilia del Palio: stabilisce quale delle tre opzioni
+// è stata presa dal giocatore e applica le conseguenze corrispondenti.
+function nRisolviImprevistoUltimaOra(){
+  if(!N)return;
+  const imp=N._imprevistoUltimaOra;
+  if(!imp)return;
+  const sostituito=nImprevistoSostituito();
+  const risolto=!sostituito&&nImprevistoRisolto();
+  if(!sostituito&&!risolto){
+    nImprevistoApplicaEffettoNegativo();
+  }
+  N._imprevistoUltimaOra=null;
+}
+// Card mostrata nella schermata del mese di Maggio con lo stato dell'imprevisto in corso
+function nImprevistoUltimaOraCardHTML(){
+  const imp=N._imprevistoUltimaOra;if(!imp)return'';
+  const sostituito=nImprevistoSostituito();
+  const risolto=!sostituito&&nImprevistoRisolto();
+  const ok=sostituito||risolto;
+  let dettaglio='';
+  if(imp.tipo==='castellana'){
+    const c=(N.contradaioli||[]).find(x=>x.badge==='castellana');
+    dettaglio=sostituito?'La castellana è stata sostituita.':`Amicizia con la Castellana: <strong>${c?c.amicizia:0}/100</strong> (serve 90+)`;
+  } else if(imp.tipo==='addettoCorse'){
+    const c=(N.contradaioli||[]).find(x=>x.badge==='addettoCorse');
+    dettaglio=sostituito?"L'Addetto Corse è stato sostituito.":`Amicizia con l'Addetto Corse: <strong>${c?c.amicizia:0}/100</strong> (serve 90+)`;
+  } else if(imp.tipo==='finanze'){
+    dettaglio=sostituito?'Il Gran Priore è stato sostituito.':`Budget di contrada: <strong>${N.budgetContrada||0}</strong> oro (servono 5000+)`;
+  } else if(imp.tipo==='gonfaloniere'){
+    if(sostituito){dettaglio='Il Gonfaloniere è stato sostituito.';}
+    else{
+      const altre=Object.keys(CDB).filter(k=>k!==N.contrada&&k!==N.nemica);
+      const rap=N.rapportiContrade||{};
+      const min=altre.length?Math.min(...altre.map(k=>rap[k]||0)):0;
+      dettaglio=`Intesa minima con le contrade avversarie: <strong>${min}/100</strong> (serve 90+ con tutte)`;
+    }
+  }
+  return `<div class="card">
+    <div class="ct">⚠️ Imprevisto dell'ultima ora</div>
+    <div style="font-size:13px;color:var(--parch2);margin-bottom:8px;line-height:1.6">${imp.testo}</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.7);margin-bottom:6px">${dettaglio}</div>
+    <div style="font-size:12px;font-weight:700;color:${ok?'#5DBB63':'#E05555'}">${ok?'✓ Situazione sotto controllo: nessuna conseguenza negativa.':'⚠ Ancora da risolvere — rischi le conseguenze se non intervieni prima del Palio.'}</div>
+  </div>`;
+}
+
+// ── LE CORRENTI DI CONTRADA — CARRIERA "VITA DA CONTRADAIOLO" ──
+// Dall'undicesimo anno di età (compreso) del giocatore in poi, nel passaggio dal mese di
+// Marzo ad Aprile (al posto dell'imprevisto mensile "normale" e della Gazzetta del Palio)
+// il giocatore viene messo di fronte ad un bivio. Ogni opzione di risposta è legata ad una
+// o più delle tre correnti interne alla contrada (vedi FAZIONI_CONTRADAIOLI): scegliendola,
+// l'amicizia dei contradaioli appartenenti a quelle correnti sale di +10, mentre quella dei
+// contradaioli delle correnti non scelte scende di −5.
+const N_BIVIO_EVENTI=[
+  {
+    titolo:'🐴 Il Cavallo del Palio',
+    testo:"Bisogna scegliere il cavallo per il Palio, ma i soldi in cassa scarseggiano.",
+    opzioni:[
+      {label:'Cavallo forte ad ogni costo',fazioni:['corsa']},
+      {label:'Risparmiamo e vendiamoci bene',fazioni:['maniero','politica']}
+    ]
+  },
+  {
+    titolo:'🎨 Imbrattato il Maniero!',
+    testo:"Alcuni contradaioli nemici sono stati sorpresi mentre imbrattavano il nostro maniero.",
+    opzioni:[
+      {label:'Diamogli una bella lezione',fazioni:['maniero']},
+      {label:'Teniamo buoni rapporti in vista del Palio',fazioni:['corsa','politica']}
+    ]
+  },
+  {
+    titolo:'🎉 Grande Evento in Maniero',
+    testo:"Si discute di organizzare un grande evento nel maniero di contrada.",
+    opzioni:[
+      {label:'Investiamo gran parte del budget',fazioni:['maniero']},
+      {label:'Investiamo il minimo indispensabile, i soldi servono per gli accordi',fazioni:['politica']},
+      {label:'Teniamo i soldi per cavalli e fantini',fazioni:['corsa']}
+    ]
+  },
+  {
+    titolo:'🤝 Proposta di Alleanza',
+    testo:"Una contrada vicina propone un patto di alleanza in vista del Palio, ma chiede un contributo in oro.",
+    opzioni:[
+      {label:'Accettiamo, le alleanze contano più di tutto',fazioni:['politica']},
+      {label:'Rifiutiamo, pensiamo solo a correre e vincere',fazioni:['corsa']},
+      {label:'Rifiutiamo, quei soldi servono per il maniero',fazioni:['maniero']}
+    ]
+  },
+  {
+    titolo:'🍷 La Cena dei Capitani',
+    testo:"Un'antica usanza vorrebbe una cena conviviale tra i vertici di contrada prima del Palio: costosa, e senza vantaggi diretti in pista.",
+    opzioni:[
+      {label:'Organizziamola: la vita di contrada viene prima di tutto',fazioni:['maniero']},
+      {label:'Meglio investire quei soldi su cavalli e fantini',fazioni:['corsa']}
+    ]
+  },
+  {
+    titolo:'🕵️ Voci di Corridoio',
+    testo:"Si dice che alcuni contradaioli stiano trattando di nascosto con altre contrade, senza informare il Consiglio.",
+    opzioni:[
+      {label:'Lasciamo fare, la diplomazia sotterranea è preziosa',fazioni:['politica']},
+      {label:'Fermiamo tutto: la contrada deve restare unita nel maniero',fazioni:['maniero']},
+      {label:'Non ci interessa, pensiamo solo alla corsa',fazioni:['corsa']}
+    ]
+  }
+];
+function nMostraBivio(onClose){
+  if(!N)return onClose&&onClose();
+  const ev=sample(N_BIVIO_EVENTI,1)[0];
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const btnsHtml=ev.opzioni.map((op,i)=>`<button class="btn gold w" style="margin-top:8px;text-align:left;justify-content:flex-start" data-bivio-idx="${i}">${op.label}</button>`).join('');
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">⚖️</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Le Correnti di Contrada</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Aprile ${N.anno} · Contradaiolo</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:var(--gold-l);margin-bottom:8px">${ev.titolo}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7;margin-bottom:8px">${ev.testo}</div>
+      <div style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:4px">Ogni scelta avvicina una corrente della contrada e raffredda le altre.</div>
+      <div id="NBIVIO_BTNS">${btnsHtml}</div>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  ev.opzioni.forEach((op,i)=>{
+    overlay.querySelector(`[data-bivio-idx="${i}"]`).onclick=()=>{
+      nApplicaBivio(op);
+      overlay.remove();
+      onClose&&onClose();
+    };
+  });
+}
+// Applica gli effetti della scelta del bivio: +10 amicizia ai contradaioli delle correnti
+// sostenute, −5 amicizia a tutti gli altri contradaioli
+function nApplicaBivio(opzione){
+  if(!N)return;
+  if(!N.fazionePunti)N.fazionePunti={corsa:0,maniero:0,politica:0};
+  const sostenute=opzione.fazioni||[];
+  Object.keys(FAZIONI_CONTRADAIOLI).forEach(fz=>{
+    if(sostenute.includes(fz))N.fazionePunti[fz]=(N.fazionePunti[fz]||0)+1;
+  });
+  (N.contradaioli||[]).forEach(c=>{
+    if(!c.fazione)c.fazione=nEstraiFazioneCasuale();
+    c.amicizia=clamp(c.amicizia+(sostenute.includes(c.fazione)?10:-5),0,100);
+  });
+  nSalva();
+  const nomiSostenute=sostenute.map(f=>FAZIONI_CONTRADAIOLI[f].label).join(' e ');
+  showToast('Scelta presa: '+opzione.label+(nomiSostenute?' — vicinanza con «'+nomiSostenute+'»':''),'grn');
+}
+
+// ── IMPREVISTI MENSILI — CARRIERA "VITA DA CONTRADAIOLO" ──
+function nEstraiImprevistoContradaiolo(){
+  if(!N)return;
+  const tipi=['cena_proibita','crollo_morale','dono_ex_contradaiolo','crollo_maniero','pista_impraticabile',
+    'trovato_amico','che_litigio','fantino_infortunato','scherzo_nemica','che_affronto','alleata'];
+  const tipo=tipi[rnd(0,tipi.length-1)];
+  let titolo,testo;
+  if(tipo==='cena_proibita'){
+    N.oro=Math.max(0,(N.oro||0)-600);
+    titolo='📜 Cena Proibita!';
+    testo=`Una cena non autorizzata tra contradaioli è finita nelle orecchie sbagliate: le autorità del Palio ti hanno inflitto una <strong>multa di 600 oro</strong>.`;
+  } else if(tipo==='crollo_morale'){
+    N.moraleContrada=clamp((N.moraleContrada||0)-90,0,100);
+    titolo='😔 Crolla il Morale!';
+    testo=`Un clima pesante si è diffuso tra i contradaioli. <strong>Il morale della contrada è crollato.</strong> Servirà del tempo, e qualche gesto concreto, per rialzare gli animi.`;
+  } else if(tipo==='dono_ex_contradaiolo'){
+    N.oro=(N.oro||0)+800;
+    titolo='💰 Dono Inatteso!';
+    testo=`Un ex contradaiolo, mai dimentico dei propri colori, ha inviato <strong>800 oro</strong> nelle casse della contrada. Un gesto che scalda il cuore di tutti.`;
+  } else if(tipo==='crollo_maniero'){
+    N.condManiero=0;
+    titolo='🏚️ Crolla il Tetto del Maniero!';
+    testo=`Tragedia per la nostra contrada: <strong>il tetto del maniero è crollato</strong>! Le condizioni sono ridotte a zero. Servirà una costosa manutenzione per ripristinarlo.`;
+  } else if(tipo==='pista_impraticabile'){
+    N.pistaImpraticabile=true;
+    titolo='🌧️ Pista Impraticabile!';
+    testo=`Le piogge di questi giorni hanno reso il terreno del Palio completamente impraticabile. <strong>Questo mese non sarà possibile disputare corse di addestramento.</strong>`;
+  } else if(tipo==='trovato_amico'&&N.contradaioli&&N.contradaioli.length){
+    const c=N.contradaioli[rnd(0,N.contradaioli.length-1)];
+    c.amicizia=100;
+    titolo='🤝 Trovato un Amico!';
+    testo=`Una serata tra i vicoli della contrada ha fatto miracoli: tu e <strong>${c.nome}</strong> avete trovato un'intesa speciale. La vostra amicizia è ora al massimo.`;
+  } else if(tipo==='che_litigio'&&N.contradaioli&&N.contradaioli.length){
+    const c=N.contradaioli[rnd(0,N.contradaioli.length-1)];
+    c.amicizia=0;
+    titolo='😡 Che Litigio!';
+    testo=`Una discussione finita male ha rovinato il rapporto con <strong>${c.nome}</strong>. L'amicizia tra voi è azzerata: ci vorrà tempo per ricucire lo strappo.`;
+  } else if(tipo==='fantino_infortunato'&&N.fan){
+    const nomeFant=N.fan.nome;
+    N.fan=null;
+    titolo='🤕 Fantino Infortunato!';
+    testo=`Brutta notizia dalla stalla di contrada: <strong>${nomeFant}</strong> si è infortunato e ha dovuto lasciare la stalla. Bisognerà ingaggiare un nuovo fantino.`;
+  } else if(tipo==='scherzo_nemica'){
+    N.moraleContrada=clamp((N.moraleContrada||0)-10,0,100);
+    const repLoss=nRuoloIn('capitano')?10:5;
+    N.reputazione=clamp((N.reputazione||0)-repLoss,0,100);
+    titolo='😈 Lo Scherzo della Nemica!';
+    testo=`La contrada nemica <strong>${N.nemica}</strong> ci ha giocato un brutto scherzo. Il morale della contrada ne risente, e anche la tua reputazione in piazza è calata.`;
+  } else if(tipo==='che_affronto'){
+    const altre=Object.keys(CDB).filter(k=>k!==N.contrada&&k!==N.nemica);
+    if(!altre.length)return;
+    if(!N.rapportiContrade)N.rapportiContrade=nInizRapportiContrade();
+    const bersaglio=altre[rnd(0,altre.length-1)];
+    N.rapportiContrade[bersaglio]=0;
+    titolo='😤 Che Affronto!';
+    testo=`Una contrada che credevi amica ci ha giocato un brutto tiro: <strong>${bersaglio}</strong> ci ha fatto uno scherzo di pessimo gusto. L'intesa con quella contrada è crollata a zero.`;
+  } else if(tipo==='alleata'){
+    const altre=Object.keys(CDB).filter(k=>k!==N.contrada);
+    if(!altre.length)return;
+    if(!N.rapportiContrade)N.rapportiContrade=nInizRapportiContrade();
+    const alleata=altre[rnd(0,altre.length-1)];
+    N.rapportiContrade[alleata]=100;
+    titolo='🏳️ Nuova Alleata!';
+    testo=`Un patto d'amicizia è stato suggellato con <strong>${alleata}</strong>: l'intesa con questa contrada è ora al massimo. Un'alleanza preziosa in vista del Palio.`;
+  } else {
+    return; // condizione non applicabile questo mese (es. nessun contradaiolo o fantino): mese senza imprevisto
+  }
+  N._eventoMese={titolo,testo};
+}
+
+// ── NOTIZIE DI UN MESE TRANQUILLO — CARRIERA "VITA DA CONTRADAIOLO" ──
+function nNotiziaMeseContradaiolo(){
+  if(!N)return null;
+  const r=Math.random();
+  const contrade=Object.keys(CDB).filter(k=>k!==N.contrada);
+  const rndArr=arr=>arr[Math.floor(Math.random()*arr.length)];
+  let titolo,testo;
+  if(r<0.20){
+    const ct=rndArr(contrade);
+    titolo='🐎 Gran Destriero!';
+    testo=`Si vocifera che <strong>${ct}</strong> abbia portato in stalla un cavallo di straordinarie qualità. I bookmaker li quotano già favoriti per il Palio.`;
+  } else if(r<0.40){
+    const ct=rndArr(contrade);
+    titolo='⚠️ Tensione tra le Contrade!';
+    testo=`Le rivalità si infiammano in città. <strong>${ct}</strong> ha rafforzato la propria stalla e si dice voglia il crocione ad ogni costo.`;
+  } else if(r<0.55){
+    const ct=rndArr(contrade);
+    titolo="🤝 Accordi nell'Ombra";
+    testo=`Si vocifera di un patto segreto tra <strong>${ct}</strong> e un'altra contrada. Le alleanze possono cambiare le sorti del Palio.`;
+  } else if(r<0.70){
+    titolo='🏰 Vita di Contrada';
+    testo=`La vita nella contrada di <strong>${N.contrada}</strong> scorre tranquilla questo mese. I contradaioli si preparano con entusiasmo al Palio di maggio.`;
+  } else if(r<0.85){
+    const ct=rndArr(contrade);
+    titolo='👑 Il Favorito del Momento';
+    testo=`Le bocche di piazza sussurrano: il favorito per questa edizione sembra essere <strong>${ct}</strong>. Ma il Palio riserva sempre sorprese.`;
+  } else {
+    titolo='📜 Notizie dalla Piazza';
+    testo=`Le strade fremono di attività in vista del Palio. Ogni contrada osserva le altre, tra sospetti e speranze.`;
+  }
+  return {titolo,testo};
+}
+
+function nMostraGazzetta(onClose){
+  if(!N)return onClose&&onClose();
+  const eventoMese=N._eventoMese;
+  let titolo,testo,isEvento=false;
+  if(eventoMese){
+    isEvento=true;
+    titolo=eventoMese.titolo;testo=eventoMese.testo;
+  } else {
+    const notizia=nNotiziaMeseContradaiolo();
+    if(!notizia){onClose&&onClose();return;}
+    titolo=notizia.titolo;testo=notizia.testo;
+  }
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const mese=MESI[Math.min(N.mi,4)]||'—';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">${mese} ${N.anno} · Contradaiolo</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="font-family:var(--fn);font-size:15px;font-weight:700;color:${isEvento?'#E05555':'var(--gold-l)'};margin-bottom:8px">${titolo}</div>
+      <div style="font-size:13px;color:var(--parch2);line-height:1.7">${testo}</div>
+      <button id="NGAZZETTA_BTN" class="btn gold w" style="margin-top:16px">Ho letto →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('NGAZZETTA_BTN').onclick=()=>{overlay.remove();onClose&&onClose();};
+}
+
+// Porta avanti l'anno dopo che il Palio (con tutta la sua vigilia) si è concluso
+function nCompletaAnnoDopoPalio(){
+  if(!N)return;
+  N.anno++;
+  N.eta++; // l'età aumenta di 1 ogni Gennaio, tranne l'anno di partenza
+  nAggiornaStatus(); // ricalcola cucciolo/contradaiolo in base alla nuova età (gli status speciali restano invariati)
+  nInvecchiaContradaioli(); // ogni contradaiolo invecchia di un anno; a 80 anni viene sostituito da uno nuovo
+  // Invecchiamento cavalli della stalla di contrada: scatta dal 4° anno consecutivo
+  // in stalla (compreso), cioè dopo 3 anni pieni trascorsi dall'acquisto.
+  if(N.stalla){
+    // I cavalli avuti in prestito dal Capitano (proposti dal menù Cavalli) restano in stalla
+    // solo fino a fine anno: al cambio anno tornano al mercato.
+    const cavalliInPrestitoPersi=N.stalla.filter(c=>c.prestito).map(c=>c.nome);
+    N.stalla=N.stalla.filter(c=>!c.prestito);
+    if(cavalliInPrestitoPersi.length)showToast('Il Capitano riprende: '+cavalliInPrestitoPersi.join(', '),'inf');
+    N.stalla.forEach(c=>{
+      if(c.annoAcquisto===undefined)c.annoAcquisto=N.anno-1;
+      const anniInStalla=N.anno-c.annoAcquisto;
+      if(anniInStalla>=3){c.maxAcc=Math.max(1,c.maxAcc-1);c.maxRes=Math.max(1,c.maxRes-1);c.acc=Math.min(c.acc,c.maxAcc);c.res=Math.min(c.res,c.maxRes);}
+      c.valoreVendita=calcPrezzoVendita(c);
+    });
+  }
+  N.mi=0;
+  N.amiciziaMensile=0;
+  N.allenamentoMensile=0;
+  N.scherzoMensile=0;
+  N.manieroSerataMensile=false;
+  N.manieroDaiManoMensile=false;
+  N.manieroOrganizzaCena=false;
+  N.manieroVenditaGadget=false;
+  N.manieroOrganizzaEvento=false;
+  N.manieroManutenzione=false;
+  N.manieroGiornataAperta=false;
+  N.pistaImpraticabile=false;
+  N._eventoMese=null;
+  N.veterinario=false; // il veterinario va reingaggiato ogni anno paliesco
+  if(N.condManiero===undefined)N.condManiero=60;
+  N.condManiero=clamp(N.condManiero-5,0,100);
+  // Le statistiche di gare/vittorie di cavalli e fantini si azzerano a ogni nuovo anno
+  N.statsCavalli={};
+  N.statsFantini={};
+  // I ruoli/badge dei contradaioli vengono rinnovati ogni 3 anni di gioco
+  if(N.badgeUltimoAnno===undefined||N.anno-N.badgeUltimoAnno>=3)nAssegnaBadges();
+  nCheckDecadimentoCapitano();
+  // Ripulisce lo stato temporaneo della vigilia appena conclusa
+  N._strategia=null;N._bP=null;N._bIA=null;N._qP=null;N._qIA=null;N._offerta=null;N._meteo=null;N._esitoBatteria=undefined;
+  N._imprevistoUltimaOra=null;N._forzaQuartaBatteria=false;
+  nSalva();
+  if(N.eta>=N.etaFine){
+    nMostraRiepilogoFinale();
+    return;
+  }
+  R('HUD').style.display='none';
+  R('NAV').style.display='flex';
+  R('MAIN').innerHTML='';
+  nBuildDOM();
+  nRenderNav();
+  nGoTo('mese');
+}
+
+// ══════════════════════════════════════════════
+//  VIGILIA DEL PALIO — CARRIERA "VITA DA CONTRADAIOLO"
+//  La sequenza di schermate varia in base allo status del giocatore.
+// ══════════════════════════════════════════════
+
+function nRuolo(){return nStatusKey();}
+function nRuoloIn(...ruoli){return ruoli.includes(nRuolo());}
+
+// Assegna un cavallo IA a ciascuna delle contrade avversarie per l'anno in corso
+function nAssegnaCavalliIAAnno(){
+  if(!N)return;
+  const nomeCavalliContrada=(N.stalla||[]).map(c=>c.nome);
+  const disponibili=CAVALLI_DB.filter(c=>!nomeCavalliContrada.includes(c.nome));
+  const shuffled=[...disponibili].sort(()=>Math.random()-.5);
+  const altreContrade=Object.keys(CDB).filter(k=>k!==N.contrada);
+  CAVALLI_IA={};
+  altreContrade.forEach((k,i)=>{if(shuffled[i])CAVALLI_IA[k]=shuffled[i];});
+}
+
+// Se la stalla di contrada è vuota, la contrada schiera comunque un cavallo per il Palio
+function nCreaCavalloAuto(){
+  const usati=new Set((N.stalla||[]).map(c=>c.nome));
+  const disponibili=NC.filter(n=>!usati.has(n));
+  const nome=disponibili.length?sample(disponibili,1)[0]:('Cavallo di '+N.contrada);
+  const c=newCav(nome);
+  c.annoAcquisto=N.anno;
+  c.valoreVendita=calcPrezzoVendita(c);
+  return c;
+}
+// Se non c'è un fantino ingaggiato, la contrada ne schiera comunque uno per il Palio
+function nCreaFantinoAuto(){
+  const nome=sample(NF,1)[0];
+  return newFan(nome);
+}
+
+// ── ENTRY POINT ──
+function nAvviaVigiliaPalio(){
+  if(!N)return;
+  R('HUD').style.display='none';
+  R('NAV').style.display='none';
+  N._strategia=null;N._offerta=null;
+  N._bP=null;N._bIA=null;N._qP=null;N._qIA=null;
+  nAssegnaCavalliIAAnno();
+  if(!N.stalla)N.stalla=[];
+  if(!N.stalla.length)N.stalla.push(nCreaCavalloAuto());
+  if(N.cavSelIdx===undefined||!N.stalla[N.cavSelIdx])N.cavSelIdx=0;
+  if(!N.fan)N.fan=nCreaFantinoAuto();
+  N.cav=N.stalla[N.cavSelIdx];
+  nSalva();
+  nVigiliaSceltaCavallo();
+}
+
+// ── 1) SCELTA DEL CAVALLO CON ESTRAZIONE METEO — Capitano, Addetto Corse ──
+function nVigiliaSceltaCavallo(){
+  N._meteo=sorteggiMeteo();
+  if(!nRuoloIn('capitano','addettoCorse')){
+    N.cav=N.stalla[N.cavSelIdx]||N.stalla[0];
+    applicaMeteoACav(N.cav,N._meteo);
+    nVigiliaCena();
+    return;
+  }
+  if(N.stalla.length<=1){
+    N.cavSelIdx=0;N.cav=N.stalla[0];applicaMeteoACav(N.cav,N._meteo);nVigiliaCena();return;
+  }
+  let html=`<div style="text-align:center;margin-bottom:14px">
+    <div style="font-size:30px">🐎</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Scegli il cavallo per il Palio</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Status: ${nStatusLabel()}</div>
+  </div>
+  ${meteoHTML(N._meteo)}`;
+  N.stalla.forEach((cv,i)=>{
+    const _scDb=getCavDB(cv.nome);const _scImg=_scDb&&_scDb.img?_scDb.img:'';
+    const _scImgHtml=_scImg?`<div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${_scImg}" alt="${cv.nome}" style="max-width:100%;max-height:140px;object-fit:contain;border-radius:8px;border:var(--bord)" onerror="this.style.display='none'"></div>`:'';
+    html+=`<div class="card" style="cursor:pointer" onclick="nSceltaCavParlio(${i})">
+      ${_scImgHtml}
+      <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">${cv.nome}</div>
+      ${sRow('Velocità',cv.vel)}${sRowCapped('Accelerazione',cv.acc,cv.maxAcc)}${sRow('Tenuta curva',cv.ten)}${sRowCapped('Resistenza',cv.res,cv.maxRes)}${sRow('Nervosismo',cv.ner,5,true)}
+    </div>`;
+  });
+  setMain('<div style="padding:12px">'+html+'</div>');
+}
+function nSceltaCavParlio(idx){N.cavSelIdx=idx;N.cav=N.stalla[idx];applicaMeteoACav(N.cav,N._meteo);nVigiliaCena();}
+
+// ── 2) CENA PROPIZIATORIA — Capitano, Gran Priore ──
+function nVigiliaCena(){
+  if(!nRuoloIn('capitano','granPriore')){nVigiliaSfilata();return;}
+  setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🌙</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">La Vigilia del Palio</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Maggio — La città è in fermento</div></div>
+  <div class="card"><div class="ct">Cena propiziatoria</div>
+    <div style="font-size:13px;color:var(--parch2);margin-bottom:12px;line-height:1.7">La grande cena galvanizza i contradaioli e raccoglie offerte. Organizzarla dà <strong style="color:var(--gold)">+15 morale di contrada</strong> e un incasso. Non organizzarla causa −15 morale.</div>
+    <div style="display:flex;gap:16px;font-size:13px;margin-bottom:14px">
+      <div>Morale contrada: <span style="color:var(--gold);font-family:var(--fn)">${N.moraleContrada}/100</span></div>
+      <div>Oro: <span style="color:var(--gold);font-family:var(--fn)">${N.oro}</span></div>
+    </div>
+    ${N.oro>=1000?`<button class="btn gold w" onclick="nFaiCenaN()" style="margin-bottom:8px">⚜ Organizza la cena (1000 oro)</button>`:`<div style="font-size:12px;color:#E05555;padding:8px;background:rgba(139,26,26,.13);border-radius:6px;margin-bottom:8px">Oro insufficiente (servono 1000 oro).</div>`}
+    <button class="btn w" onclick="nSaltaCenaN()">Salta la cena (−15 morale) →</button>
+  </div>`);
+}
+function nFaiCenaN(){
+  N.oro-=1000;const fatt=rf(.8,1.2);const guad=Math.floor(15*N.moraleContrada*fatt);
+  nModMoraleContrada(15);N.oro+=guad;
+  showToast('Cena propiziatoria! Raccolta '+guad+' oro, morale +15','grn');
+  nSalva();
+  setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🍷</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">La Cena è Stata un Successo!</div></div>
+  <div class="card" style="text-align:center"><div class="ct">Incasso della serata</div>
+    <div style="display:flex;justify-content:center;margin-bottom:12px">
+      <img src="cena_propiziatoria.png" alt="Cena Propiziatoria" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:var(--bord)" onerror="this.style.display='none'">
+    </div>
+    <div class="score-big">${guad}</div>
+    <div style="font-size:13px;color:rgba(201,168,76,.5);margin-bottom:10px">oro raccolti dai contradaioli</div>
+    <div style="font-size:13px">Morale contrada: <span style="color:#5DBB63;font-family:var(--fn)">${N.moraleContrada}/100</span> <span style="color:#5DBB63">(+15)</span></div>
+  </div>
+  <button class="btn gold w" onclick="nVigiliaSfilata()">Vai alla sfilata →</button>`);
+}
+function nSaltaCenaN(){nModMoraleContrada(-15);showToast('Cena non organizzata. Morale −15','red');nSalva();nVigiliaSfilata();}
+
+// ── 3) SFILATA STORICA ──
+// Obbligatoria per Capitano, Gran Priore, Gonfaloniere.
+// Con probabilità pari alla reputazione per Cucciolo, Contradaiolo, Addetto Corse, Addetto Stalla.
+function nVigiliaSfilata(){
+  const obbligatorio=nRuoloIn('capitano','granPriore','gonfaloniere');
+  const probabilistico=nRuoloIn('cucciolo','contradaiolo','addettoCorse','addettoStalla');
+  let mostra=obbligatorio;
+  if(!mostra&&probabilistico)mostra=Math.random()*100<(N.reputazione||0);
+  if(!mostra){nVigiliaSorteggioBatterie();return;}
+  setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🎺</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">La Sfilata Storica</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Status: ${nStatusLabel()}</div></div>
+  <div class="card"><div class="ct">Vuoi sfilare con il corteo storico?</div>
+    <div style="font-size:13px;color:var(--parch2);margin-bottom:14px;line-height:1.7">Partecipare alla sfilata storica ti fa guadagnare rispetto tra i contradaioli. Rinunciare, invece, delude la tua contrada.</div>
+    <button class="btn gold w" onclick="nSfilataPartecipa(true)" style="margin-bottom:8px">⚜ Sfila nel corteo (+10 reputazione)</button>
+    <button class="btn w" onclick="nSfilataPartecipa(false)">Non partecipare (−10 reputazione)</button>
+  </div>`);
+}
+function nSfilataPartecipa(si){
+  N.reputazione=clamp((N.reputazione||0)+(si?10:-10),0,100);
+  showToast(si?'Hai sfilato con orgoglio! +10 reputazione':'Hai rinunciato alla sfilata. −10 reputazione',si?'grn':'red');
+  nSalva();
+  nVigiliaSorteggioBatterie();
+}
+
+// ── 4) SORTEGGIO BATTERIE — tutti ──
+function nVigiliaSorteggioBatterie(){
+  const tutte=Object.keys(CDB);
+  const shuffled=[...tutte].sort(()=>Math.random()-.5);
+  let bP,bIA;
+  if(shuffled.slice(0,4).includes(N.contrada)){bP=shuffled.slice(0,4);bIA=shuffled.slice(4);}
+  else{bIA=shuffled.slice(0,4);bP=shuffled.slice(4);}
+  N._bP=bP;N._bIA=bIA;nSalva();
+  setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🎲</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Sorteggio delle Batterie</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">Le 8 contrade divise in due batterie da 4</div></div>
+  <div class="card"><div class="ct">Batteria A — la tua batteria</div>
+    <div class="batt-box">${bP.map(n=>`<div class="batt-nome ${n===N.contrada?'tu':''}">${n===N.contrada?'▶ '+n+' (tu)':n}</div>`).join('')}</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.5)">Le prime 2 si qualificano per la finale.</div>
+  </div>
+  <div class="card"><div class="ct">Batteria B</div>
+    <div class="batt-box">${bIA.map(n=>`<div class="batt-nome">${n}</div>`).join('')}</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.5)">Le prime 2 si qualificano per la finale.</div>
+  </div>
+  <button class="btn gold w" onclick="nVigiliaAccordi('batteria', ()=>nVigiliaMossa('batteria'))">⚔ Il canapo è tirato! Accordi e strategie →</button>`);
+}
+
+// ── 5) ACCORDI E STRATEGIE — Capitano, Addetto Corse (con possibile offerta economica) ──
+function nVigiliaAccordi(fase,onContinue){
+  if(!N)return;
+  if(!nRuoloIn('capitano','addettoCorse')){onContinue();return;}
+  const batt=fase==='batteria'?(N._bP||[]):[...((N._qP)||[]),...((N._qIA)||[])];
+  const altriInBatt=batt.filter(n=>n!==N.contrada);
+  const hasNemica=altriInBatt.includes(N.nemica);
+  N._strategia=null;N._offerta=null;
+  const rapporti=N.rapportiContrade||{};
+  const bonusrep=Math.min(20,Math.floor((N.reputazione||0)/5));
+
+  // Possibile offerta economica da una contrada in batteria, in base all'intesa
+  let offertaHtml='';
+  for(const c of altriInBatt){
+    const intesa=rapporti[c]||0;
+    if(Math.random()*100<intesa){
+      const cifra=rnd(100,700);
+      N._offerta={da:c,cifra};
+      offertaHtml=`<div class="card" id="OFFERTA_CARD">
+        <div class="ct">💰 Offerta economica</div>
+        <div style="font-size:13px;color:var(--parch2);margin-bottom:10px;line-height:1.6"><strong>${c}</strong> ti offre <strong style="color:var(--gold)">${cifra} oro</strong> per un accordo di gara.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn gold" style="flex:1" onclick="nAccettaOffertaN()">Accetta</button>
+          <button class="btn" style="flex:1" onclick="nRifiutaOffertaN()">Rifiuta</button>
+        </div>
+      </div>`;
+      break;
+    }
+  }
+
+  let html=`<div style="text-align:center;margin-bottom:14px">
+    <div style="font-size:28px">🤝</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Accordi e Strategie di Gara</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finale':'Batteria'} — Prima del canapo</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:2px">Reputazione: ⭐${N.reputazione||0} — bonus accettazione Patti +${bonusrep}%</div>
+  </div>
+  ${offertaHtml}
+  <div class="card">
+    <div class="ct">Composizione batteria</div>`;
+  batt.forEach(n=>{
+    const rap=n===N.contrada?100:(rapporti[n]||0);
+    const col=n===N.contrada?'var(--gold)':rap>=70?'#5DBB63':rap>=40?'var(--gold)':'#E05555';
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(201,168,76,.08)">
+      <div style="font-family:var(--fn);font-size:13px;font-weight:${n===N.contrada?'700':'400'};color:${n===N.contrada?'var(--gold)':'var(--parch)'}">
+        ${n===N.contrada?'▶ '+n+' (tu)':n}${n===N.nemica?' <span class="bdg r">nemica</span>':''}
+      </div>
+      ${n!==N.contrada?`<span style="font-size:12px;font-weight:700;color:${col}">${rap}/100</span>`:''}
+    </div>`;
+  });
+  html+=`</div>
+  <div class="card">
+    <div class="ct">Scegli la strategia</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px;font-family:var(--fn)">Puoi scegliere una sola strategia</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn w stratgn-btn" onclick="nScegliStrategiaN('tenuta',null,'${fase}')" style="text-align:left;padding:12px">
+        <div style="font-weight:700;color:var(--gold-l)">🛡️ Tenersi per l'ultimo giro</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità −1 · Resistenza +2</div>
+      </button>`;
+  if(hasNemica){
+    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('contro_nemica',null,'${fase}')" style="text-align:left;padding:12px">
+        <div style="font-weight:700;color:#E05555">⚔️ Contro la nemica</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Né tu né ${N.nemica} vincete questa corsa</div>
+      </button>`;
+  }
+  html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('morte',null,'${fase}')" style="text-align:left;padding:12px">
+        <div style="font-weight:700;color:#E05555">⚡ Alla morte</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità +2 · Resistenza −1</div>
+      </button>`;
+  altriInBatt.forEach(n=>{
+    const rap=rapporti[n]||0;
+    const prob=Math.min(95,rap+bonusrep);
+    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('patti','${n}','${fase}')" style="text-align:left;padding:12px">
+        <div style="font-weight:700;color:#7BC8FF">🤝 Patti con ${n}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">−300 oro · ${prob}% probabilità accettazione</div>
+      </button>`;
+  });
+  html+=`</div></div>`;
+  setMain('<div class="pad">'+html+'</div>');
+  window._nStrOnContinue=onContinue;
+}
+function nAccettaOffertaN(){
+  if(!N._offerta)return;
+  N.oro+=N._offerta.cifra;
+  showToast('Accordo con '+N._offerta.da+'! +'+N._offerta.cifra+' oro','grn');
+  const card=R('OFFERTA_CARD');if(card)card.remove();
+  N._offerta=null;nSalva();
+}
+function nRifiutaOffertaN(){
+  showToast('Hai rifiutato l\'offerta economica.','inf');
+  const card=R('OFFERTA_CARD');if(card)card.remove();
+  N._offerta=null;nSalva();
+}
+function nScegliStrategiaN(tipo,bersaglio,fase){
+  if(!N)return;
+  document.querySelectorAll('.stratgn-btn').forEach(b=>{b.disabled=true;b.style.opacity='.35';b.style.pointerEvents='none';});
+  const bonusrep=Math.min(20,Math.floor((N.reputazione||0)/5));
+  const probUbbidienza=Math.min(95,50+(N.fan?N.fan.bravura*5:0)+bonusrep*2);
+  const fantUbbidisce=Math.random()*100<probUbbidienza;
+  let msg='',colore='grn';
+  if(!fantUbbidisce){
+    msg=`⚠️ Il fantino <strong>${N.fan?N.fan.nome:'—'}</strong> ha ignorato i tuoi ordini! Correrà a suo modo.`;
+    N._strategia={tipo:'normale',bersaglio:null};colore='red';
+  } else if(tipo==='tenuta'){
+    msg=`✦ Il fantino eseguirà "Tenersi per l'ultimo giro". Velocità −1, Resistenza +2.`;
+    N._strategia={tipo:'tenuta',bersaglio:null};
+  } else if(tipo==='contro_nemica'){
+    msg=`⚔️ Il fantino punterà contro ${N.nemica}. Né tu né la nemica vincerete.`;
+    N._strategia={tipo:'contro_nemica',bersaglio:N.nemica};
+  } else if(tipo==='morte'){
+    msg=`⚡ Il fantino correrà "Alla morte"! Velocità +2, Resistenza −1.`;
+    N._strategia={tipo:'morte',bersaglio:null};
+  } else if(tipo==='patti'){
+    const rapporti=N.rapportiContrade||{};
+    const rap=rapporti[bersaglio]||0;
+    const prob=Math.min(95,rap+bonusrep);
+    if(N.oro<300){
+      document.querySelectorAll('.stratgn-btn').forEach(b=>{b.disabled=false;b.style.opacity='';b.style.pointerEvents='';});
+      showToast('Non hai 300 oro per i Patti!','red');return;
+    }
+    N.oro-=300;
+    const acc=Math.random()*100<prob;
+    if(acc){
+      msg=`🤝 <strong>${bersaglio}</strong> ha accettato i Patti! Ti lascerà passare (−300 oro).`;
+      N._strategia={tipo:'patti',bersaglio};
+    } else {
+      msg=`✗ <strong>${bersaglio}</strong> ha rifiutato i Patti. −300 oro sprecati.`;
+      N._strategia={tipo:'normale',bersaglio:null};colore='red';
+    }
+  }
+  const tracciato=fantUbbidisce?'Il fantino eseguirà gli ordini.':'Il fantino ha tradito la fiducia.';
+  nSalva();
+  nMostraEsitoStrategiaN(msg,colore,tracciato,fantUbbidisce);
+}
+function nMostraEsitoStrategiaN(msg,colore,tracciato,fantUbbidisce){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  const iconaFant=fantUbbidisce?'🐎':'🗡️';
+  const titoloFant=fantUbbidisce?'Il Fantino Ubbidisce':'Il Fantino Tradisce!';
+  const colBorder=colore==='red'?'#E05555':'#5DBB63';
+  const colTitolo=colore==='red'?'#E05555':'#5DBB63';
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:340px;width:100%;position:relative;box-shadow:0 0 40px rgba(201,168,76,.2)">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px">📰</div>
+        <div style="font-family:var(--fn);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-top:4px">Gazzetta del Palio</div>
+        <div style="font-size:10px;color:rgba(201,168,76,.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px">Prima del Canapo — Anno ${N.anno}</div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:14px"></div>
+      <div style="text-align:center;font-size:32px;margin-bottom:8px">${iconaFant}</div>
+      <div style="font-family:var(--fn);font-size:16px;font-weight:700;color:${colTitolo};margin-bottom:10px;text-align:center">${titoloFant}</div>
+      <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border-left:3px solid ${colBorder};margin-bottom:12px">
+        <div style="font-size:13px;color:var(--parch2);line-height:1.7">${msg}</div>
+        <div style="font-size:11px;color:rgba(201,168,76,.45);margin-top:6px;font-style:italic">${tracciato}</div>
+      </div>
+      <button id="ESITO_STRATN_BTN" class="btn gold w" style="margin-top:4px">⚔ Il canapo è tirato! →</button>
+    </div>`;
+  document.getElementById('APP').appendChild(overlay);
+  document.getElementById('ESITO_STRATN_BTN').onclick=()=>{
+    overlay.remove();
+    if(window._nStrOnContinue)window._nStrOnContinue();
+  };
+}
+function nRipristinaStrategiaN(){
+  if(!N)return;
+  if(N._strategia){
+    if(N._strategia.tipo==='tenuta'&&N.cav){N.cav.vel=Math.min(5,N.cav.vel+1);N.cav.res=Math.max(1,N.cav.res-2);}
+    else if(N._strategia.tipo==='morte'&&N.cav){N.cav.vel=Math.max(1,N.cav.vel-2);N.cav.res=Math.min(5,N.cav.res+1);}
+  }
+  N._strategia=null;
+}
+
+// ── 6) MINIGIOCO MOSSA — tutti ──
+function nVigiliaMossa(fase){
+  setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🏁</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finale — ':'Batteria — '}Ferma il cursore nella zona verde</div></div>
+  <div class="card"><div class="ct">Fase di mossa</div>
+    <div class="mbar" id="MBAR" onclick="nFermaMossaN('${fase}')">
+      <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
+    <div style="font-size:11px;color:rgba(201,168,76,.5)">Zona verde = tolleranza · Linea verde = tacca · Clicca per scattare</div>
+  </div>
+  <div id="MOS_RIS" style="display:none" class="card">
+    <div id="MOS_T" style="font-family:var(--fn);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px"></div>
+    <div id="MOS_B" style="font-size:11px;color:rgba(201,168,76,.5);margin-bottom:10px"></div>
+    <button class="btn gold w" id="MOS_BTN">...</button>
+  </div>`);
+  const f=N.fan,c=N.cav;
+  Mos={tacca:rnd(30,80),amp:Math.max(3,5+(f.mossa*2)),vel:Math.max(.5,1+(c.ner*.4)-(f.bravura*.1)),t:0,pos:50,active:true,mult:1};
+  if(MosInt)clearInterval(MosInt);
+  MosInt=setInterval(()=>{
+    if(!Mos.active)return;Mos.t+=.04;Mos.pos=clamp((Math.sin(Mos.t*Mos.vel*2)+1)*50,0,100);
+    const bar=R('MBAR');if(!bar){clearInterval(MosInt);return;}
+    const w=bar.offsetWidth;
+    const ce=R('MCU'),te=R('MT2'),ze=R('MZ');
+    if(ce)ce.style.left=(Mos.pos/100*w-3)+'px';
+    if(te)te.style.left=(Mos.tacca/100*w-1)+'px';
+    if(ze){const a=Mos.amp/100*w;ze.style.left=(Mos.tacca/100*w-a/2)+'px';ze.style.width=a+'px';}
+  },40);
+}
+function nFermaMossaN(fase){
+  if(!Mos.active)return;Mos.active=false;clearInterval(MosInt);MosInt=null;
+  const d=Math.abs(Mos.pos-Mos.tacca);let esito,mult,msg;
+  if(d<=Mos.amp/2){esito='OTTIMALE';mult=1.15;msg='⚡ PARTENZA A FIONDA! Sei schizzato primo!';}
+  else if(Mos.pos>Mos.tacca+Mos.amp/2){esito='FALSA';mult=.1;msg='✗ PARTENZA FALSA! Riparti ultimo.';}
+  else{esito='LENTA';mult=.5;msg='⚠ PARTENZA LENTA… Sei rimasto al canapo.';}
+  Mos.mult=mult;
+  R('MOS_RIS').style.display='block';
+  const t=R('MOS_T');t.textContent=msg;
+  t.style.color=esito==='OTTIMALE'?'#5DBB63':esito==='FALSA'?'#E05555':'var(--gold)';
+  R('MOS_B').textContent=`Posizione: ${Math.round(Mos.pos)} · Tacca: ${Math.round(Mos.tacca)} · Distanza: ${Math.round(d)} · Moltiplicatore: ×${mult}`;
+  const btn=R('MOS_BTN');
+  if(btn){
+    if(fase==='batteria'){btn.textContent='⚔ Via! Corri la batteria →';btn.onclick=nVigiliaAvviaCorsa;}
+    else{btn.textContent='⚔ Via! Corri la finale →';btn.onclick=N._qP&&N._qP.includes(N.contrada)?nVigiliaAvviaFinale:nVigiliaFinaleSpettatore;}
+  }
+}
+
+// ── CALCOLO CORSA (contradaiolo) ──
+function nScoreGiro(isPlayer,giro,mult,nomeContrada){
+  let cOrig;
+  if(isPlayer){cOrig=N.cav;}
+  else{
+    const dbCav=CAVALLI_IA[nomeContrada]||null;
+    cOrig=dbCav?{vel:dbCav.vel,acc:dbCav.acc,ten:dbCav.ten,res:dbCav.res,ner:dbCav.ner}:newIACav();
+  }
+  const f=isPlayer?N.fan:newIAFan();
+  const pen=isPlayer&&cOrig&&cOrig._meteoPen?cOrig._meteoPen:{ten:0,res:0};
+  let velEff=cOrig.vel, resEff=Math.max(1,cOrig.res-(pen.res||0));
+  if(isPlayer&&N._strategia){
+    if(N._strategia.tipo==='tenuta'){velEff=Math.max(1,velEff-1);resEff=Math.min(5,resEff+2);}
+    else if(N._strategia.tipo==='morte'){velEff=Math.min(5,velEff+2);resEff=Math.max(1,resEff-1);}
+  }
+  const tenEff=Math.max(1,cOrig.ten-(pen.ten||0));
+  const fatica=Math.max(0,(giro-1)*(6-resEff)*.2);
+  const base=(velEff+cOrig.acc+tenEff)-fatica+(f.bravura*.5+f.emp*.2);
+  return base*((giro===1&&isPlayer)?mult:1)+rf(0,3);
+}
+function nSimBatteria(nomi,giri,isPlayerBatt){
+  const sc={};nomi.forEach(n=>sc[n]=0);const gpg=[];
+  const strat=N._strategia;
+  for(let g=1;g<=giri;g++){
+    nomi.forEach(n=>{
+      let base=nScoreGiro(isPlayerBatt&&n===N.contrada,g,Mos.mult,n);
+      if(strat&&strat.tipo==='contro_nemica'&&g===giri){if(n===N.contrada||n===strat.bersaglio)base*=0.1;}
+      if(strat&&strat.tipo==='patti'&&g===giri&&n===strat.bersaglio)base*=0.5;
+      sc[n]+=base;
+    });
+    gpg.push([...Object.entries(sc)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));
+  }
+  return gpg;
+}
+
+// ── 7-8) SIMULAZIONE GRAFICA BATTERIA UNO E DUE — tutti ──
+function nVigiliaAvviaCorsa(){
+  const bP=N._bP,bIA=N._bIA;
+  let gpgP=nSimBatteria(bP,4,true);const gpgIA=nSimBatteria(bIA,4,false);
+  // Esclusione dal Palio causata da un imprevisto dell'ultima ora non risolto: la contrada
+  // del giocatore arriva automaticamente quarta (ultima) della propria batteria.
+  if(N._forzaQuartaBatteria){
+    gpgP=gpgP.map(giro=>{const senza=giro.filter(n=>n!==N.contrada);senza.push(N.contrada);return senza;});
+    N._forzaQuartaBatteria=false;
+  }
+  const qP=gpgP[gpgP.length-1].slice(0,2);const qIA=gpgIA[gpgIA.length-1].slice(0,2);
+  N._qP=qP;N._qIA=qIA;
+  N._esitoBatteria=qP.includes(N.contrada);
+  nSalva();
+  showRaceAnimation(bP, gpgP, 4, N.contrada,
+    ()=>showRaceAnimation(bIA, gpgIA, 4, null,
+      ()=>nVigiliaMostraBatterie(bP,gpgP,qP,bIA,gpgIA,qIA),
+      {titolo:'Batteria B', sottotitolo:'Le altre 4 contrade'}),
+    {titolo:'Batteria A — La tua batteria', sottotitolo:'4 giri · Le prime 2 si qualificano'});
+}
+function nVigiliaMostraBatterie(bP,gpgP,qP,bIA,gpgIA,qIA){
+  const playerIn=qP.includes(N.contrada);const finalisti=[...qP,...qIA];
+  let html=`<div style="text-align:center;margin-bottom:12px"><div style="font-size:28px">🏇</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:4px">Le Batterie del Palio</div></div>
+  <div class="card"><div class="ct">Batteria A — la tua batteria</div>`;
+  for(let g=0;g<gpgP.length;g++){
+    html+=`<div style="margin-bottom:8px"><div style="font-family:var(--fn);font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Giro ${g+1}</div>`;
+    gpgP[g].forEach((nome,pos)=>{const isP=nome===N.contrada,isQ=pos<2&&g===gpgP.length-1;html+=`<div class="cr-line ${isP?'pp':'def'}">${pos+1}° ${nome}${isQ?' <span class="bdg g">qualificato</span>':''}</div>`;});
+    html+=`</div>`;
+  }
+  html+=`</div><div class="card"><div class="ct">Batteria B</div>`;
+  for(let g=0;g<gpgIA.length;g++){
+    html+=`<div style="margin-bottom:8px"><div style="font-family:var(--fn);font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Giro ${g+1}</div>`;
+    gpgIA[g].forEach((nome,pos)=>{const isQ=pos<2&&g===gpgIA.length-1;html+=`<div class="cr-line def">${pos+1}° ${nome}${isQ?' <span class="bdg g">qualificato</span>':''}</div>`;});
+    html+=`</div>`;
+  }
+  html+=`</div><div class="card" style="text-align:center">
+    <div style="font-family:var(--fn);font-size:14px;font-weight:700;color:${playerIn?'#5DBB63':'var(--gold)'};margin-bottom:6px">${playerIn?'⚜ Sei qualificato alla finale!':'Non sei qualificato per la finale. Guardi dalle tribune...'}</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:12px">Finalisti: ${finalisti.join(' · ')}</div>
+    <button class="btn gold w" onclick="${playerIn?'nVigiliaAccordi(\'finale\', ()=>nVigiliaMossa(\'finale\'))':'nVigiliaFinaleSpettatore()'}">${playerIn?'⚔ Accordi e strategie per la finale →':'👀 Guarda la finale →'}</button>
+  </div>`;
+  setMain(html);
+}
+
+// ── 9) FINALE (o corteo dalle tribune se eliminati in batteria) ──
+function nVigiliaFinaleSpettatore(){
+  Mos.mult=1.0;
+  const finalisti=[...N._qP,...N._qIA];
+  const gpgF=nSimBatteria(finalisti,5,false);
+  showRaceAnimation(finalisti, gpgF, 5, N.contrada,
+    ()=>nVigiliaShowFinale(finalisti,gpgF,false),
+    {titolo:'La Finalissima', sottotitolo:'5 giri · Stai guardando dalle tribune'});
+}
+function nVigiliaAvviaFinale(){
+  const finalisti=[...N._qP,...N._qIA];
+  const playerIn=finalisti.includes(N.contrada);
+  const gpgF=nSimBatteria(finalisti,5,playerIn);
+  showRaceAnimation(finalisti, gpgF, 5, N.contrada,
+    ()=>nVigiliaShowFinale(finalisti,gpgF,playerIn),
+    {titolo:'La Finalissima', sottotitolo:'5 giri · '+finalisti.join(' · ')});
+}
+
+// ── 10) SCHERMATA VINCITORE DEL PALIO — tutti, poi si passa all'anno successivo ──
+function nVigiliaShowFinale(finalisti,gpgF,playerIn){
+  if(N.cav)ripristinaMeteo(N.cav);
+  nRipristinaStrategiaN();
+  const classFinale=gpgF[gpgF.length-1];
+  const vincitore=classFinale[0];
+  const playerVince=vincitore===N.contrada;
+  const posFin=classFinale.indexOf(N.contrada)+1;
+  const nemicaVince=vincitore===N.nemica&&!playerVince;
+  const eliminatoInBatteria=!playerIn;
+
+  // ── Morale di contrada in base all'esito del Palio ──
+  let deltaMorale=0;
+  if(playerVince)deltaMorale+=100;
+  else{
+    if(eliminatoInBatteria)deltaMorale-=50;
+    else if(posFin===2)deltaMorale-=15;
+    else if(posFin===3||posFin===4)deltaMorale-=25;
+    if(nemicaVince)deltaMorale-=75;
+  }
+  nModMoraleContrada(deltaMorale);
+
+  // ── Reputazione del giocatore, solo se ha un ruolo diverso da Contradaiolo/Cucciolo ──
+  const ruoloContaPerReputazione=!nRuoloIn('contradaiolo','cucciolo');
+  let deltaRep=0;
+  if(ruoloContaPerReputazione){
+    if(playerVince)deltaRep+=25;
+    else{deltaRep-=25;if(nemicaVince)deltaRep-=50;}
+    N.reputazione=clamp((N.reputazione||0)+deltaRep,0,100);
+  }
+
+  // ── Registrazioni Albo d'Oro e statistiche di carriera ──
+  if(!N.ultimaVittoriaContrada)N.ultimaVittoriaContrada={};
+  N.ultimaVittoriaContrada[vincitore]=N.anno;
+  if(!N.albumStorico)N.albumStorico=[];
+  N.albumStorico.push({anno:N.anno,vincitore,isPlayerVictory:playerVince});
+  if(!N.statsFantiniCarriera)N.statsFantiniCarriera={};
+  if(N.fan){
+    if(!N.statsFantiniCarriera[N.fan.nome])N.statsFantiniCarriera[N.fan.nome]={palii:0,vinti:0};
+    N.statsFantiniCarriera[N.fan.nome].palii++;
+    if(playerVince)N.statsFantiniCarriera[N.fan.nome].vinti++;
+  }
+  if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
+  if(N.cav){
+    if(!N.statsCavalliCarriera[N.cav.nome])N.statsCavalliCarriera[N.cav.nome]={palii:0,vinti:0};
+    N.statsCavalliCarriera[N.cav.nome].palii++;
+    if(playerVince)N.statsCavalliCarriera[N.cav.nome].vinti++;
+  }
+  if(playerVince){
+    if(!N.palii)N.palii=[];
+    N.palii.push({anno:N.anno,status:N.status,fantino:N.fan?N.fan.nome:'—',cavallo:N.cav?N.cav.nome:'—'});
+  }
+  nSalva();
+
+  let html=`<div style="text-align:center;margin-bottom:12px"><div style="font-size:36px">⚔</div>
+    <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:4px">La Finalissima</div>
+    <div style="font-size:12px;color:rgba(201,168,76,.5)">Finalisti: ${finalisti.join(' · ')}</div></div>
+  <div class="card">`;
+  for(let g=0;g<gpgF.length;g++){
+    html+=`<div style="margin-bottom:8px"><div style="font-family:var(--fn);font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Giro ${g+1} / 5</div>`;
+    gpgF[g].forEach((nome,p)=>{const isP=nome===N.contrada,isV=p===0&&g===gpgF.length-1;html+=`<div class="cr-line ${isP?'pp':isV?'p1':'def'}">${p+1}° ${nome}${isV?' 🏆':''}</div>`;});
+    html+=`</div>`;
+  }
+  html+=`</div><div class="result-banner">
+    <div style="font-size:${playerVince?'32':'24'}px;margin-bottom:6px">${playerVince?'🥇':playerIn?'🎖':'👀'}</div>
+    <div style="font-family:var(--fn);font-size:${playerVince?'15':'13'}px;font-weight:700;color:${playerVince?'var(--gold)':'var(--parch)'}">
+      ${playerVince?'HAI VINTO IL PALIO! Le campane suonano per '+N.contrada.toUpperCase()+'!':eliminatoInBatteria?'Eliminato in batteria. Vince '+vincitore+'.':'Sei arrivato '+posFin+'°. Vince '+vincitore+'.'}
+    </div>
+    <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:6px">Anno: ${N.anno} · Status: ${N.status}</div>
+    <div style="font-size:12px;margin-top:5px;color:${deltaMorale>=0?'#5DBB63':'#E05555'}">Morale di contrada ${deltaMorale>=0?'+':''}${deltaMorale}${ruoloContaPerReputazione?' · Reputazione '+(deltaRep>=0?'+':'')+deltaRep:''}</div>
+    ${nemicaVince?`<div style="font-size:12px;margin-top:4px;color:#E05555">💀 La tua nemica ${N.nemica} ha vinto il Palio!</div>`:''}
+  </div>
+  <button class="btn gold w" onclick="nVigiliaProssimoAnno(${playerVince?1:0})">Prossimo anno →</button>`;
+  setMain(html);
+}
+function nVigiliaProssimoAnno(vinta){
+  if(vinta){
+    const col=CONTRADA_COLORI[N.contrada]||{c1:'#8B1A1A',c2:'#C9A84C'};
+    mostraSchermataCrocione(N.contrada, col, false, ()=>nCompletaAnnoDopoPalio());
+  } else {
+    nCompletaAnnoDopoPalio();
+  }
+}
+
+// Schermata riassuntiva di fine carriera
+function nMostraRiepilogoFinale(){
+  if(!N)return;
+  R('H_MESE').textContent='';
+  R('NAV').style.display='none';
+  const palii=N.palii||[];
+  let listaHtml='';
+  if(!palii.length){
+    listaHtml='<div class="le">Nessun Palio vinto durante questa lunga vita di fede e passione.</div>';
+  } else {
+    listaHtml=palii.map(p=>`<div class="le grn">
+      <strong style="color:var(--gold)">${p.anno}</strong> — Status: <strong>${p.status}</strong><br>
+      <span style="color:rgba(201,168,76,.7)">Fantino: ${p.fantino} · Cavallo: ${p.cavallo}</span>
+    </div>`).join('');
+  }
+  setMain(`
+    <div class="card" style="text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">⚜️</div>
+      <div style="font-family:var(--fn);font-size:19px;font-weight:800;color:var(--gold);margin-bottom:8px">Una vita dedicata alla contrada ${N.contrada}!</div>
+      <div style="font-size:13px;color:rgba(201,168,76,.6)">${N.nome} · vissuto/a ${N.etaFine} anni · ultimo status: <strong style="color:var(--gold)">${N.status}</strong></div>
+    </div>
+    <div class="card">
+      <div class="ct">Palii vinti durante la carriera</div>
+      ${listaHtml}
+    </div>
+    <button class="btn gold w" onclick="renderIntro()" style="justify-content:center">🏠 Torna alla Home</button>
+  `);
 }
 
 // ── COLORI CONTRADA ──
@@ -6706,7 +9898,7 @@ const TUT_CAP=[
   {title:"Benvenuto nel Tutorial Capitano!",text:"Sei il Capitano di una contrada di Legnano. Il tuo obiettivo è vincere il Palio gestendo cavalli, fantini, finanze, il tuo maniero e le alleanze politiche. Ogni anno ti giochi tutto in una sola gara: le scelte che fai nei 5 mesi precedenti fanno la differenza.",btn:"Iniziamo →"},
   {title:"📅 Il Calendario: 5 Mesi",text:"Ogni anno di gioco va da Gennaio a Maggio. Ogni mese puoi compiere azioni nella schermata Mese: raccolta fondi, cena in maniero, rinforzo stalla e altro ancora. Ogni azione è usabile una sola volta al mese. A Maggio si corre il Palio.",btn:"Avanti →"},
   {title:"💰 Raccolta Fondi",text:"La raccolta fondi ti dà oro extra (+200, oppure +300 se sei SantAmbrogio). Attenzione: costa −5 morale. Usala quando hai bisogno di liquidità ma il morale è alto. Ricorda: il morale conta per la sfilata e per le attività del maniero!",btn:"Avanti →"},
-  {title:"🏰 Il Maniero",text:"Ogni mese puoi aprire il Maniero per svolgere fino a 4 attività (ognuna massimo una sola volta al mese): 🍷 Organizza Cena (−100 oro, guadagno variabile in base a morale e condizioni del maniero), 💰 Vendita Gadget (guadagno legato al morale), 🍻 Organizza Evento (−200 oro, −10 condizioni, +15 morale), 🔨 Manutenzione (+20 condizioni, −500 oro, +5 morale). Le condizioni del maniero degradano di −5 ogni mese: tienile alte per massimizzare i guadagni della cena!",btn:"Avanti →"},
+  {title:"🏰 Il Maniero",text:"Ogni mese puoi aprire il Maniero per svolgere fino a 4 attività (ognuna massimo una sola volta al mese): 🍷 Organizza Cena (−100 oro, guadagno variabile in base a morale e condizioni del maniero), 💰 Vendita Gadget (guadagno legato al morale), 🍻 Organizza Evento (scegli tra Giornata Manieri Aperti, Sagra Medioevale o Street Food, ognuna con costi ed effetti diversi), 🔨 Manutenzione (+20 condizioni, −500 oro, +5 morale). Le condizioni del maniero degradano di −5 ogni mese: tienile alte per massimizzare i guadagni della cena!",btn:"Avanti →"},
   {title:"🛡️ Rinforza la Stalla",text:"Spendendo 300 oro aumenti la difesa della stalla (+2, max 5). Una difesa alta riduce la probabilità di subire sabotaggi e imboscate da parte delle contrade nemiche ogni mese.",btn:"Avanti →"},
   {title:"🛒 Mercato",text:"Nel mercato compri cavalli e ingaggi fantini. I cavalli hanno 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza e Nervosismo. I fantini hanno un ingaggio cge varia in base alla media delle statistiche (1 di media = 600 oro), ma devi cercare di ingaggaiarli al minor prezzo per ottimizzare i costi e hanno 4 attributi: Bravura, Esperienza, Gestione Mossa ed Empatia. Il tuo Prestigio sblocca offerte migliori!",btn:"Avanti →"},
   {title:"🐎 Stalla e Minigioco Allenamento",text:"Nella stalla vedi i tuoi cavalli e puoi allenarli una volta al mese con 3 tipi di sessione: ⚡ Forza pura (+1 Vel, +1 Ner), 🎯 Controllo e ritmo (+1 Acc, −1 Ner), 🏃 Fondo e curve (+1 Ten, +1 Res). Ogni allenamento lancia il minigioco Allenamento: dricordati la sequenza di simboli che appare sullo schermo. Se vinci il minigioco l'allenamento riesce, altrimenti fallisce (ma il costo viene comunque scalato). Ogni due anni i cavalli invecchiano e perdono un punto massimo in Acc e Res!",btn:"Avanti →"},
@@ -6735,9 +9927,22 @@ const TUT_FNT=[
   {title:"🏆 Fine Anno e Carriera",text:"A fine anno puoi restare nella tua contrada (intesa ≥40) oppure cambiarla (intesa con l'altra ≥60). I cavalli personali restano con te, quelli di contrada vengono rilasciati. Il budget personale si mantiene. Se l'intesa crolla e nessuna contrada ti vuole, passi un anno da svincolato. Buona fortuna, diventa il fantino più vincente della storia del Palio!",btn:"Ho capito! Torna alla home →"},
 ];
 
+const TUT_CONTR=[
+  {title:"Benvenuto nel Tutorial Contradaiolo!",text:"Vivi la vita di un semplice abitante della contrada, dalla nascita alla vecchiaia. Non comandi una scuderia intera: costruisci la tua reputazione, stringi amicizie tra i contradaioli e scala gli status della contrada fino, forse, a diventarne Capitano.",btn:"Iniziamo →"},
+  {title:"👥 Rapporto con i Contradaioli",text:"Nella schermata Contradaioli trovi 30 abitanti della tua contrada, ognuno con una barra Amicizia (0–100, si parte da un valore random tra 10 e 30). Puoi usare il tasto amicizia (+5) una sola volta al mese per contradaiolo. Coltivare le amicizie giuste aiuta a ottenere badge e appoggio quando conterà.",btn:"Avanti →"},
+  {title:"⚖️ Le Correnti di Contrada",text:"Ogni contradaiolo segue una delle tre correnti interne: «Conta solo la corsa», «Prima il maniero poi tutto il resto» e «Fondamentale è la politica con le altre contrade» (le vedi come badge colorati nella schermata Contradaioli). Dai tuoi 11 anni in poi, ogni Aprile ti troverai davanti a un bivio: la scelta che farai avvicinerà di +10 amicizia i contradaioli della corrente sostenuta e allontanerà di −5 quelli delle altre correnti. Scegli con cura da che parte stare!",btn:"Avanti →"},
+  {title:"🎖️ I Badge",text:"Ogni contradaiolo può ricevere al massimo un badge: Capitano (1, solo uomini), Castellana (1, solo donne), Gran Priore (1, indifferente), Gonfaloniere (1, solo uomini), Addetto Corse (1, solo uomini) e Addetto Stalla (fino a 5, indifferente). I badge ruotano ogni 3 anni di gioco: tieni d'occhio chi li detiene, perché riflettono i ruoli chiave della contrada.",btn:"Avanti →"},
+  {title:"⭐ Reputazione",text:"La tua Reputazione (0–100, si parte da 5) è visibile nella schermata Mese e cresce o cala in base alle tue azioni, come gli scherzi contro le contrade rivali. Una buona reputazione è il primo passo per farsi notare e avvicinarsi ai ruoli più prestigiosi della contrada.",btn:"Avanti →"},
+  {title:"🐎 Stalla e Fantini",text:"Come un Capitano, gestisci una Stalla con i cavalli acquistati (puoi allenarli, venderli) e la schermata Fantini per ingaggiare un fantino tramite offerte di mercato. Nella carriera Contradaiolo gli allenamenti sono gratuiti, ma limitati a uno al mese. Occhio a stanchezza e intesa col fantino: crescono con allenamenti e corse, e se la stanchezza arriva a 3 il cavallo non può più correre o allenarsi. Puoi ingaggiare un veterinario per ridurre la stanchezza di tutta la stalla.",btn:"Avanti →"},
+  {title:"🏰 Contrade Rivali",text:"Nella schermata Contrade vedi le 7 contrade avversarie (inclusa la nemica storica), ciascuna con una barra Rapporti 0–100. Una volta al mese puoi tentare uno Scherzo, che apre un minigioco Forza 4 coi colori della tua contrada: se vinci, reputazione +5 (+10 se colpisci la nemica) e il rapporto con la nemica della contrada bersaglio migliora; se perdi, reputazione −5 (−10 se nemica) e il rapporto con la contrada colpita peggiora.",btn:"Avanti →"},
+  {title:"📜 Albo d'Oro",text:"Come nelle altre carriere, l'Albo d'Oro raccoglie anno per anno chi ha vinto il Palio, con le tue vittorie evidenziate e la nemica sempre etichettata. È lo specchio della storia della contrada che stai vivendo.",btn:"Avanti →"},
+  {title:"🏅 Gli Status",text:"Nel corso della vita del tuo contradaiolo puoi ottenere diversi status, ognuno con età minima e a volte prerequisiti: Cucciolo di Contrada e Contradaiolo si aggiornano da soli con l'età, mentre Gonfaloniere, Capitano, Gran Priore, Addetto Stalla e Addetto Corse riflettono i ruoli più importanti (il Capitano, ad esempio, richiede di essere già stato Gonfaloniere e Addetto Corse). Il badge Castellana resta invece riservato alle contradaiole. Ogni status apre permessi diversi su menù, azioni del mese, Maniero, Stalla e Cavalli.",btn:"Ho capito! Torna alla home →"},
+];
+
 let _tutIdx=0,_tutDati=null,_tutType=null;
 function avviaTutorialCapitano(){_tutIdx=0;_tutDati=TUT_CAP;_tutType='cap';mostraTutStep();}
 function avviaTutorialFantino(){_tutIdx=0;_tutDati=TUT_FNT;_tutType='fnt';mostraTutStep();}
+function avviaTutorialContradaiolo(){_tutIdx=0;_tutDati=TUT_CONTR;_tutType='con';mostraTutStep();}
 function mostraTutStep(){
   if(!_tutDati||_tutIdx>=_tutDati.length){
     // Ripristina titolo header
@@ -6747,12 +9952,12 @@ function mostraTutStep(){
   }
   // Aggiorna titolo header
   const hNome=document.getElementById('H_NOME');
-  if(hNome)hNome.textContent=_tutType==='cap'?'Tutorial Capitano':'Tutorial Fantino';
+  if(hNome)hNome.textContent=_tutType==='cap'?'Tutorial Capitano':(_tutType==='con'?'Tutorial Contradaiolo':'Tutorial Fantino');
 
   const s=_tutDati[_tutIdx];
   const isLast=_tutIdx===_tutDati.length-1;
   const prog=Math.round((_tutIdx/_tutDati.length)*100);
-  const imgFile=_tutType==='cap'?'tutorial-capitano.png':'tutorial-fantino.png';
+  const imgFile=(_tutType==='cap'||_tutType==='con')?'tutorial-capitano.png':'tutorial-fantino.png';
 
   setMain(`<div style="position:relative;min-height:calc(100vh - 120px);display:flex;flex-direction:column;padding:0">
 
