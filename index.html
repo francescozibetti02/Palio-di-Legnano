@@ -3147,7 +3147,7 @@ function nRenderCavalli(){
   // Se il giocatore stesso ricopre la carica di Capitano, non ha senso che proponga
   // un cavallo "a se stesso": il tasto "Proponi al capitano" viene disattivato.
   const eGiocatoreCapitano=nStatusKey()==='capitano';
-  if(N.oro===undefined)N.oro=1000;
+  if(N.budgetContrada===undefined)N.budgetContrada=3000;
   if(!N.statsCavalli)N.statsCavalli={};
   if(!N.statsCavalliCarriera)N.statsCavalliCarriera={};
   const nomiStalla=new Set((N.stalla||[]).map(c=>c.nome));
@@ -3160,7 +3160,7 @@ function nRenderCavalli(){
   let html=`<div class="card">
     <div class="ct">🐴 Cavalli</div>
     <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px">Qui trovi tutti i cavalli con almeno una presenza alle corse di addestramento dell'anno in corso. Le statistiche tecniche (velocità, accelerazione, tenuta curva, resistenza) restano nascoste finché il cavallo non entra in Stalla di contrada.</div>
-    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:4px">💰 Il tuo oro: <strong style="color:var(--gold)">${N.oro}</strong></div>
+    <div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:4px">💰 Budget di contrada: <strong style="color:var(--gold)">${N.budgetContrada||0}</strong></div>
     <div style="font-size:12px;color:rgba(201,168,76,.6)">🤝 Reputazione (${N.reputazione||0}) + Amicizia del capitano${capitano?' — '+capitano.nome+' ('+amiCap+')':' (nessun capitano in carica)'} = <strong style="color:${colSomma}">${somma}/155</strong> per farsi accettare un cavallo</div>
   </div>`;
 
@@ -3186,7 +3186,7 @@ function nRenderCavalli(){
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" ${eGiocatoreCapitano?'disabled title="Sei tu il Capitano: non puoi proporre un cavallo a te stesso"':''} onclick="nProponiCapitano('${nome}')">🤝 Proponi al capitano</button>
-          ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${N.oro<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${nome}')">💰 Acquista (${prezzo})</button>`:''}
+          ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${(N.budgetContrada||0)<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${nome}')">💰 Acquista (${prezzo})</button>`:''}
         </div>
       </div>`;
     });
@@ -3219,7 +3219,7 @@ function nProponiCapitano(nome){
   }
 }
 
-// Acquisto definitivo del cavallo: il prezzo viene scalato dal budget personale e il cavallo
+// Acquisto definitivo del cavallo: il prezzo viene scalato dal budget di contrada e il cavallo
 // resta in stalla finché il giocatore non decide di venderlo.
 function nAcquistaCavMercato(nome){
   if(!N)return;
@@ -3227,8 +3227,8 @@ function nAcquistaCavMercato(nome){
   const db=getCavDB(nome);if(!db)return;
   if((N.stalla||[]).some(c=>c.nome===nome)){showToast('Il cavallo è già in stalla!','red');return;}
   const prezzo=nCavCalcPrezzoAcquisto(db);
-  if(N.oro<prezzo){showToast('Oro insufficiente!','red');return;}
-  N.oro-=prezzo;
+  if((N.budgetContrada||0)<prezzo){showToast('Budget di contrada insufficiente!','red');return;}
+  N.budgetContrada=(N.budgetContrada||0)-prezzo;
   if(!N.stalla)N.stalla=[];
   const cav={nome:db.nome,vel:db.vel,acc:db.acc,ten:db.ten,res:db.res,ner:db.ner,maxAcc:5,maxRes:5,annoAcquisto:N.anno,acquistato:true};
   cav.valoreVendita=calcPrezzoVendita(cav);
@@ -3722,7 +3722,7 @@ function nVendiCav(idx){
   if(!N.stalla||!N.stalla[idx])return;
   if(nPermessiStatus().stalla!=='full'){showToast('Il tuo status attuale non ti permette di vendere cavalli.','red');return;}
   const c=N.stalla[idx];const v=c.valoreVendita!==undefined?c.valoreVendita:calcPrezzoVendita(c);
-  N.oro+=v;
+  N.budgetContrada=(N.budgetContrada||0)+v;
   N.stalla.splice(idx,1);
   nSalva();
   showToast('Venduto '+c.nome+' per '+v+' oro','grn');
@@ -3774,12 +3774,12 @@ function nFntStatsBlock(nome){
 
 function nRenderFantini(){
   if(!N)return;
-  if(N.oro===undefined)N.oro=1000;
+  if(N.budgetContrada===undefined)N.budgetContrada=3000;
   if(!N.fantiniMercato)N.fantiniMercato=nGenFantiniMercato();
   const el=R('NFNT_MKT');if(!el)return;
   const {contratti,svincolati}=N.fantiniMercato;
 
-  let html=`<div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px;font-family:var(--fn)">💰 Il tuo oro: <strong style="color:var(--gold)">${N.oro}</strong></div>`;
+  let html=`<div style="font-size:12px;color:rgba(201,168,76,.6);margin-bottom:10px;font-family:var(--fn)">💰 Budget di contrada: <strong style="color:var(--gold)">${N.budgetContrada||0}</strong></div>`;
   if(N.fan){
     html+=`<div class="evbox inf" style="margin-bottom:10px">
       <strong>Fantino attuale: ${N.fan.nome}</strong><br>
@@ -3835,8 +3835,8 @@ function nApriOffertaFnt(i){
   if(N.fantiniRifiutati[f.nome]){showToast(f.nome+' ha rifiutato: non può essere contattato fino al prossimo anno.','red');return;}
   const el=R('NFNT_OFFERTA_'+i);if(!el)return;
   const media=(f.bravura+f.esp+f.mossa+f.emp)/4;
-  const offSugg=Math.min(N.oro,Math.round(media*500+100));
-  const maxOfferta=N.oro;
+  const offSugg=Math.min(N.budgetContrada||0,Math.round(media*500+100));
+  const maxOfferta=N.budgetContrada||0;
   el.style.display='block';
   el.innerHTML=`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:12px;border:var(--bord)">
     <div style="font-family:var(--fn);font-size:12px;color:var(--gold-l);margin-bottom:8px">💰 Quanto vuoi offrire? <span style="color:rgba(201,168,76,.5);text-transform:none;font-weight:400">(suggerita: ${Math.round(media*500+100)} oro)</span></div>
@@ -3859,7 +3859,7 @@ function nInviaOffertaFnt(i){
   const slEl=R('NFNT_SL_'+i);
   if(!slEl)return;
   const offerta=parseInt(slEl.value)||0;
-  if(offerta>N.oro){showToast('Oro insufficiente!','red');return;}
+  if(offerta>(N.budgetContrada||0)){showToast('Budget di contrada insufficiente!','red');return;}
   if(offerta===0){showToast('L\'offerta deve essere maggiore di 0!','red');return;}
 
   const mediaStats=(f.bravura+f.esp+f.mossa+f.emp)/4;
@@ -3870,7 +3870,7 @@ function nInviaOffertaFnt(i){
   const accetta=offerta>=soglia;
 
   if(accetta){
-    N.oro-=offerta;
+    N.budgetContrada=(N.budgetContrada||0)-offerta;
     N.fan={nome:f.nome,bravura:f.bravura,esp:f.esp,mossa:f.mossa,emp:f.emp,costo:offerta};
     N.fantiniMercato.svincolati.splice(i,1);
     nSalva();
@@ -4018,11 +4018,14 @@ function nMostraVotoElezioneCapitano(nomeVecchio,motivo,candidati,onDone){
   const sottotitolo=seiCandidato
     ?'Sei tra i candidati a Capitano: esprimi il tuo voto (31 voti totali: 30 contradaioli + il tuo).'
     :'Si vota il nuovo Capitano: esprimi il tuo voto tra i candidati (31 voti totali: 30 contradaioli + il tuo).';
-  const righe=candidati.map((c,i)=>`
+  const righe=candidati.map((c,i)=>{
+    const amiBadge=c.tipo==='npc'?` <span style="font-size:11px;font-weight:400;color:rgba(201,168,76,.6)">🤝 ${c.ref&&c.ref.amicizia!==undefined?Math.round(c.ref.amicizia):0}/100</span>`:'';
+    return `
     <button class="btn w" style="justify-content:space-between;margin-bottom:6px" onclick="nVotaElezioneCapitano(${i})">
-      <span style="font-weight:700;color:var(--gold-l)">${c.nome}${c.tipo==='player'?' <span class="bdg r">tu</span>':''}</span>
+      <span style="font-weight:700;color:var(--gold-l)">${c.nome}${c.tipo==='player'?' <span class="bdg r">tu</span>':''}${amiBadge}</span>
       <span style="font-size:11px;color:rgba(201,168,76,.6)">Vota →</span>
-    </button>`).join('');
+    </button>`;
+  }).join('');
   overlay.innerHTML=`
     <div style="background:linear-gradient(135deg,#261508,#3D1F0A);border:2px solid var(--gold);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(201,168,76,.2)">
       <div style="text-align:center;margin-bottom:12px">
@@ -5316,15 +5319,15 @@ function nEstraiImprevistoContradaiolo(){
   const tipo=tipi[rnd(0,tipi.length-1)];
   let titolo,testo;
   if(tipo==='cena_proibita'){
-    N.oro=Math.max(0,(N.oro||0)-600);
+    N.budgetContrada=Math.max(0,(N.budgetContrada||0)-600);
     titolo='📜 Cena Proibita!';
-    testo=`Una cena non autorizzata tra contradaioli è finita nelle orecchie sbagliate: le autorità del Palio ti hanno inflitto una <strong>multa di 600 oro</strong>.`;
+    testo=`Una cena non autorizzata tra contradaioli è finita nelle orecchie sbagliate: le autorità del Palio ci hanno inflitto una <strong>multa di 600 oro dal budget di contrada</strong>.`;
   } else if(tipo==='crollo_morale'){
     N.moraleContrada=clamp((N.moraleContrada||0)-90,0,100);
     titolo='😔 Crolla il Morale!';
     testo=`Un clima pesante si è diffuso tra i contradaioli. <strong>Il morale della contrada è crollato.</strong> Servirà del tempo, e qualche gesto concreto, per rialzare gli animi.`;
   } else if(tipo==='dono_ex_contradaiolo'){
-    N.oro=(N.oro||0)+800;
+    N.budgetContrada=(N.budgetContrada||0)+800;
     titolo='💰 Dono Inatteso!';
     testo=`Un ex contradaiolo, mai dimentico dei propri colori, ha inviato <strong>800 oro</strong> nelle casse della contrada. Un gesto che scalda il cuore di tutti.`;
   } else if(tipo==='crollo_maniero'){
@@ -5624,15 +5627,15 @@ function nVigiliaCena(){
     <div style="font-size:13px;color:var(--parch2);margin-bottom:12px;line-height:1.7">La grande cena galvanizza i contradaioli e raccoglie offerte. Organizzarla dà <strong style="color:var(--gold)">+15 morale di contrada</strong> e un incasso. Non organizzarla causa −15 morale.</div>
     <div style="display:flex;gap:16px;font-size:13px;margin-bottom:14px">
       <div>Morale contrada: <span style="color:var(--gold);font-family:var(--fn)">${N.moraleContrada}/100</span></div>
-      <div>Oro: <span style="color:var(--gold);font-family:var(--fn)">${N.oro}</span></div>
+      <div>Budget di contrada: <span style="color:var(--gold);font-family:var(--fn)">${N.budgetContrada||0}</span></div>
     </div>
-    ${N.oro>=1000?`<button class="btn gold w" onclick="nFaiCenaN()" style="margin-bottom:8px">⚜ Organizza la cena (1000 oro)</button>`:`<div style="font-size:12px;color:#E05555;padding:8px;background:rgba(139,26,26,.13);border-radius:6px;margin-bottom:8px">Oro insufficiente (servono 1000 oro).</div>`}
+    ${(N.budgetContrada||0)>=1000?`<button class="btn gold w" onclick="nFaiCenaN()" style="margin-bottom:8px">⚜ Organizza la cena (1000 oro)</button>`:`<div style="font-size:12px;color:#E05555;padding:8px;background:rgba(139,26,26,.13);border-radius:6px;margin-bottom:8px">Budget di contrada insufficiente (servono 1000 oro).</div>`}
     <button class="btn w" onclick="nSaltaCenaN()">Salta la cena (−15 morale) →</button>
   </div>`);
 }
 function nFaiCenaN(){
-  N.oro-=1000;const fatt=rf(.8,1.2);const guad=Math.floor(15*N.moraleContrada*fatt);
-  nModMoraleContrada(15);N.oro+=guad;
+  N.budgetContrada=(N.budgetContrada||0)-1000;const fatt=rf(.8,1.2);const guad=Math.floor(15*N.moraleContrada*fatt);
+  nModMoraleContrada(15);N.budgetContrada=(N.budgetContrada||0)+guad;
   showToast('Cena propiziatoria! Raccolta '+guad+' oro, morale +15','grn');
   nSalva();
   setMain(`<div style="text-align:center;margin-bottom:14px"><div style="font-size:36px">🍷</div>
@@ -5731,6 +5734,7 @@ function nVigiliaAccordi(fase,onContinue){
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Accordi e Strategie di Gara</div>
     <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finale':'Batteria'} — Prima del canapo</div>
     <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:2px">Reputazione: ⭐${N.reputazione||0} — bonus accettazione Patti +${bonusrep}%</div>
+    <div style="font-size:11px;color:rgba(201,168,76,.4);margin-top:2px">Budget di contrada: <strong style="color:var(--gold-l)">${N.budgetContrada||0}</strong> oro</div>
   </div>
   ${offertaHtml}
   <div class="card">
@@ -5778,7 +5782,7 @@ function nVigiliaAccordi(fase,onContinue){
 }
 function nAccettaOffertaN(){
   if(!N._offerta)return;
-  N.oro+=N._offerta.cifra;
+  N.budgetContrada=(N.budgetContrada||0)+N._offerta.cifra;
   showToast('Accordo con '+N._offerta.da+'! +'+N._offerta.cifra+' oro','grn');
   const card=R('OFFERTA_CARD');if(card)card.remove();
   N._offerta=null;nSalva();
@@ -5811,11 +5815,11 @@ function nScegliStrategiaN(tipo,bersaglio,fase){
     const rapporti=N.rapportiContrade||{};
     const rap=rapporti[bersaglio]||0;
     const prob=Math.min(95,rap+bonusrep);
-    if(N.oro<300){
+    if((N.budgetContrada||0)<300){
       document.querySelectorAll('.stratgn-btn').forEach(b=>{b.disabled=false;b.style.opacity='';b.style.pointerEvents='';});
-      showToast('Non hai 300 oro per i Patti!','red');return;
+      showToast('Budget di contrada insufficiente per i Patti (servono 300 oro)!','red');return;
     }
-    N.oro-=300;
+    N.budgetContrada=(N.budgetContrada||0)-300;
     const acc=Math.random()*100<prob;
     if(acc){
       msg=`🤝 <strong>${bersaglio}</strong> ha accettato i Patti! Ti lascerà passare (−300 oro).`;
