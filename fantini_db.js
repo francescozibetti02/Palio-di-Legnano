@@ -31,5 +31,6 @@ const FANTINI_DB = [
   {nome:"Spago",      bravura:1, esp:2, mossa:1, emp:1},
   {nome:"Fastidio",   bravura:3, esp:1, mossa:2, emp:3},
   {nome:"Lesto",      bravura:3, esp:2, mossa:2, emp:3},
-  {nome:"Gavino",     bravura:2, esp:4, mossa:1, emp:1}
+  {nome:"Gavino",     bravura:2, esp:4, mossa:1, emp:1},
+  {nome:"Ares",       bravura:3, esp:2, mossa:2, emp:2}
 ];

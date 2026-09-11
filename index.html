@@ -378,7 +378,8 @@ const CDB={
   SantAmbrogio: {nemica:"Legnarello",   bonus:"GADGET_EXTRA",      desc:"Guadagno extra per vendita gadget",         budget:3000,morale:60},
   SantErasmo:   {nemica:"SanDomenico",  bonus:"ALLEVAMENTO_TOP",   desc:"Cavalli −20% di costo",          budget:3000,morale:60}
 };
-const NF=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
+/* NF (nomi fantini) è derivato da FANTINI_DB, caricato da fantini_db.js (file esterno) */
+const NF=FANTINI_DB.map(f=>f.nome);
 /* CAVALLI_DB è caricato da cavalli_db.js (file esterno) */
 // NC rimane per retrocompatibilità
 const NC=CAVALLI_DB.map(c=>c.nome);
@@ -6301,8 +6302,8 @@ function fGetUltimaVittoria(k){
   return ULTIMA_VITTORIA_DEFAULT[k]||'—';
 }
 
-const NOMI_FANTINI_RIVALI=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio","Gingillo","Velluto","Brigante","Bighino","Cittino","Gavino","Ares","Amsicora","Carburo","Voglia","Bucefalo","Trecciolino","Truciolo"];
-/* FANTINI_DB è caricato da fantini_db.js (file esterno) */
+/* NOMI_FANTINI_RIVALI è derivato da FANTINI_DB, caricato da fantini_db.js (file esterno) */
+const NOMI_FANTINI_RIVALI=FANTINI_DB.map(f=>f.nome);
 // Mappa rapida nome→stats per accesso O(1)
 const FANTINI_MAP=Object.fromEntries(FANTINI_DB.map(f=>([f.nome,f])));
 
