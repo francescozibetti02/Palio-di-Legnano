@@ -521,7 +521,7 @@ function inizia2(k){
      condManiero:60,manieroOrganizzaCena:false,manieroVenditaGadget:false,manieroOrganizzaEvento:false,manieroManutenzione:false,manieroGiornataAperta:false,
      puntSfilata:0,_bP:null,_bIA:null,_qP:null,_qIA:null,
      amicizia:{},trofeiPerContrada:tpc,imboscateVinte:{},
-     nomeCapitano,prestigio:20,albumStorico:[],fantiniMercato:null,fantiniRifiutati:{},
+     nomeCapitano,prestigio:20,albumStorico:[],fantiniMercato:null,fantiniRifiutati:{},fantiniDinamici:{},
      obiettivi:{ceneAnno:0,eventiAnno:0,amica:false,massimoMorale:false,nemicaFermata:false,
        vintoAlPrimo:false,consecutivi:0,maxConsecutivi:0,
        completati:{}},
@@ -608,7 +608,7 @@ function amiBar(k){
 }
 
 // ── MARKET ──
-function newFan(nome){const db=FANTINI_MAP[nome];const b=db?db.bravura:rnd(1,5),e=db?db.esp:rnd(1,5),m=db?db.mossa:rnd(1,5),em=db?db.emp:rnd(1,5);let c=Math.floor(((b+e+m+em)/4)*450*(0.9+Math.random()*.3));if(G&&G.bonus==="PRESTIGIO_STORICO")c=Math.floor(c*.8);return {nome,bravura:b,esp:e,mossa:m,emp:em,costo:c};}
+function newFan(nome,pool){const db=FANTINI_MAP[nome];const din=pool?fanPoolGetOrCreate(pool,nome):null;const b=din?din.bravura:(db?db.bravura:rnd(1,5)),e=din?din.esp:(db?db.esp:rnd(1,5)),m=db?db.mossa:rnd(1,5),em=db?db.emp:rnd(1,5);let c=Math.floor(((b+e+m+em)/4)*450*(0.9+Math.random()*.3));if(G&&G.bonus==="PRESTIGIO_STORICO")c=Math.floor(c*.8);return {nome,bravura:b,esp:e,mossa:m,emp:em,costo:c};}
 function newCav(nome,elite=false){const v=elite?5:rnd(1,5),a=elite?5:rnd(1,5),t=elite?5:rnd(1,5),r=elite?5:rnd(1,5),n=elite?1:rnd(1,3);let val=Math.floor(((v+a+t+r)/4)*450);if(G&&G.bonus==="ALLEVAMENTO_TOP")val=Math.floor(val*.8);return {nome,vel:v,acc:a,ten:t,res:r,ner:n,valore:val,maxAcc:5,maxRes:5};}
 function newIACav(){return {vel:rnd(2,5),acc:rnd(2,5),ten:rnd(2,5),res:rnd(2,5),ner:rnd(1,3)};}
 function newIAFan(){return {bravura:rnd(2,5),esp:rnd(2,5),mossa:rnd(2,5),emp:rnd(2,5)};}
@@ -1354,19 +1354,32 @@ function buyC(i){
 // ── FANTINI MERCATO (sistema ingaggio) ──
 // Genera fantini assegnati a contrade (7) e svincolati (resto) ogni anno
 function genFantiniMercato(){
+  if(!G.fantiniDinamici)G.fantiniDinamici={};
   const tuttiNomi=[...NF]; // array completo
   const shuffled=[...tuttiNomi].sort(()=>Math.random()-.5);
   const altreContrade=Object.keys(CDB).filter(k=>k!==G.nome);
   const shuffContrade=[...altreContrade].sort(()=>Math.random()-.5).slice(0,7);
   const fantiniContratti=shuffled.slice(0,7).map((nome,i)=>{
-    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
-    return {nome,bravura:db.bravura,esp:db.esp||db.esp,mossa:db.mossa,emp:db.emp,contrada:shuffContrade[i]};
+    const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+    const din=fanPoolGetOrCreate(G.fantiniDinamici,nome);
+    return {nome,bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp,contrada:shuffContrade[i]};
   });
   const fantiniSvincolati=shuffled.slice(7).map(nome=>{
-    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
-    return {nome,bravura:db.bravura,esp:db.esp,mossa:db.mossa,emp:db.emp,contrada:null};
+    const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+    const din=fanPoolGetOrCreate(G.fantiniDinamici,nome);
+    return {nome,bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp,contrada:null};
   });
   return {contratti:fantiniContratti,svincolati:fantiniSvincolati};
+}
+// Mappa {contrada: nomeFantino} per l'anno corrente della Carriera Capitano: i 7 fantini
+// assegnati dal mercato alle altre contrade, più il fantino ingaggiato dal giocatore (se presente).
+function capMappaFantiniContrade(){
+  const m={};
+  if(G.fantiniMercato&&G.fantiniMercato.contratti){
+    G.fantiniMercato.contratti.forEach(f=>{if(f.contrada)m[f.contrada]=f.nome;});
+  }
+  if(G.fan&&G.fan.nome)m[G.nome]=G.fan.nome;
+  return m;
 }
 
 function renderFntMkt(){
@@ -2096,6 +2109,18 @@ function fermaMossa(fase){
 }
 
 // ── CORSA ──
+// Restituisce le statistiche (dinamiche) del fantino assegnato dal mercato a una contrada
+// avversaria per l'anno corrente, così che la simulazione del Palio usi davvero il fantino
+// che è stato assegnato a inizio anno, non un IA anonimo.
+function capFanPerContrada(nomeContrada){
+  const mappa=capMappaFantiniContrade();
+  const nome=mappa[nomeContrada];
+  if(!nome)return newIAFan();
+  if(!G.fantiniDinamici)G.fantiniDinamici={};
+  const din=fanPoolGetOrCreate(G.fantiniDinamici,nome);
+  const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+  return {bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp};
+}
 function scoreGiro(isPlayer,giro,mult,nomeContrada){
   let cOrig;
   if(isPlayer){
@@ -2105,7 +2130,7 @@ function scoreGiro(isPlayer,giro,mult,nomeContrada){
     const dbCav=CAVALLI_IA[nomeContrada]||null;
     cOrig=dbCav?{vel:dbCav.vel,acc:dbCav.acc,ten:dbCav.ten,res:dbCav.res,ner:dbCav.ner}:newIACav();
   }
-  const f=isPlayer?G.fan:newIAFan();
+  const f=isPlayer?G.fan:capFanPerContrada(nomeContrada);
   const pen=isPlayer&&cOrig&&cOrig._meteoPen?cOrig._meteoPen:{ten:0,res:0};
   let velEff=cOrig.vel, resEff=Math.max(1,cOrig.res-(pen.res||0));
   // Applica effetti temporanei strategia solo per il calcolo (non modifica le stat permanenti)
@@ -2146,6 +2171,11 @@ function avviaCorsa(){
   // Aggiorna prestigio in base alla qualificazione
   if(qP.includes(G.nome))modPrestigio(10,'Qualificato in finale');
   else modPrestigio(-5,'Eliminato in batteria');
+  // Statistiche fantini dinamiche: -1 bravura/-1 esperienza ai fantini delle contrade eliminate in batteria
+  if(!G.fantiniDinamici)G.fantiniDinamici={};
+  const eliminateBatt=[...bP.filter(c=>!qP.includes(c)),...bIA.filter(c=>!qIA.includes(c))];
+  fanPoolEliminazioneBatteria(G.fantiniDinamici,capMappaFantiniContrade(),eliminateBatt,null);
+  fanPoolSincronizzaIngaggiato(G.fantiniDinamici,G.fan);
   salva();
   // Mostra animazione grafica batteria A (quella del giocatore)
   showRaceAnimation(bP, gpgP, 4, G.nome,
@@ -2200,6 +2230,10 @@ function showFinale(finalisti,gpgF,playerIn){
   ripristinaStrategiaCap();
   const classFinale=gpgF[gpgF.length-1];const vincitore=classFinale[0];
   const playerVince=vincitore===G.nome;const posFin=classFinale.indexOf(G.nome)+1;
+  // Statistiche fantini dinamiche: +1 bravura/+1 esperienza al fantino della contrada vincitrice
+  if(!G.fantiniDinamici)G.fantiniDinamici={};
+  fanPoolVittoriaPalio(G.fantiniDinamici,capMappaFantiniContrade(),vincitore,null);
+  fanPoolSincronizzaIngaggiato(G.fantiniDinamici,G.fan);
   let html=`<div style="text-align:center;margin-bottom:12px"><div style="font-size:36px">⚔</div>
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:4px">La Finalissima</div>
     <div style="font-size:12px;color:rgba(201,168,76,.5)">Finalisti: ${finalisti.join(' · ')}</div></div>
@@ -3005,6 +3039,7 @@ function creaContradaiolo(contrada){
     oro:1000,
     statsCavalli:{},
     statsFantini:{},
+    fantiniDinamici:{},
     budgetContrada:3000,
     moraleContrada:rnd(30,70),
     condManiero:60,
@@ -3739,19 +3774,31 @@ function nLicFan(){
 
 // ── FANTINI SUL MERCATO (Contradaiolo) ──
 function nGenFantiniMercato(){
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
   const tuttiNomi=[...NF];
   const shuffled=[...tuttiNomi].sort(()=>Math.random()-.5);
   const altreContrade=Object.keys(CDB).filter(k=>k!==N.contrada);
   const shuffContrade=[...altreContrade].sort(()=>Math.random()-.5).slice(0,7);
   const fantiniContratti=shuffled.slice(0,7).map((nome,i)=>{
-    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
-    return {nome,bravura:db.bravura,esp:db.esp,mossa:db.mossa,emp:db.emp,contrada:shuffContrade[i]};
+    const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+    const din=fanPoolGetOrCreate(N.fantiniDinamici,nome);
+    return {nome,bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp,contrada:shuffContrade[i]};
   });
   const fantiniSvincolati=shuffled.slice(7).map(nome=>{
-    const db=FANTINI_MAP[nome]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
-    return {nome,bravura:db.bravura,esp:db.esp,mossa:db.mossa,emp:db.emp,contrada:null};
+    const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+    const din=fanPoolGetOrCreate(N.fantiniDinamici,nome);
+    return {nome,bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp,contrada:null};
   });
   return {contratti:fantiniContratti,svincolati:fantiniSvincolati};
+}
+// Mappa {contrada: nomeFantino} per l'anno corrente della Carriera Contradaiolo.
+function nMappaFantiniContrade(){
+  const m={};
+  if(N.fantiniMercato&&N.fantiniMercato.contratti){
+    N.fantiniMercato.contratti.forEach(f=>{if(f.contrada)m[f.contrada]=f.nome;});
+  }
+  if(N.fan&&N.fan.nome)m[N.contrada]=N.fan.nome;
+  return m;
 }
 
 // Riga statistica "a contatore" (non a puntini) per i dati pubblici dei fantini sul mercato
@@ -4672,11 +4719,14 @@ function nScoreGiroAllenamento(cav,fan,giro){
 
 // Simula i 4 giri di una gara e restituisce la classifica finale (dal 1° al 4° posto)
 function nSimulaGaraAddestramento(coppie){
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
   const punti={};
   coppie.forEach(cp=>punti[cp.cavallo]=0);
   for(let g=1;g<=4;g++){
     coppie.forEach(cp=>{
-      const fanStats=FANTINI_MAP[cp.fantino]||{bravura:rnd(1,5),esp:rnd(1,5),mossa:rnd(1,5),emp:rnd(1,5)};
+      const dbBase=FANTINI_MAP[cp.fantino]||{mossa:rnd(1,5),emp:rnd(1,5)};
+      const din=fanPoolGetOrCreate(N.fantiniDinamici,cp.fantino)||{bravura:rnd(1,5),esp:rnd(1,5)};
+      const fanStats={bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp};
       punti[cp.cavallo]+=nScoreGiroAllenamento(cp.cav,fanStats,g);
     });
   }
@@ -5566,7 +5616,8 @@ function nCreaCavalloAuto(){
 // Se non c'è un fantino ingaggiato, la contrada ne schiera comunque uno per il Palio
 function nCreaFantinoAuto(){
   const nome=sample(NF,1)[0];
-  return newFan(nome);
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
+  return newFan(nome,N.fantiniDinamici);
 }
 
 // ── ENTRY POINT ──
@@ -5918,6 +5969,18 @@ function nFermaMossaN(fase){
 }
 
 // ── CALCOLO CORSA (contradaiolo) ──
+// Restituisce le statistiche (dinamiche) del fantino assegnato dal mercato a una contrada
+// avversaria per l'anno corrente, così che la simulazione del Palio usi davvero il fantino
+// che è stato assegnato a inizio anno, non un IA anonimo.
+function nFanPerContrada(nomeContrada){
+  const mappa=nMappaFantiniContrade();
+  const nome=mappa[nomeContrada];
+  if(!nome)return newIAFan();
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
+  const din=fanPoolGetOrCreate(N.fantiniDinamici,nome);
+  const dbBase=FANTINI_MAP[nome]||{mossa:rnd(1,5),emp:rnd(1,5)};
+  return {bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp};
+}
 function nScoreGiro(isPlayer,giro,mult,nomeContrada){
   let cOrig;
   if(isPlayer){cOrig=N.cav;}
@@ -5925,7 +5988,7 @@ function nScoreGiro(isPlayer,giro,mult,nomeContrada){
     const dbCav=CAVALLI_IA[nomeContrada]||null;
     cOrig=dbCav?{vel:dbCav.vel,acc:dbCav.acc,ten:dbCav.ten,res:dbCav.res,ner:dbCav.ner}:newIACav();
   }
-  const f=isPlayer?N.fan:newIAFan();
+  const f=isPlayer?N.fan:nFanPerContrada(nomeContrada);
   const pen=isPlayer&&cOrig&&cOrig._meteoPen?cOrig._meteoPen:{ten:0,res:0};
   let velEff=cOrig.vel, resEff=Math.max(1,cOrig.res-(pen.res||0));
   if(isPlayer&&N._strategia){
@@ -5965,6 +6028,11 @@ function nVigiliaAvviaCorsa(){
   const qP=gpgP[gpgP.length-1].slice(0,2);const qIA=gpgIA[gpgIA.length-1].slice(0,2);
   N._qP=qP;N._qIA=qIA;
   N._esitoBatteria=qP.includes(N.contrada);
+  // Statistiche fantini dinamiche: -1 bravura/-1 esperienza ai fantini delle contrade eliminate in batteria
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
+  const eliminateBattN=[...bP.filter(c=>!qP.includes(c)),...bIA.filter(c=>!qIA.includes(c))];
+  fanPoolEliminazioneBatteria(N.fantiniDinamici,nMappaFantiniContrade(),eliminateBattN,null);
+  fanPoolSincronizzaIngaggiato(N.fantiniDinamici,N.fan);
   nSalva();
   showRaceAnimation(bP, gpgP, 4, N.contrada,
     ()=>showRaceAnimation(bIA, gpgIA, 4, null,
@@ -6024,6 +6092,11 @@ function nVigiliaShowFinale(finalisti,gpgF,playerIn){
   const posFin=classFinale.indexOf(N.contrada)+1;
   const nemicaVince=vincitore===N.nemica&&!playerVince;
   const eliminatoInBatteria=!playerIn;
+
+  // Statistiche fantini dinamiche: +1 bravura/+1 esperienza al fantino della contrada vincitrice
+  if(!N.fantiniDinamici)N.fantiniDinamici={};
+  fanPoolVittoriaPalio(N.fantiniDinamici,nMappaFantiniContrade(),vincitore,null);
+  fanPoolSincronizzaIngaggiato(N.fantiniDinamici,N.fan);
 
   // ── Morale di contrada in base all'esito del Palio ──
   let deltaMorale=0;
@@ -6233,6 +6306,52 @@ const NOMI_FANTINI_RIVALI=["Aceto","Il Pesse","Massimino","Tittia","Scompiglio",
 // Mappa rapida nome→stats per accesso O(1)
 const FANTINI_MAP=Object.fromEntries(FANTINI_DB.map(f=>([f.nome,f])));
 
+// ══════════════════════════════════════════════
+//  STATISTICHE FANTINI DINAMICHE
+//  I dati iniziali di bravura/esperienza di ogni fantino vengono presi dal database
+//  esterno (FANTINI_DB), ma durante la carriera evolvono in base agli esiti del Palio:
+//  +1 bravura/+1 esperienza al fantino della contrada che vince il Palio (o la Provaccia),
+//  -1 bravura/-1 esperienza ai fantini delle contrade eliminate in batteria.
+//  Chi accede alla finale senza vincere, o chi non partecipa al Palio dell'anno, non
+//  subisce variazioni. Ogni carriera (Capitano/Fantino/Contradaiolo) mantiene un proprio
+//  "pool" persistente di statistiche dinamiche, popolato pigramente da FANTINI_DB.
+// ══════════════════════════════════════════════
+function fanPoolGetOrCreate(pool,nome){
+  if(!pool||!nome)return null;
+  if(!pool[nome]){
+    const db=FANTINI_MAP[nome];
+    pool[nome]={bravura:db?db.bravura:rnd(1,5),esp:db?db.esp:rnd(1,5)};
+  }
+  return pool[nome];
+}
+function fanPoolApplicaDelta(pool,nome,delta){
+  const st=fanPoolGetOrCreate(pool,nome);
+  if(!st)return;
+  st.bravura=clamp(st.bravura+delta,1,5);
+  st.esp=clamp(st.esp+delta,1,5);
+}
+// mappaContrade: {nomeContrada:nomeFantino} per l'anno corrente. escludiNome: fantino da non
+// toccare (es. il giocatore stesso nella Carriera Fantino, le cui statistiche sono già
+// regolamentate a parte).
+function fanPoolEliminazioneBatteria(pool,mappaContrade,contradeEliminate,escludiNome){
+  (contradeEliminate||[]).forEach(c=>{
+    const nome=mappaContrade?mappaContrade[c]:null;
+    if(nome&&nome!==escludiNome)fanPoolApplicaDelta(pool,nome,-1);
+  });
+}
+function fanPoolVittoriaPalio(pool,mappaContrade,contradaVincitrice,escludiNome){
+  const nome=mappaContrade?mappaContrade[contradaVincitrice]:null;
+  if(nome&&nome!==escludiNome)fanPoolApplicaDelta(pool,nome,1);
+}
+// Se il fantino attualmente ingaggiato (oggetto "vivo" usato nel calcolo delle corse) coincide
+// con un nome appena aggiornato nel pool dinamico, sincronizza le sue statistiche bravura/esp:
+// altrimenti l'oggetto ingaggiato resterebbe una fotografia congelata al momento dell'ingaggio.
+function fanPoolSincronizzaIngaggiato(pool,fanIngaggiato){
+  if(!pool||!fanIngaggiato||!fanIngaggiato.nome)return;
+  const din=pool[fanIngaggiato.nome];
+  if(din){fanIngaggiato.bravura=din.bravura;fanIngaggiato.esp=din.esp;}
+}
+
 function fStarRow(label,val){
   let h=`<div class="fnt-star-row"><span class="fnt-star-label">${label}</span><div class="fnt-stars">`;
   for(let i=0;i<5;i++) h+=`<div class="fnt-star${i<val?' on':''}"></div>`;
@@ -6337,7 +6456,8 @@ function fFinalizzaCreazione(opts){
     mktF:null,
     obiettiviFantino:{completati:{}},
     nomeCompagno,  // fantino assegnato dal gioco nella stessa contrada
-    ultimaVittoriaContrada:{}  // aggiornato quando una contrada vince il Palio
+    ultimaVittoriaContrada:{},  // aggiornato quando una contrada vince il Palio
+    fantiniProvacciaStats:{}  // statistiche dinamiche dei fantini che corrono la Provaccia (non presenti in F.rivali)
   };
   F.mktF=fGenMkt();
   fSalva();
@@ -6771,7 +6891,7 @@ function fDialogaCapitano(){
   const compInfo=nomeComp&&F.rivali?F.rivali[nomeComp]:null;
   let compHTML='';
   if(nomeComp&&compInfo){
-    const dbC=FANTINI_MAP[nomeComp]||compInfo;
+    const dbC=compInfo||FANTINI_MAP[nomeComp];
     const mediaComp=((dbC.bravura+dbC.esp+dbC.mossa+dbC.emp)/4).toFixed(1);
     const mediaGioc=((F.bravura+F.esperienza+F.mossa+F.empatia)/4).toFixed(1);
     compHTML=`<div class="card" style="background:linear-gradient(135deg,rgba(24,95,165,.15),rgba(26,14,8,.8));border-color:rgba(55,138,221,.4)">
@@ -7550,150 +7670,260 @@ function _fAvviaMinigiocaMossa(fase, isProvaccia, battOverride){
     }
   }
 
-  // ── DISEGNO CAVALLO DALL'ALTO (con animazione zampe e oscillazione corpo) ──
-  // walkPhase: fase ciclo camminata (0..2PI), usata per animare zampe e oscillazione
+  // ── PALETTE MANTO (modello cavallo anatomico "vista dall'alto") ──
+  // Giocatore: mantello chiaro caldo; AI: mantello scuro (stessa distinzione di prima)
+  const PALETTE_CAVALLO_GIOCATORE = {
+    chiaro:'#D9A05C', medio:'#C8864A', scuro:'#8A5A2E',
+    colloA:'#B87A3E', colloB:'#D9A05C',
+    testaA:'#C8864A', testaB:'#8A5A2E'
+  };
+  const PALETTE_CAVALLO_AI = {
+    chiaro:'#5A3A20', medio:'#3D1E0A', scuro:'#1F0F04',
+    colloA:'#331A08', colloB:'#4A2610',
+    testaA:'#3D1E0A', testaB:'#1F0F04'
+  };
+
+  // ── DISEGNO CAVALLO DALL'ALTO — modello anatomico (corpo/collo/testa/coda/zampe
+  // affusolate), con criniera e orecchie a "petalo". Sostituisce il vecchio disegno
+  // semplificato, riusato identico per Mossa pre-Palio, Provaccia e corse d'addestramento.
+  // walkPhase: fase ciclo di galoppo (0..2PI), usata per animare zampe/collo/coda.
   function drawHorse(ctx, cx, cy, angle, isPlayer, nomeCont, walkPhase, nerv){
+    const r = HORSE_R*0.36; // raggio di riferimento del modello anatomico
+    const pal = isPlayer ? PALETTE_CAVALLO_GIOCATORE : PALETTE_CAVALLO_AI;
+    // Conversione di convenzione: qui angolo=0 significa "verso il canapo" (su, -y);
+    // il modello anatomico ha invece angolo=0 = avanti lungo +x, da cui lo scarto di -PI/2.
+    disegnaCorpoCavalloAnatomico(ctx, cx, cy, r, angle - Math.PI/2, walkPhase, pal);
+
+    // Pallino contrada AL CENTRO del cavallo (sopra, come fantino in sella) —
+    // riusa gli stessi otto tondini delle contrade di Legnano già presenti nel gioco.
+    drawContradaDot(ctx, cx, cy, 12, nomeCont);
+  }
+
+  // Corpo del cavallo vero e proprio (senza pallino), adattato dal modello
+  // "cavallo-palio.js": corpo, zampe affusolate, coda, collo con criniera, testa con orecchie.
+  function disegnaCorpoCavalloAnatomico(ctx, x, y, r, angolo, fase, palette){
+    const pal = palette || PALETTE_CAVALLO_GIOCATORE;
+    const corpoL = r * 2.95;  // lunghezza corpo centrale
+    const corpoW = r * 2.05;  // larghezza corpo centrale
+    const colloL = r * 1.15;  // lunghezza collo
+    const testaL = r * 1.45;  // lunghezza testa
+    const codaL  = r * 0.85;  // lunghezza coda
+
+    // Falcata: due gruppi di zampe in fase opposta (anteriori/posteriori)
+    const fA = fase;
+    const fP = fase + Math.PI;
+    const sobbalzo = Math.sin(fase * 2) * 0.05;
+
     ctx.save();
-    ctx.translate(cx,cy);
-    ctx.rotate(angle);
+    ctx.translate(x, y);
+    ctx.rotate(angolo);
 
-    const R=HORSE_R;
-    // Oscillazione laterale del corpo (rollio) sincronizzata con il passo
-    const rollAmpl = 0.03 + (nerv||1)*0.008; // più nervoso = più oscillazione
-    const bodyRoll = Math.sin(walkPhase)*rollAmpl;
+    // ── Ombra portata a terra ──
+    ctx.beginPath();
+    ctx.ellipse(r*0.15, r*0.28, corpoL*0.50, corpoW*0.48, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,.30)';
+    ctx.fill();
 
-    // Giocatore: marrone chiaro caldo; AI: marrone scuro
-    const colBody=isPlayer?'#C8864A':'#3D1E0A';
-    const colBodyDark=isPlayer?'#9B6230':'#231008';
-    const colOutline=isPlayer?'rgba(220,160,80,0.9)':'rgba(90,50,20,0.85)';
-    const colLeg=isPlayer?'#7A4820':'#1A0A04';
-    const colHoof=isPlayer?'#4A2A10':'#0D0804';
+    // ── Zampe: forme piene e affusolate con flessione a metà (ginocchio) ──
+    ctx.lineCap = 'round';
+    const disegnaZampa = (baseX, baseY, faseZampa) => {
+      const segno = Math.sign(baseY);
+      const estensione = Math.sin(faseZampa) * corpoL * 0.30;
+      const apertura = (Math.cos(faseZampa) * 0.5 + 0.5) * r * 0.55;
+      const ginocchioX = baseX + estensione * 0.55;
+      const ginocchioY = baseY + segno * apertura * 0.32;
+      const zoccoloX = baseX + estensione;
+      const zoccoloY = baseY + segno * apertura * 0.6;
 
-    // Piccola oscillazione verticale (trotto leggero)
-    const bobY = Math.sin(walkPhase*2)*1.2;
-    ctx.translate(0, bobY);
-    ctx.rotate(bodyRoll);
+      const wBase  = r * 1.00;
+      const wMed   = r * 0.62;
+      const wPunta = r * 0.34;
 
-    // ── ZAMPE (disegnate PRIMA del corpo per stare sotto) ──
-    // 4 zampe in posizioni anatomiche: anteriori e posteriori, sinistra e destra
-    // Fase: anteriore sx e posteriore dx si muovono insieme (passo diagonale)
-    const legStride = R*0.30; // ampiezza passo
-    const phase = walkPhase;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY - wBase*0.5);
+      ctx.quadraticCurveTo(ginocchioX, ginocchioY - wMed*0.5, zoccoloX, zoccoloY - wPunta*0.5);
+      ctx.lineTo(zoccoloX, zoccoloY + wPunta*0.5);
+      ctx.quadraticCurveTo(ginocchioX, ginocchioY + wMed*0.5, baseX, baseY + wBase*0.5);
+      ctx.closePath();
+      const gradZampa = ctx.createLinearGradient(baseX, 0, zoccoloX, 0);
+      gradZampa.addColorStop(0, '#5a3a1e');
+      gradZampa.addColorStop(1, '#2c1a0d');
+      ctx.fillStyle = gradZampa;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = Math.max(0.4, r*0.03); ctx.stroke();
 
-    // Posizioni base zampe (in coordinate corpo)
-    const legs=[
-      // [xBase, yBase, phaseOffset]
-      [-R*0.30, -R*0.38, 0],        // anteriore sinistra
-      [ R*0.30, -R*0.38, Math.PI],  // anteriore destra (opposta)
-      [-R*0.30,  R*0.30, Math.PI],  // posteriore sinistra
-      [ R*0.30,  R*0.30, 0],        // posteriore destra
-    ];
-    legs.forEach(([bx,by,ph])=>{
-      const legPhase = phase+ph;
-      const stepX = Math.sin(legPhase)*legStride*0.25;
-      const stepY = Math.cos(legPhase)*legStride*0.18;
-      // Sollevamento zampa: quando è nella fase di swing (sin > 0)
-      const lift = Math.max(0, Math.sin(legPhase))*R*0.14;
-      const lx=bx+stepX, ly=by+stepY;
-      // Gamba: linea dalla base al zoccolo
-      ctx.strokeStyle=colLeg;ctx.lineWidth=R*0.13;ctx.lineCap='round';
-      ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(lx,ly+R*0.22-lift);ctx.stroke();
       // Zoccolo
-      ctx.fillStyle=colHoof;
-      ctx.beginPath();ctx.ellipse(lx,ly+R*0.22-lift,R*0.09,R*0.055,legPhase*0.15,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(zoccoloX, zoccoloY, r*0.22, r*0.16, 0, 0, Math.PI*2);
+      ctx.fillStyle = '#120a05';
+      ctx.fill();
+    };
+    disegnaZampa(corpoL*0.30,  corpoW*0.34, fA);
+    disegnaZampa(corpoL*0.30, -corpoW*0.34, fA + 0.35);
+    disegnaZampa(-corpoL*0.28,  corpoW*0.34, fP);
+    disegnaZampa(-corpoL*0.28, -corpoW*0.34, fP + 0.35);
+
+    // ── Coda: corta e folta, oscilla lateralmente ──
+    const codaOsc = Math.sin(fase * 0.55) * r * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(-corpoL*0.48, 0);
+    ctx.quadraticCurveTo(-corpoL*0.48 - codaL*0.55, codaOsc*0.55, -corpoL*0.48 - codaL, codaOsc);
+    ctx.strokeStyle = '#1e130a';
+    ctx.lineWidth = Math.max(2.0, r*0.62);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-corpoL*0.48 - codaL, codaOsc, r*0.32, 0, Math.PI*2);
+    ctx.fillStyle = '#1e130a';
+    ctx.fill();
+
+    // ── Corpo centrale: leggera "respirazione" muscolare ──
+    const flexCorpo = 1 + sobbalzo;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, corpoL*0.5*flexCorpo, corpoW*0.5, 0, 0, Math.PI*2);
+    const gradCorpo = ctx.createLinearGradient(0, -corpoW*0.5, 0, corpoW*0.5);
+    gradCorpo.addColorStop(0,   pal.chiaro);
+    gradCorpo.addColorStop(0.5, pal.medio);
+    gradCorpo.addColorStop(1,   pal.scuro);
+    ctx.fillStyle = gradCorpo;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.40)'; ctx.lineWidth = 0.7; ctx.stroke();
+
+    // Linee del dorso muscolare
+    ctx.strokeStyle = 'rgba(0,0,0,.16)';
+    ctx.lineWidth = Math.max(0.6, r*0.08);
+    [-1, 1].forEach(lato => {
+      ctx.beginPath();
+      ctx.moveTo(-corpoL*0.32, lato*corpoW*0.24);
+      ctx.quadraticCurveTo(0, lato*corpoW*0.24 + Math.sin(fase)*r*0.10, corpoL*0.32, lato*corpoW*0.24);
+      ctx.stroke();
     });
 
-    // ── CORPO principale (ovale allungato) ──
-    ctx.fillStyle=colBody;
+    // ── Collo: si protende in avanti con leggera ondulazione ──
+    const oscCollo = Math.sin(fase * 0.55 + Math.PI/4) * r * 0.30;
+    const colloBaseX = corpoL*0.30;
+    const colloPuntaX = colloBaseX + colloL;
+    const colloPuntaY = oscCollo * 0.45;
+
     ctx.beginPath();
-    ctx.ellipse(0, 0, R*0.46, R*0.82, 0, 0, Math.PI*2);
+    ctx.ellipse(colloBaseX, 0, corpoW*0.30, corpoW*0.42, 0, 0, Math.PI*2);
+    ctx.fillStyle = pal.colloA;
     ctx.fill();
-    ctx.strokeStyle=colOutline;ctx.lineWidth=1.8;ctx.stroke();
 
-    // Riflesso/dorsale (linea scura centrale)
-    ctx.strokeStyle=colBodyDark;ctx.lineWidth=1.3;
-    ctx.beginPath();ctx.moveTo(0,-R*0.76);ctx.lineTo(0,R*0.72);ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(colloBaseX - r*0.3, -corpoW*0.30);
+    ctx.quadraticCurveTo(colloBaseX + colloL*0.5, -r*0.15 + oscCollo, colloPuntaX, colloPuntaY - r*0.55);
+    ctx.lineTo(colloPuntaX, colloPuntaY + r*0.55);
+    ctx.quadraticCurveTo(colloBaseX + colloL*0.5, r*0.15 + oscCollo, colloBaseX - r*0.3, corpoW*0.30);
+    ctx.closePath();
+    const gradCollo = ctx.createLinearGradient(colloBaseX, 0, colloPuntaX, 0);
+    gradCollo.addColorStop(0, pal.colloA);
+    gradCollo.addColorStop(1, pal.colloB);
+    ctx.fillStyle = gradCollo;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.40)'; ctx.lineWidth = 0.7; ctx.stroke();
 
-    // ── CODA (oscillazione naturale, attaccata direttamente al corpo) ──
-    const tailSwing = Math.sin(walkPhase*0.7 + 0.5)*0.22;
-    // Ciocche coda: partono dal bordo posteriore del corpo (niente più giuntura/ellisse separata)
-    ctx.strokeStyle=isPlayer?'#C8834A':'#2A1206';
-    ctx.lineWidth=2.4;
-    ctx.lineCap='round';
-    for(let a=-0.32;a<=0.32;a+=0.16){
-      const tw=tailSwing+a*0.6;
-      ctx.beginPath();
-      ctx.moveTo(Math.sin(tw)*R*0.12, R*0.74);
-      const tailEnd=R*1.18+Math.sin(walkPhase*0.9)*R*0.08;
-      ctx.quadraticCurveTo(
-        Math.sin(tw)*R*0.28, R*0.96,
-        Math.sin(tw+0.15)*R*0.38, tailEnd
-      );
-      ctx.stroke();
+    // Criniera: banda continua centrata sull'asse del collo
+    const nCrin = 10;
+    const bordoSupCrin = [];
+    const bordoInfCrin = [];
+    for (let i = 0; i <= nCrin; i++) {
+      const t = i / nCrin;
+      const cx2 = colloBaseX + (colloPuntaX - colloBaseX) * t;
+      const cy2 = oscCollo * t * 0.8;
+      const sventola = Math.sin(fase * 1.2 + t * 1.8) * r * 0.08;
+      const spessore = r * 0.34 * (1 - t * 0.30);
+      bordoSupCrin.push({ x: cx2 + sventola*0.25, y: cy2 - spessore + sventola });
+      bordoInfCrin.push({ x: cx2 + sventola*0.25, y: cy2 + spessore + sventola });
     }
-    // Sfumatura/ciocche più scure sopra, stesso identico tracciato
-    ctx.strokeStyle=isPlayer?'rgba(200,130,60,0.75)':'rgba(55,25,8,0.75)';
-    ctx.lineWidth=1.3;
-    for(let a=-0.32;a<=0.32;a+=0.16){
-      const tw=tailSwing+a*0.6;
-      ctx.beginPath();
-      ctx.moveTo(Math.sin(tw)*R*0.12, R*0.74);
-      const tailEnd=R*1.18+Math.sin(walkPhase*0.9)*R*0.08;
-      ctx.quadraticCurveTo(
-        Math.sin(tw)*R*0.28, R*0.96,
-        Math.sin(tw+0.15)*R*0.38, tailEnd
-      );
-      ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bordoSupCrin[0].x, bordoSupCrin[0].y);
+    for (let i = 1; i < bordoSupCrin.length; i++) {
+      const p0 = bordoSupCrin[i-1], p1 = bordoSupCrin[i];
+      ctx.quadraticCurveTo(p0.x, p0.y, (p0.x+p1.x)/2, (p0.y+p1.y)/2);
     }
-
-    // ── TESTA (leggero ondeggiamento) ──
-    const headBob = Math.sin(walkPhase)*R*0.04;
-    const headLat = Math.cos(walkPhase*0.5)*R*0.03;
-    ctx.fillStyle=colBodyDark;
-    ctx.beginPath();
-    ctx.ellipse(headLat, -R*0.78+headBob, R*0.26, R*0.30, headLat*0.04, 0, Math.PI*2);
+    ctx.lineTo(bordoSupCrin[bordoSupCrin.length-1].x, bordoSupCrin[bordoSupCrin.length-1].y);
+    ctx.lineTo(bordoInfCrin[bordoInfCrin.length-1].x, bordoInfCrin[bordoInfCrin.length-1].y);
+    for (let i = bordoInfCrin.length - 2; i >= 0; i--) {
+      const p0 = bordoInfCrin[i+1], p1 = bordoInfCrin[i];
+      ctx.quadraticCurveTo(p0.x, p0.y, (p0.x+p1.x)/2, (p0.y+p1.y)/2);
+    }
+    ctx.lineTo(bordoInfCrin[0].x, bordoInfCrin[0].y);
+    ctx.closePath();
+    const gradCrin = ctx.createLinearGradient(colloBaseX, 0, colloPuntaX, 0);
+    gradCrin.addColorStop(0, '#241509');
+    gradCrin.addColorStop(1, '#160d06');
+    ctx.fillStyle = gradCrin;
     ctx.fill();
-    ctx.strokeStyle=colOutline;ctx.lineWidth=1.2;ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,.30)'; ctx.lineWidth = 0.6; ctx.stroke();
 
-    // Collo (raccorda testa al corpo)
-    ctx.fillStyle=colBody;
+    // ── Testa: forma affusolata sovrapposta al collo per attacco continuo ──
+    const testaBaseX = colloPuntaX - testaL*0.30;
+    const testaBaseY = colloPuntaY;
+    const testaPuntaX = testaBaseX + testaL;
     ctx.beginPath();
-    ctx.moveTo(-R*0.18, -R*0.45);
-    ctx.quadraticCurveTo(headLat*1.5-R*0.04, -R*0.60+headBob, headLat-R*0.22, -R*0.70+headBob);
-    ctx.quadraticCurveTo(headLat*1.5+R*0.04, -R*0.60+headBob, R*0.18, -R*0.45);
+    ctx.moveTo(testaBaseX, testaBaseY - r*0.56);
+    ctx.quadraticCurveTo(testaBaseX + testaL*0.58, testaBaseY - r*0.48, testaPuntaX, testaBaseY - r*0.13);
+    ctx.quadraticCurveTo(testaPuntaX + r*0.14, testaBaseY, testaPuntaX, testaBaseY + r*0.13);
+    ctx.quadraticCurveTo(testaBaseX + testaL*0.58, testaBaseY + r*0.48, testaBaseX, testaBaseY + r*0.56);
+    ctx.closePath();
+    const gradTesta = ctx.createLinearGradient(testaBaseX, 0, testaPuntaX, 0);
+    gradTesta.addColorStop(0, pal.testaA);
+    gradTesta.addColorStop(1, pal.testaB);
+    ctx.fillStyle = gradTesta;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.40)'; ctx.lineWidth = 0.7; ctx.stroke();
+
+    // Profilo del muso
+    ctx.beginPath();
+    ctx.moveTo(testaBaseX + testaL*0.35, testaBaseY - r*0.30);
+    ctx.quadraticCurveTo(testaBaseX + testaL*0.80, testaBaseY - r*0.10, testaPuntaX - r*0.05, testaBaseY);
+    ctx.strokeStyle = 'rgba(0,0,0,.22)';
+    ctx.lineWidth = Math.max(0.6, r*0.06);
+    ctx.stroke();
+
+    // Narice
+    ctx.beginPath();
+    ctx.ellipse(testaPuntaX - r*0.16, testaBaseY + r*0.10, r*0.10, r*0.06, 0.4, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
     ctx.fill();
 
-    // Muso/testa
-    ctx.fillStyle=colBodyDark;
-    ctx.beginPath();ctx.ellipse(headLat,-R*1.02+headBob,R*0.13,R*0.18,headLat*0.06,0,Math.PI*2);ctx.fill();
+    // Orecchie: forma a "petalo", in leggero movimento
+    const orecchioMov = Math.sin(fase * 1.6) * 0.07;
+    const orBaseX = testaBaseX + testaL*0.07;
+    [1, -1].forEach(lato => {
+      const baseY = testaBaseY + lato*r*0.28;
+      const tipX  = orBaseX + testaL*0.06;
+      const tipY  = testaBaseY + lato*(r*0.90 + orecchioMov*r);
+      const outX  = orBaseX - testaL*0.05;
+      const outY  = testaBaseY + lato*r*0.64;
+      const inX   = orBaseX + testaL*0.13;
+      const inY   = testaBaseY + lato*r*0.48;
 
-    // Narici
-    ctx.fillStyle=isPlayer?'rgba(120,60,20,0.7)':'rgba(30,10,4,0.7)';
-    ctx.beginPath();ctx.ellipse(headLat-R*0.07,-R*1.12+headBob,R*0.04,R*0.028,0.3,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(headLat+R*0.07,-R*1.12+headBob,R*0.04,R*0.028,-0.3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(orBaseX - testaL*0.02, baseY);
+      ctx.quadraticCurveTo(outX, outY, tipX, tipY);
+      ctx.quadraticCurveTo(inX, inY, orBaseX + testaL*0.09, baseY);
+      ctx.closePath();
+      const gradOr = ctx.createLinearGradient(orBaseX, testaBaseY, tipX, tipY);
+      gradOr.addColorStop(0, '#4a2c14');
+      gradOr.addColorStop(1, '#241509');
+      ctx.fillStyle = gradOr;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = Math.max(0.4, r*0.03); ctx.stroke();
 
-    // Orecchie (due V rovesciate, "^")
-    ctx.strokeStyle=colBodyDark;
-    ctx.lineWidth=R*0.07;
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
-    // Orecchio sinistro
-    ctx.beginPath();
-    ctx.moveTo(headLat-R*0.16,-R*0.90+headBob);
-    ctx.lineTo(headLat-R*0.105,-R*1.05+headBob);
-    ctx.lineTo(headLat-R*0.05,-R*0.90+headBob);
-    ctx.stroke();
-    // Orecchio destro
-    ctx.beginPath();
-    ctx.moveTo(headLat+R*0.05,-R*0.90+headBob);
-    ctx.lineTo(headLat+R*0.105,-R*1.05+headBob);
-    ctx.lineTo(headLat+R*0.16,-R*0.90+headBob);
-    ctx.stroke();
+      // Interno orecchio
+      ctx.beginPath();
+      ctx.moveTo(orBaseX + testaL*0.01, baseY - lato*r*0.02);
+      ctx.quadraticCurveTo(orBaseX + testaL*0.005, testaBaseY + lato*r*0.52,
+                            orBaseX + testaL*0.04, testaBaseY + lato*(r*0.70 + orecchioMov*r));
+      ctx.quadraticCurveTo(orBaseX + testaL*0.085, testaBaseY + lato*r*0.52,
+                            orBaseX + testaL*0.065, baseY - lato*r*0.02);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,.30)';
+      ctx.fill();
+    });
 
     ctx.restore();
-
-    // Pallino contrada AL CENTRO del cavallo (sopra, come fantino in sella)
-    drawContradaDot(ctx, cx, cy, 12, nomeCont);
   }
 
   // ── RENDER FRAME ──
@@ -8555,6 +8785,22 @@ function fRenderPremi(){
 // ── SCELTA DEL CAPITANO: chi corre il Palio ──
 // Per ogni contrada avversaria, assegna 2 fantini dal DB e sceglie quello con media stats maggiore.
 // Il fantino "scartato" da ogni contrada finisce nella pool della Provaccia.
+// ── STATISTICHE FANTINI DINAMICHE (Carriera Fantino) ──
+// Mappa {contrada: nomeFantino} per il Palio vero e proprio: usa F.rivali (gli stessi dati
+// già impiegati per calcolare le corse), più il giocatore nella propria contrada.
+function fMappaFantiniContrade(){
+  const m={};
+  Object.entries(F.rivali).forEach(([nome,info])=>{if(info.contrada)m[info.contrada]=nome;});
+  m[F.contrada]=F.nome;
+  return m;
+}
+// Mappa {contrada: nomeFantino} per la Provaccia: i fantini "scartati" assegnati da
+// fCalcolaAssegnazioniContrade, che non fanno parte di F.rivali.
+function fMappaFantiniProvaccia(){
+  const m={};
+  (F._fantinoProvaccia||[]).forEach(fp=>{if(fp&&fp.contrada)m[fp.contrada]=fp.nome;});
+  return m;
+}
 function fCalcolaAssegnazioniContrade(){
   const altreContrade=Object.keys(CDB).filter(k=>k!==F.contrada);
   // Pool di fantini dal DB (escluso il compagno e il giocatore stesso)
@@ -8578,7 +8824,9 @@ function fCalcolaAssegnazioniContrade(){
     // Fantino già assegnato (dal DB)
     const rivalEntry=Object.entries(F.rivali).find(([,info])=>info.contrada===k);
     const fan1Nome=rivalEntry?rivalEntry[0]:null;
-    const fan1Stats=fan1Nome?(FANTINI_MAP[fan1Nome]||{bravura:2,esp:2,mossa:2,emp:2}):{bravura:2,esp:2,mossa:2,emp:2};
+    // Usa le statistiche dinamiche attuali del fantino (F.rivali), non più il valore statico del DB
+    const fan1Info=fan1Nome?F.rivali[fan1Nome]:null;
+    const fan1Stats=fan1Info?{bravura:fan1Info.bravura,esp:fan1Info.esp,mossa:fan1Info.mossa,emp:fan1Info.emp}:{bravura:2,esp:2,mossa:2,emp:2};
     const media1=fan1Nome?((fan1Stats.bravura+fan1Stats.esp+fan1Stats.mossa+fan1Stats.emp)/4):0;
     // Costruisce lista globale di tutti i fantini già usati (fan1+fan2 di tutte le contrade + compagno)
     const tuttiUsati=[...fan1GiàUsati,...fan2GiàUsati,nomeComp].filter(Boolean);
@@ -8586,7 +8834,11 @@ function fCalcolaAssegnazioniContrade(){
     const disponibili=fanDB.filter(f=>f.nome!==fan1Nome&&!tuttiUsati.includes(f.nome));
     const fan2=disponibili.length?disponibili[Math.floor(Math.random()*disponibili.length)]:null;
     if(fan2)fan2GiàUsati.push(fan2.nome); // segna subito come usato per le prossime iterazioni
-    const media2=fan2?((fan2.bravura+fan2.esp+fan2.mossa+fan2.emp)/4):0;
+    // Se il fantino "fan2" ha già corso una Provaccia in passato, usa le sue statistiche dinamiche aggiornate
+    const fan2Din=fan2?(F.fantiniProvacciaStats&&F.fantiniProvacciaStats[fan2.nome]):null;
+    const fan2Bravura=fan2Din?fan2Din.bravura:(fan2?fan2.bravura:0);
+    const fan2Esp=fan2Din?fan2Din.esp:(fan2?fan2.esp:0);
+    const media2=fan2?((fan2Bravura+fan2Esp+fan2.mossa+fan2.emp)/4):0;
     // Il capitano sceglie quello con media più alta
     let sceltoNome, sceltoMedia, scartatoNome;
     if(!fan2||media1>=media2){
@@ -8609,7 +8861,7 @@ function fShowSceltaCapitano(){
   // Recupera il compagno di contrada
   const nomeComp=F.nomeCompagno||null;
   const compInfo=nomeComp&&F.rivali?F.rivali[nomeComp]:null;
-  const dbComp=nomeComp?(FANTINI_MAP[nomeComp]||compInfo):null;
+  const dbComp=nomeComp?(compInfo||FANTINI_MAP[nomeComp]):null;
 
   // Calcola medie
   const mediaGiocatore=(F.bravura+F.esperienza+F.mossa+F.empatia)/4;
@@ -9024,11 +9276,13 @@ function fEseguiCorsaProvaccia(){
       if(isP){
         f2={bravura:F.bravura,esp:F.esperienza,mossa:F.mossa,emp:F.empatia};
       } else {
-        // Usa le stats del fantino scartato assegnato a questa contrada nella Provaccia
+        // Usa le stats dinamiche del fantino scartato assegnato a questa contrada nella Provaccia
         const fanProv=(F._fantinoProvaccia||[]).find(fp=>fp.contrada===n);
         if(fanProv){
-          const dbSt=FANTINI_MAP[fanProv.nome]||{bravura:rnd(2,4),esp:rnd(2,4),mossa:rnd(2,4),emp:rnd(2,4)};
-          f2={bravura:dbSt.bravura,esp:dbSt.esp,mossa:dbSt.mossa,emp:dbSt.emp};
+          if(!F.fantiniProvacciaStats)F.fantiniProvacciaStats={};
+          const din=fanPoolGetOrCreate(F.fantiniProvacciaStats,fanProv.nome);
+          const dbBase=FANTINI_MAP[fanProv.nome]||{mossa:rnd(2,4),emp:rnd(2,4)};
+          f2={bravura:din.bravura,esp:din.esp,mossa:dbBase.mossa,emp:dbBase.emp};
         } else {
           f2=newIAFan();
         }
@@ -9063,11 +9317,32 @@ function fEseguiCorsaProvaccia(){
   const pos=classFinale.indexOf(F.contrada)+1;
   const qP=classFinale.slice(0,2);
 
+  // Statistiche fantini dinamiche: +1 bravura/+1 esperienza al fantino della contrada
+  // vincitrice della Provaccia (esclude il giocatore, già regolamentato a parte)
+  if(fase==='finale'){
+    if(!F.fantiniProvacciaStats)F.fantiniProvacciaStats={};
+    fanPoolVittoriaPalio(F.fantiniProvacciaStats,fMappaFantiniProvaccia(),classFinale[0],F.nome);
+  }
+
   if(fase==='batteria'){
     F._fprovQP=qP;
+    // Usa il fantino "scartato" assegnato a inizio anno a ciascuna contrada anche per l'altra
+    // batteria della Provaccia, invece di un punteggio puramente casuale
+    if(!F.fantiniProvacciaStats)F.fantiniProvacciaStats={};
+    const mappaAltraBattProv=fMappaFantiniProvaccia();
     const gpgIA=[];const scIA={};(F._fprovIA||[]).forEach(n=>scIA[n]=0);
-    for(let g=1;g<=4;g++){(F._fprovIA||[]).forEach(n=>{scIA[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});gpgIA.push([...Object.entries(scIA)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
+    for(let g=1;g<=4;g++){(F._fprovIA||[]).forEach(n=>{
+      const nomeAssegnato=mappaAltraBattProv[n];
+      const din=nomeAssegnato?fanPoolGetOrCreate(F.fantiniProvacciaStats,nomeAssegnato):null;
+      const br=din?din.bravura:rnd(2,5);
+      scIA[n]+=(rnd(2,5)+br+rnd(1,5))+rf(0,3);
+    });gpgIA.push([...Object.entries(scIA)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
     F._fprovQIA=gpgIA[gpgIA.length-1].slice(0,2);
+    // Statistiche fantini dinamiche: -1 bravura/-1 esperienza ai fantini delle contrade
+    // eliminate in batteria (esclude il giocatore)
+    if(!F.fantiniProvacciaStats)F.fantiniProvacciaStats={};
+    const eliminatiBattProv=[...bP.filter(c=>!qP.includes(c)),...(F._fprovIA||[]).filter(c=>!F._fprovQIA.includes(c))];
+    fanPoolEliminazioneBatteria(F.fantiniProvacciaStats,fMappaFantiniProvaccia(),eliminatiBattProv,F.nome);
     fSalva();
   }
 
@@ -9725,11 +10000,29 @@ function fEseguiCorsa(){
   // Salva posizione nemica per valutazione obiettivo
   F._nemikaPos=classFinale.indexOf(F.nemica)+1;
 
+  // Statistiche fantini dinamiche: +1 bravura/+1 esperienza al fantino della contrada vincitrice
+  // del Palio (esclude il giocatore, le cui statistiche sono già regolamentate a parte)
+  if(fase==='finale'){
+    fanPoolVittoriaPalio(F.rivali,fMappaFantiniContrade(),classFinale[0],F.nome);
+  }
+
   if(fase==='batteria'){
     F._fbQP=qP;
+    // Usa il fantino assegnato a inizio anno a ciascuna contrada anche per l'altra batteria
+    // (quella non giocata direttamente), invece di un punteggio puramente casuale
+    const mappaAltraBatt=fMappaFantiniContrade();
     const gpgIA=[];const scIA={};F._fbIA.forEach(n=>scIA[n]=0);
-    for(let g=1;g<=4;g++){F._fbIA.forEach(n=>{scIA[n]+=(rnd(2,5)+rnd(2,5)+rnd(1,5))+rf(0,3);});gpgIA.push([...Object.entries(scIA)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
+    for(let g=1;g<=4;g++){F._fbIA.forEach(n=>{
+      const nomeAssegnato=mappaAltraBatt[n];
+      const infoAssegnato=nomeAssegnato?F.rivali[nomeAssegnato]:null;
+      const br=infoAssegnato?infoAssegnato.bravura:rnd(2,5);
+      scIA[n]+=(rnd(2,5)+br+rnd(1,5))+rf(0,3);
+    });gpgIA.push([...Object.entries(scIA)].sort((a,b)=>b[1]-a[1]).map(x=>x[0]));}
     F._fbQIA=gpgIA[gpgIA.length-1].slice(0,2);
+    // Statistiche fantini dinamiche: -1 bravura/-1 esperienza ai fantini delle contrade eliminate
+    // in batteria (esclude il giocatore, le cui statistiche sono già regolamentate a parte)
+    const eliminatiBattPalio=[...bP.filter(c=>!qP.includes(c)),...F._fbIA.filter(c=>!F._fbQIA.includes(c))];
+    fanPoolEliminazioneBatteria(F.rivali,fMappaFantiniContrade(),eliminatiBattPalio,F.nome);
   }
 
   const playerIn=fase==='finale'?true:qP.includes(F.contrada);
