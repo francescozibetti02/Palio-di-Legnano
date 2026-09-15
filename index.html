@@ -369,17 +369,20 @@ input[type=range]{accent-color:var(--gold);height:32px;width:100%}
 <script src="fantini_db.js"></script>
 <script>
 const CDB={
-  Flora:        {nemica:"SanMartino",   bonus:"ALTA_FINANZA",      desc:"Inizia con 4000 oro",            budget:4000,morale:60},
-  Legnarello:   {nemica:"SantAmbrogio", bonus:"VOLANO_POPOLARE",   desc:"Budget legato al morale",        budget:3000,morale:60},
-  SanBernardino:{nemica:"SanMagno",     bonus:"DIPLOMAZIA_ASTUTA", desc:"−30% rischio intrighi politici", budget:3000,morale:60},
-  SanDomenico:  {nemica:"SantErasmo",   bonus:"SCUDERIA_ELITE",    desc:"Allenamento cavallo a 200 oro",  budget:3000,morale:60},
-  SanMagno:     {nemica:"SanBernardino",bonus:"PRESTIGIO_STORICO", desc:"Fantini −20% di costo",          budget:3000,morale:60},
-  SanMartino:   {nemica:"Flora",        bonus:"FAME_DI_VITTORIA",  desc:"Morale di partenza 85/200",      budget:3000,morale:85},
-  SantAmbrogio: {nemica:"Legnarello",   bonus:"GADGET_EXTRA",      desc:"Guadagno extra per vendita gadget",         budget:3000,morale:60},
-  SantErasmo:   {nemica:"SanDomenico",  bonus:"ALLEVAMENTO_TOP",   desc:"Cavalli −20% di costo",          budget:3000,morale:60}
+  Flora:        {nemica:"San Martino",   bonus:"ALTA_FINANZA",      desc:"Inizia con 4000 oro",            budget:4000,morale:60},
+  Legnarello:   {nemica:"Sant'Ambrogio", bonus:"VOLANO_POPOLARE",   desc:"Budget legato al morale",        budget:3000,morale:60},
+  "San Bernardino":{nemica:"San Magno",     bonus:"DIPLOMAZIA_ASTUTA", desc:"−30% rischio intrighi politici", budget:3000,morale:60},
+  "San Domenico":  {nemica:"Sant'Erasmo",   bonus:"SCUDERIA_ELITE",    desc:"Allenamento cavallo a 200 oro",  budget:3000,morale:60},
+  "San Magno":     {nemica:"San Bernardino",bonus:"PRESTIGIO_STORICO", desc:"Fantini −20% di costo",          budget:3000,morale:60},
+  "San Martino":   {nemica:"Flora",        bonus:"FAME_DI_VITTORIA",  desc:"Morale di partenza 85/200",      budget:3000,morale:85},
+  "Sant'Ambrogio": {nemica:"Legnarello",   bonus:"GADGET_EXTRA",      desc:"Guadagno extra per vendita gadget",         budget:3000,morale:60},
+  "Sant'Erasmo":   {nemica:"San Domenico",  bonus:"ALLEVAMENTO_TOP",   desc:"Cavalli −20% di costo",          budget:3000,morale:60}
 };
 /* NF (nomi fantini) è derivato da FANTINI_DB, caricato da fantini_db.js (file esterno) */
 const NF=FANTINI_DB.map(f=>f.nome);
+// Escapa gli apici singoli quando un nome (es. "Sant'Ambrogio") viene inserito
+// dentro una stringa JS delimitata da apici singoli in un attributo onclick.
+function qesc(s){return String(s).replace(/'/g,"\\'");}
 /* CAVALLI_DB è caricato da cavalli_db.js (file esterno) */
 // NC rimane per retrocompatibilità
 const NC=CAVALLI_DB.map(c=>c.nome);
@@ -463,7 +466,7 @@ function mostraSlotScreen(mode){
   </div><div class="slot-grid">`;
   for(let i=1;i<=3;i++){
     const inf=slotInfo(i);
-    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="slotAzione(${i},'${mode}')">
+    html+=`<div class="slot-btn ${inf?'occ':''}" onclick="slotAzione(${i},'${qesc(mode)}')">
       <div class="slot-num">Slot ${i}</div>
       <div class="slot-info">${inf?inf.nome+'<br>Anno '+inf.anno+' · 🏆'+inf.trofei:'Vuoto'}</div>
     </div>`;
@@ -501,13 +504,13 @@ function mostraSceltaContrada(){
   <button class="btn w" onclick="mostraSlotScreen('new')" style="margin-top:8px">← Indietro</button>`;
   setMain('<div style="padding:12px">'+html+'</div>');
   R('CG2').innerHTML=Object.entries(CDB).map(([k,v])=>
-    `<div class="cc2" onclick="selCt2('${k}')" id="CI2_${k}">
+    `<div class="cc2" onclick="selCt2('${qesc(k)}')" id="CI2_${k}">
       <div class="cc2-name">${k}</div><div class="cc2-desc">${v.desc}</div></div>`).join('');
 }
 function selCt2(k){
   document.querySelectorAll('[id^="CI2_"]').forEach(e=>e.classList.remove('sel'));
   R('CI2_'+k).classList.add('sel');
-  R('BTN_START2').innerHTML=`<button class="btn gold w" onclick="inizia2('${k}')">⚜ Inizia con ${k} →</button>`;
+  R('BTN_START2').innerHTML=`<button class="btn gold w" onclick="inizia2('${qesc(k)}')">⚜ Inizia con ${k} →</button>`;
 }
 function inizia2(k){
   const n=_slotNuovo||1;
@@ -727,7 +730,7 @@ function apriInfoContrade(){
     const amiCol=ami>=70?'#5DBB63':ami>=40?'var(--gold)':'#E05555';
 
     html+=`<div style="border:1px solid rgba(201,168,76,${isNemica?'.5':'.2'});border-radius:10px;margin-bottom:10px;overflow:hidden">
-      <button onclick="(function(){const d=document.getElementById('IC_${k}');const a=document.getElementById('IC_ARR_${k}');if(!d)return;if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}})()" style="width:100%;background:rgba(201,168,76,.07);border:none;color:var(--parch);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:var(--fn)">
+      <button onclick="(function(){const d=document.getElementById('IC_${qesc(k)}');const a=document.getElementById('IC_ARR_${qesc(k)}');if(!d)return;if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}})()" style="width:100%;background:rgba(201,168,76,.07);border:none;color:var(--parch);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:var(--fn)">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:15px;font-weight:700;color:${isNemica?'#E05555':'var(--gold)'}">${k}</span>
           ${isNemica?'<span style="font-size:10px;background:#E05555;color:#fff;border-radius:4px;padding:2px 6px">NEMICA</span>':''}
@@ -1535,7 +1538,7 @@ function renderPol(){
     const isN=k===G.nemica;
     const ami=G.amicizia?G.amicizia[k]||0:0;
     const col=ami>=70?'#5DBB63':ami>=40?'var(--gold)':'#E05555';
-    return `<div class="mi" style="cursor:pointer;flex-direction:column" onclick="selPB('${k}')" id="PB_${k}">
+    return `<div class="mi" style="cursor:pointer;flex-direction:column" onclick="selPB('${qesc(k)}')" id="PB_${k}">
       <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:var(--gold-l);font-family:var(--fn)">${k} ${isN?'<span class="bdg r">nemica</span>':''}</div>
         <div style="font-size:12px;font-weight:700;color:${col}">${ami}/100</div>
@@ -1712,7 +1715,7 @@ function apriMinigiocolmboscata(bersaglio, isNemica){
   function buildPlayerDefs(r){
     const pid='pcd_'+r;
     const c1=colors.c1,c2=colors.c2;
-    const isSanMartino=(G.nome==='SanMartino'||G.nome==='San Martino');
+    const isSanMartino=(G.nome==='San Martino');
     if(isSanMartino){
       // Pallino blu pieno con croce bianca — polygon unico per evitare artefatti
       const t=r*0.38;
@@ -1725,7 +1728,7 @@ function apriMinigiocolmboscata(bersaglio, isNemica){
         </g>
       </defs>`;
     } else if(colors.stripes){
-      // 3 strisce verticali: c1 | c2 | c1  (rosso/bianco/rosso per SanMagno)
+      // 3 strisce verticali: c1 | c2 | c1  (rosso/bianco/rosso per San Magno)
       return `<defs>
         <clipPath id="cp_${pid}"><circle cx="0" cy="0" r="${r}"/></clipPath>
         <g id="${pid}">
@@ -1747,7 +1750,7 @@ function apriMinigiocolmboscata(bersaglio, isNemica){
 
   function buildPlayerSVG(cx2,cy2,r){
     const pid='pcd_'+r;
-    const isSanMartino=(G.nome==='SanMartino'||G.nome==='San Martino');
+    const isSanMartino=(G.nome==='San Martino');
     if(isSanMartino){
       const t=r*0.38;
       const pts=`${-t/2},${-r} ${t/2},${-r} ${t/2},${-t/2} ${r},${-t/2} ${r},${t/2} ${t/2},${t/2} ${t/2},${r} ${-t/2},${r} ${-t/2},${t/2} ${-r},${t/2} ${-r},${-t/2} ${-t/2},${-t/2}`;
@@ -2068,7 +2071,7 @@ function showMossa(fase){
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
     <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finale — ':'Batteria — '}Ferma il cursore nella zona verde</div></div>
   <div class="card"><div class="ct">Fase di mossa</div>
-    <div class="mbar" id="MBAR" onclick="fermaMossa('${fase}')">
+    <div class="mbar" id="MBAR" onclick="fermaMossa('${qesc(fase)}')">
       <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
     <div style="font-size:11px;color:rgba(201,168,76,.5)">Zona verde = tolleranza · Linea verde = tacca · Clicca per scattare</div>
   </div>
@@ -2316,13 +2319,13 @@ function showFineAnnoScelta(vinta){
   if(vinta){
     // Recupera i colori della contrada vincitrice
     const chiaveMap={
-      'SanMartino':'SanMartino','San Martino':'SanMartino',
-      'SanDomenico':'SanDomenico','San Domenico':'SanDomenico',
-      'SanMagno':'SanMagno','San Magno':'SanMagno',
-      'SantAmbrogio':'SantAmbrogio',"Sant'Ambrogio":'SantAmbrogio',
+      'SanMartino':'San Martino','San Martino':'San Martino',
+      'SanDomenico':'San Domenico','San Domenico':'San Domenico',
+      'SanMagno':'San Magno','San Magno':'San Magno',
+      'SantAmbrogio':"Sant'Ambrogio","Sant'Ambrogio":"Sant'Ambrogio",
       'Flora':'Flora',
-      'SantErasmo':'SantErasmo',"Sant'Erasmo":'SantErasmo',
-      'SanBernardino':'SanBernardino','San Bernardino':'SanBernardino',
+      'SantErasmo':"Sant'Erasmo","Sant'Erasmo":"Sant'Erasmo",
+      'SanBernardino':'San Bernardino','San Bernardino':'San Bernardino',
       'Legnarello':'Legnarello'
     };
     const chiave=chiaveMap[G.nome]||G.nome.replace(/\s+/g,'').replace("'","");
@@ -2352,7 +2355,7 @@ function showCambioContrada(){
   <button class="btn w" onclick="showFineAnnoScelta(G._vinta)" style="margin-top:8px">← Indietro</button>`;
   setMain('<div style="padding:12px">'+html+'</div>');
   R('CG_CAMB').innerHTML=Object.entries(CDB).map(([k,v])=>
-    `<div class="cc2 ${k===G.nome?'sel':''}" onclick="selCambio('${k}')" id="CC_${k}">
+    `<div class="cc2 ${k===G.nome?'sel':''}" onclick="selCambio('${qesc(k)}')" id="CC_${k}">
       <div class="cc2-name">${k}${k===G.nome?' (attuale)':''}</div>
       <div class="cc2-desc">${v.desc}</div>
     </div>`).join('');
@@ -2360,7 +2363,7 @@ function showCambioContrada(){
 function selCambio(k){
   document.querySelectorAll('[id^="CC_"]').forEach(e=>e.classList.remove('sel'));
   R('CC_'+k).classList.add('sel');
-  R('BTN_CAMB').innerHTML=`<button class="btn gold w" onclick="fineAnno(G._vinta,true,'${k}')">⚜ Vai con ${k} →</button>`;
+  R('BTN_CAMB').innerHTML=`<button class="btn gold w" onclick="fineAnno(G._vinta,true,'${qesc(k)}')">⚜ Vai con ${k} →</button>`;
 }
 function fineAnno(vinta,cambiaContrada,nuovaContrada){
   if(MosInt){clearInterval(MosInt);MosInt=null;}
@@ -2720,7 +2723,7 @@ function nMostraAssembleaGiocatore(){
           <div style="font-family:var(--fn);font-size:13px;font-weight:700;color:var(--gold-l)">${info.label}${giaRicoperto?' <span class="bdg r">già ricoperto</span>':''}</div>
           <div style="font-size:11px;color:rgba(201,168,76,.5)">Età minima ${info.etaMin}${info.richiede.length?' · richiede: '+info.richiede.map(r=>N_STATUS_INFO[r].label).join(', '):''}</div>
         </div>
-        <button class="btn" style="font-size:11px;padding:6px 10px;flex-shrink:0" ${(candUsata||!finestraAperta)?'disabled':''} onclick="nCandidatiRuolo('${chiave}')">Candidati</button>
+        <button class="btn" style="font-size:11px;padding:6px 10px;flex-shrink:0" ${(candUsata||!finestraAperta)?'disabled':''} onclick="nCandidatiRuolo('${qesc(chiave)}')">Candidati</button>
       </div>`;
     });
     html+='</div>';
@@ -3004,7 +3007,7 @@ function iniziaCarrieraContradaiolo(slot){
   </div>`);
   R('CNT_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
     const annUlt=nGetUltimaVittoria(k);
-    return `<div class="cc2" onclick="selContCt('${k}')" id="CCI_${k}">
+    return `<div class="cc2" onclick="selContCt('${qesc(k)}')" id="CCI_${k}">
       <div class="cc2-name">${k}</div>
       <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
   }).join('');
@@ -3015,7 +3018,7 @@ let _contCtSel=null;
 function selContCt(k){
   document.querySelectorAll('[id^="CCI_"]').forEach(e=>e.classList.remove('sel'));
   R('CCI_'+k).classList.add('sel');_contCtSel=k;
-  R('CNT_BTN').innerHTML=`<button class="btn gold w" onclick="creaContradaiolo('${k}')" style="justify-content:center">⚜ Diventa contradaiolo di ${k} →</button>`;
+  R('CNT_BTN').innerHTML=`<button class="btn gold w" onclick="creaContradaiolo('${qesc(k)}')" style="justify-content:center">⚜ Diventa contradaiolo di ${k} →</button>`;
 }
 
 function creaContradaiolo(contrada){
@@ -3120,7 +3123,7 @@ function nRenderNav(){
   const perm=nPermessiStatus();
   R('NAV').innerHTML=N_NAV_ITEMS.map((it,i)=>{
     const consentito=perm.nav.includes(it.id);
-    return `<button class="nb ${i===0?'on':''} ${consentito?'':'nb-off'}" onclick="nGoTo('${it.id}')"><span class="nbi">${it.icon}</span>${it.label}</button>`;
+    return `<button class="nb ${i===0?'on':''} ${consentito?'':'nb-off'}" onclick="nGoTo('${qesc(it.id)}')"><span class="nbi">${it.icon}</span>${it.label}</button>`;
   }).join('');
 }
 
@@ -3221,8 +3224,8 @@ function nRenderCavalli(){
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" ${eGiocatoreCapitano?'disabled title="Sei tu il Capitano: non puoi proporre un cavallo a te stesso"':''} onclick="nProponiCapitano('${nome}')">🤝 Proponi al capitano</button>
-          ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${(N.budgetContrada||0)<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${nome}')">💰 Acquista (${prezzo})</button>`:''}
+          <button class="btn" style="flex:1;font-size:11px;padding:9px 6px" ${eGiocatoreCapitano?'disabled title="Sei tu il Capitano: non puoi proporre un cavallo a te stesso"':''} onclick="nProponiCapitano('${qesc(nome)}')">🤝 Proponi al capitano</button>
+          ${puoAcquistare?`<button class="btn gold" style="flex:1;font-size:11px;padding:9px 6px" ${(N.budgetContrada||0)<prezzo?'disabled':''} onclick="nAcquistaCavMercato('${qesc(nome)}')">💰 Acquista (${prezzo})</button>`:''}
         </div>
       </div>`;
     });
@@ -3290,7 +3293,7 @@ function nRenderContrade(){
         <div style="font-size:13px;font-weight:700;color:${col}">${v}/100</div>
       </div>
       <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${v}%"></div></div>
-      <button class="btn" style="font-size:11px;padding:6px 10px;margin-top:8px" ${scherzoUsato?'disabled':''} onclick="nAvviaScherzo('${k}')">🎭 Scherzo</button>
+      <button class="btn" style="font-size:11px;padding:6px 10px;margin-top:8px" ${scherzoUsato?'disabled':''} onclick="nAvviaScherzo('${qesc(k)}')">🎭 Scherzo</button>
     </div>`;
   }).join('');
   el.innerHTML=`<div class="card">
@@ -4202,7 +4205,7 @@ function nMostraSceltaOrganigramma(onDone){
       if(candidati.length){
         html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">`+candidati.map(c=>{
           const idx=N.contradaioli.indexOf(c);
-          return `<button class="btn" style="font-size:11px;padding:6px 10px" onclick="nOrgAssegna('${chiave}',${idx})">${c.nome}</button>`;
+          return `<button class="btn" style="font-size:11px;padding:6px 10px" onclick="nOrgAssegna('${qesc(chiave)}',${idx})">${c.nome}</button>`;
         }).join('')+`</div>`;
       } else {
         html+=`<div style="font-size:11px;color:rgba(201,168,76,.5)">Nessun contradaiolo disponibile per questa carica.</div>`;
@@ -4530,7 +4533,7 @@ function nConsiglioDirettivo(){
         <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${c.amicizia}%"></div></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <div style="font-size:11px;color:${rimasti<=0?'#E05555':'rgba(201,168,76,.6)'}">${rimasti<=0?'Mandato scaduto':'Anni rimanenti di mandato: '+rimasti}</div>
-          <button class="btn" style="font-size:11px;padding:6px 10px" ${sostUsata?'disabled':''} onclick="nApriSostituzione('${chiave}',${idx})">Sostituisci</button>
+          <button class="btn" style="font-size:11px;padding:6px 10px" ${sostUsata?'disabled':''} onclick="nApriSostituzione('${qesc(chiave)}',${idx})">Sostituisci</button>
         </div>
       </div>`;
     });
@@ -4555,7 +4558,7 @@ function nApriSostituzione(chiave,idxAttuale){
   overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
   const righe=candidati.length?candidati.map((c,i)=>{
     const idx=N.contradaioli.indexOf(c);
-    return `<button class="btn w" style="text-align:left;padding:10px;margin-bottom:6px" onclick="nConfermaSostituzione('${chiave}',${idx})">
+    return `<button class="btn w" style="text-align:left;padding:10px;margin-bottom:6px" onclick="nConfermaSostituzione('${qesc(chiave)}',${idx})">
       <span style="font-weight:700;color:var(--gold-l)">${c.nome}</span>
       <span style="font-size:11px;color:rgba(201,168,76,.5);float:right">${c.amicizia}/100 amicizia</span>
     </button>`;
@@ -5806,24 +5809,24 @@ function nVigiliaAccordi(fase,onContinue){
     <div class="ct">Scegli la strategia</div>
     <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px;font-family:var(--fn)">Puoi scegliere una sola strategia</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn w stratgn-btn" onclick="nScegliStrategiaN('tenuta',null,'${fase}')" style="text-align:left;padding:12px">
+      <button class="btn w stratgn-btn" onclick="nScegliStrategiaN('tenuta',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:var(--gold-l)">🛡️ Tenersi per l'ultimo giro</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità −1 · Resistenza +2</div>
       </button>`;
   if(hasNemica){
-    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('contro_nemica',null,'${fase}')" style="text-align:left;padding:12px">
+    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('contro_nemica',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#E05555">⚔️ Contro la nemica</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Né tu né ${N.nemica} vincete questa corsa</div>
       </button>`;
   }
-  html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('morte',null,'${fase}')" style="text-align:left;padding:12px">
+  html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('morte',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#E05555">⚡ Alla morte</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità +2 · Resistenza −1</div>
       </button>`;
   altriInBatt.forEach(n=>{
     const rap=rapporti[n]||0;
     const prob=Math.min(95,rap+bonusrep);
-    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('patti','${n}','${fase}')" style="text-align:left;padding:12px">
+    html+=`<button class="btn w stratgn-btn" onclick="nScegliStrategiaN('patti','${qesc(n)}','${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#7BC8FF">🤝 Patti con ${n}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">−300 oro · ${prob}% probabilità accettazione</div>
       </button>`;
@@ -5929,7 +5932,7 @@ function nVigiliaMossa(fase){
     <div style="font-family:var(--fn);font-size:17px;font-weight:700;color:var(--gold);margin-top:6px">Il Canapo è Tirato!</div>
     <div style="font-size:12px;color:rgba(201,168,76,.5);margin-top:4px">${fase==='finale'?'Finale — ':'Batteria — '}Ferma il cursore nella zona verde</div></div>
   <div class="card"><div class="ct">Fase di mossa</div>
-    <div class="mbar" id="MBAR" onclick="nFermaMossaN('${fase}')">
+    <div class="mbar" id="MBAR" onclick="nFermaMossaN('${qesc(fase)}')">
       <div class="mz" id="MZ"></div><div class="mt2" id="MT2"></div><div class="mcu" id="MCU"></div></div>
     <div style="font-size:11px;color:rgba(201,168,76,.5)">Zona verde = tolleranza · Linea verde = tacca · Clicca per scattare</div>
   </div>
@@ -6203,13 +6206,13 @@ function nMostraRiepilogoFinale(){
 
 // ── COLORI CONTRADA ──
 const CONTRADA_COLORI={
-  SanMartino:   {c1:'#1A3A8C',c2:'#FFFFFF'},
-  SanDomenico:  {c1:'#1A7A2A',c2:'#FFFFFF'},
-  SanMagno:     {c1:'#8B1A1A',c2:'#FFFFFF',stripes:true},
-  SantAmbrogio: {c1:'#1A7A2A',c2:'#D4AC0D'},
+  "San Martino":   {c1:'#1A3A8C',c2:'#FFFFFF'},
+  "San Domenico":  {c1:'#1A7A2A',c2:'#FFFFFF'},
+  "San Magno":     {c1:'#8B1A1A',c2:'#FFFFFF',stripes:true},
+  "Sant'Ambrogio": {c1:'#1A7A2A',c2:'#D4AC0D'},
   Flora:        {c1:'#8B1A1A',c2:'#1A3A8C'},
-  SantErasmo:   {c1:'#378ADD',c2:'#FFFFFF'},
-  SanBernardino:{c1:'#8B1A1A',c2:'#FFFFFF'},
+  "Sant'Erasmo":   {c1:'#378ADD',c2:'#FFFFFF'},
+  "San Bernardino":{c1:'#8B1A1A',c2:'#FFFFFF'},
   Legnarello:   {c1:'#8B1A1A',c2:'#D4AC0D'}
 };
 function applicaColoriContrada(){
@@ -6292,8 +6295,8 @@ let F=null; // stato fantino
 
 // Anno dell'ultima vittoria al Palio per contrada (valori storici di partenza)
 const ULTIMA_VITTORIA_DEFAULT={
-  SanMartino:2016,Flora:2021,SanBernardino:2007,SantAmbrogio:2025,
-  SanMagno:2022,SanDomenico:2019,Legnarello:2024,SantErasmo:2026
+  "San Martino":2016,Flora:2021,"San Bernardino":2007,"Sant'Ambrogio":2025,
+  "San Magno":2022,"San Domenico":2019,Legnarello:2024,"Sant'Erasmo":2026
 };
 // Restituisce l'anno dell'ultima vittoria di una contrada (aggiornato durante la carriera)
 function fGetUltimaVittoria(k){
@@ -6383,7 +6386,7 @@ function iniziaCarrieraFantino(slot){
   </div>`);
   R('FNT_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
     const annUlt=fGetUltimaVittoria(k);
-    return `<div class="cc2" onclick="selFntCt('${k}')" id="FCI_${k}">
+    return `<div class="cc2" onclick="selFntCt('${qesc(k)}')" id="FCI_${k}">
       <div class="cc2-name">${k}</div>
       <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
   }).join('');
@@ -6394,7 +6397,7 @@ let _fntCtSel=null;
 function selFntCt(k){
   document.querySelectorAll('[id^="FCI_"]').forEach(e=>e.classList.remove('sel'));
   R('FCI_'+k).classList.add('sel');_fntCtSel=k;
-  R('FNT_BTN').innerHTML=`<button class="btn gold w" onclick="creaFantino('${k}')" style="justify-content:center">⚜ Inizia come fantino di ${k} →</button>`;
+  R('FNT_BTN').innerHTML=`<button class="btn gold w" onclick="creaFantino('${qesc(k)}')" style="justify-content:center">⚜ Inizia come fantino di ${k} →</button>`;
 }
 
 function creaFantino(contrada){
@@ -6490,7 +6493,7 @@ function mostraSceltaFantinoReale(slot){
   </div>`);
   R('FNT_REALE_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
     const annUlt=fGetUltimaVittoria(k);
-    return `<div class="cc2" onclick="selFntRealeCt('${k}')" id="FRCI_${k}">
+    return `<div class="cc2" onclick="selFntRealeCt('${qesc(k)}')" id="FRCI_${k}">
       <div class="cc2-name">${k}</div>
       <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div></div>`;
   }).join('');
@@ -6522,7 +6525,7 @@ function fNavFantinoReale(dir){
 function selFntRealeCt(k){
   document.querySelectorAll('[id^="FRCI_"]').forEach(e=>e.classList.remove('sel'));
   R('FRCI_'+k).classList.add('sel');_fntRealeCtSel=k;
-  R('FNT_REALE_BTN').innerHTML=`<button class="btn gold w" onclick="creaFantinoReale('${k}')" style="justify-content:center">⚜ Inizia come fantino di ${k} →</button>`;
+  R('FNT_REALE_BTN').innerHTML=`<button class="btn gold w" onclick="creaFantinoReale('${qesc(k)}')" style="justify-content:center">⚜ Inizia come fantino di ${k} →</button>`;
 }
 
 function creaFantinoReale(contrada){
@@ -6620,13 +6623,13 @@ function fApplicaColoriContradaFantino(){
   if(!F||!F.contrada)return;
   // Mappa contrada → chiave CONTRADA_COLORI
   const chiaveMap={
-    'SanMartino':'SanMartino','San Martino':'SanMartino',
-    'SanDomenico':'SanDomenico','San Domenico':'SanDomenico',
-    'SanMagno':'SanMagno','San Magno':'SanMagno',
-    'SantAmbrogio':'SantAmbrogio',"Sant'Ambrogio":'SantAmbrogio',
+    'SanMartino':'San Martino','San Martino':'San Martino',
+    'SanDomenico':'San Domenico','San Domenico':'San Domenico',
+    'SanMagno':'San Magno','San Magno':'San Magno',
+    'SantAmbrogio':"Sant'Ambrogio","Sant'Ambrogio":"Sant'Ambrogio",
     'Flora':'Flora',
-    'SantErasmo':'SantErasmo',"Sant'Erasmo":'SantErasmo',
-    'SanBernardino':'SanBernardino','San Bernardino':'SanBernardino',
+    'SantErasmo':"Sant'Erasmo","Sant'Erasmo":"Sant'Erasmo",
+    'SanBernardino':'San Bernardino','San Bernardino':'San Bernardino',
     'Legnarello':'Legnarello'
   };
   const chiave=chiaveMap[F.contrada]||F.contrada.replace(/\s+/g,'').replace("'","");
@@ -8685,7 +8688,7 @@ function fRenderPolitica(){
         </div>
         <div style="text-align:right">
           <div style="font-size:13px;font-weight:700;color:${col}">${info.amicizia}/100</div>
-          ${azAmi<3&&F.oro>=100?`<button class="btn" style="font-size:10px;padding:5px 8px;margin-top:3px" onclick="fAmiAzione('${nome}')">+5 amicizia (100 oro)</button>`:''}
+          ${azAmi<3&&F.oro>=100?`<button class="btn" style="font-size:10px;padding:5px 8px;margin-top:3px" onclick="fAmiAzione('${qesc(nome)}')">+5 amicizia (100 oro)</button>`:''}
         </div>
       </div>
       <div class="fnt-bar"><div class="fnt-bar-fill fnt-bar-gold" style="width:${info.amicizia}%"></div></div>
@@ -8739,7 +8742,7 @@ function fRenderContrade(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <div style="font-family:var(--fn);font-size:13px;font-weight:${isTua?'700':'400'};color:${isTua?'var(--gold)':'var(--parch)'}">${k}${isTua?' <span class="bdg o">TUA</span>':''}</div>
         <div style="display:flex;align-items:center;gap:6px">
-          ${tradimentoAttivo?`<button class="btn" style="font-size:10px;padding:4px 8px;background:linear-gradient(135deg,rgba(139,26,26,.5),rgba(61,0,0,.7));border-color:#E05555;color:#E05555" onclick="fEseguiTradimento('${k}')">🗡️ Tradimento</button>`:''}
+          ${tradimentoAttivo?`<button class="btn" style="font-size:10px;padding:4px 8px;background:linear-gradient(135deg,rgba(139,26,26,.5),rgba(61,0,0,.7));border-color:#E05555;color:#E05555" onclick="fEseguiTradimento('${qesc(k)}')">🗡️ Tradimento</button>`:''}
           <div style="font-size:13px;font-weight:700;color:${col}">${v}/100</div>
         </div>
       </div>
@@ -9150,7 +9153,7 @@ function fShowAccordiProvaccia(fase){
     altriFantini.forEach(([nome,info])=>{
       const ami=info.amicizia||0;
       const col=ami>=70?'#5DBB63':ami>=40?'var(--gold)':'#E05555';
-      html+=`<button class="btn w acc-btn" onclick="fTentaAccordoProvaccia('${nome}',${ami},'${fase}')" style="text-align:left;padding:12px;margin-bottom:6px;justify-content:space-between">
+      html+=`<button class="btn w acc-btn" onclick="fTentaAccordoProvaccia('${qesc(nome)}',${ami},'${qesc(fase)}')" style="text-align:left;padding:12px;margin-bottom:6px;justify-content:space-between">
         <div>
           <div style="font-weight:700;color:var(--gold-l)">${nome} <span style="font-size:11px;color:rgba(201,168,76,.5)">(${info.contrada})</span></div>
           <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px">−300 oro · ${ami}% probabilità accettazione</div>
@@ -9164,7 +9167,7 @@ function fShowAccordiProvaccia(fase){
 
   // Tasto offerta tangente da fantino rivale
   if(tangenteFantino){
-    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${tangenteFantino.nome}','${tangenteFantino.contrada}',${tangenteFantino.cifra},'${fase}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${qesc(tangenteFantino.nome)}','${qesc(tangenteFantino.contrada)}',${tangenteFantino.cifra},'${qesc(fase)}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
       <div>
         <div style="font-weight:700;color:#C9A84C">💰 Offerta da ${tangenteFantino.nome}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteFantino.cifra} oro · Ti chiede di frenare il cavallo</div>
@@ -9175,7 +9178,7 @@ function fShowAccordiProvaccia(fase){
 
   // Tasto offerta tangente da capitano rivale
   if(tangenteCapitano){
-    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${tangenteCapitano.contrada}',${tangenteCapitano.cifra},'${fase}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${qesc(tangenteCapitano.contrada)}',${tangenteCapitano.cifra},'${qesc(fase)}','fEseguiCorsaProvaccia')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
       <div>
         <div style="font-weight:700;color:#D4A060">🏛 Offerta dal Capitano di ${tangenteCapitano.contrada}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteCapitano.cifra} oro · Ti chiede di frenare il cavallo</div>
@@ -9584,8 +9587,8 @@ function fMostraRisultatoPalioAuto(vincitore, vinceMiaContrada){
   const isStripes=!!colori.stripes;
   const bgGrad=`repeating-linear-gradient(45deg,${c1} 0px,${c1} 40px,${c2} 40px,${c2} 80px)`;
 
-  // Pallino colori contrada vincitrice: croce bianca (SanMartino), strisce verticali o divisione obliqua
-  const isSanMartinoV=(vincitore==='SanMartino'||vincitore==='San Martino');
+  // Pallino colori contrada vincitrice: croce bianca (San Martino), strisce verticali o divisione obliqua
+  const isSanMartinoV=(vincitore==='San Martino');
   const pallinoSVG=isSanMartinoV
     ? `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="pcv"><circle cx="30" cy="30" r="27"/></clipPath></defs>
         <rect x="0" y="0" width="60" height="60" fill="#1A3A8C" clip-path="url(#pcv)"/>
@@ -9841,7 +9844,7 @@ function fShowAccordiPreGara(fase){
     altriFantini.forEach(([nome,info])=>{
       const ami=info.amicizia||0;
       const col=ami>=70?'#5DBB63':ami>=40?'var(--gold)':'#E05555';
-      html+=`<button class="btn w acc-btn" onclick="fTentaAccordo('${nome}',${ami},'${fase}')" style="text-align:left;padding:12px;margin-bottom:6px;justify-content:space-between">
+      html+=`<button class="btn w acc-btn" onclick="fTentaAccordo('${qesc(nome)}',${ami},'${qesc(fase)}')" style="text-align:left;padding:12px;margin-bottom:6px;justify-content:space-between">
         <div>
           <div style="font-weight:700;color:var(--gold-l)">${nome} <span style="font-size:11px;color:rgba(201,168,76,.5)">(${info.contrada})</span></div>
           <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:2px">−300 oro · ${ami}% probabilità accettazione</div>
@@ -9855,7 +9858,7 @@ function fShowAccordiPreGara(fase){
 
   // Tasto offerta tangente da fantino rivale
   if(tangenteFantino){
-    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${tangenteFantino.nome}','${tangenteFantino.contrada}',${tangenteFantino.cifra},'${fase}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('fantino','${qesc(tangenteFantino.nome)}','${qesc(tangenteFantino.contrada)}',${tangenteFantino.cifra},'${qesc(fase)}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#C9A84C99;background:rgba(201,168,76,.07)">
       <div>
         <div style="font-weight:700;color:#C9A84C">💰 Offerta da ${tangenteFantino.nome}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteFantino.cifra} oro · Ti chiede di frenare il cavallo</div>
@@ -9866,7 +9869,7 @@ function fShowAccordiPreGara(fase){
 
   // Tasto offerta tangente da capitano rivale
   if(tangenteCapitano){
-    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${tangenteCapitano.contrada}',${tangenteCapitano.cifra},'${fase}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
+    html+=`<button class="btn w acc-btn" onclick="fAccettaTangente('capitano','','${qesc(tangenteCapitano.contrada)}',${tangenteCapitano.cifra},'${qesc(fase)}','fEseguiCorsa')" style="text-align:left;padding:12px;margin-bottom:6px;border-color:#A07840AA;background:rgba(160,120,64,.08)">
       <div>
         <div style="font-weight:700;color:#D4A060">🏛 Offerta dal Capitano di ${tangenteCapitano.contrada}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.6);margin-top:2px">+${tangenteCapitano.cifra} oro · Ti chiede di frenare il cavallo</div>
@@ -10240,13 +10243,13 @@ function fLanciaAnimazioneFinal(partecipanti, giri, vinto, playerIn, pos, fase, 
       if(vinto){
         // Prima mostra il Crocione, poi il fine anno
         const chiaveMapF={
-          'SanMartino':'SanMartino','San Martino':'SanMartino',
-          'SanDomenico':'SanDomenico','San Domenico':'SanDomenico',
-          'SanMagno':'SanMagno','San Magno':'SanMagno',
-          'SantAmbrogio':'SantAmbrogio',"Sant'Ambrogio":'SantAmbrogio',
+          'SanMartino':'San Martino','San Martino':'San Martino',
+          'SanDomenico':'San Domenico','San Domenico':'San Domenico',
+          'SanMagno':'San Magno','San Magno':'San Magno',
+          'SantAmbrogio':"Sant'Ambrogio","Sant'Ambrogio":"Sant'Ambrogio",
           'Flora':'Flora',
-          'SantErasmo':'SantErasmo',"Sant'Erasmo":'SantErasmo',
-          'SanBernardino':'SanBernardino','San Bernardino':'SanBernardino',
+          'SantErasmo':"Sant'Erasmo","Sant'Erasmo":"Sant'Erasmo",
+          'SanBernardino':'San Bernardino','San Bernardino':'San Bernardino',
           'Legnarello':'Legnarello'
         };
         const chF=chiaveMapF[F.contrada]||F.contrada.replace(/\s+/g,'').replace("'","");
@@ -10555,7 +10558,7 @@ function fShowFineAnno(vinto){
       <div class="ct" style="color:#5DBB63">${titoloOfferta}</div>
       <div style="font-size:13px;color:var(--parch2);line-height:1.7;margin-bottom:10px">${descOfferta}</div>
       <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:10px">L'offerta è indipendente dall'intesa col capitano di ${offertaContrada}.</div>
-      <button class="btn w" onclick="fAccettaOfferta('${offertaContrada}',${offertaOro})" style="margin-bottom:6px;background:linear-gradient(135deg,#2E7D32,#1A4D1A);border-color:#5DBB63;color:#5DBB63;font-weight:700">
+      <button class="btn w" onclick="fAccettaOfferta('${qesc(offertaContrada)}',${offertaOro})" style="margin-bottom:6px;background:linear-gradient(135deg,#2E7D32,#1A4D1A);border-color:#5DBB63;color:#5DBB63;font-weight:700">
         ✅ Accetta — Vai con ${offertaContrada} (+${offertaOro} oro)
       </button>
     </div>`;
@@ -10576,7 +10579,7 @@ function fShowFineAnno(vinto){
       ${puoRestare?`<button class="btn gold w" onclick="fNuovoAnno(false)" style="margin-bottom:8px">Rimani con ${F.contrada}</button>`
         :`<div class="evbox red" style="margin-bottom:8px">Intesa troppo bassa per restare (serve ≥40). Devi cambiare contrada.</div>`}
       ${contradeCambiabili.length?`<div style="font-size:12px;color:rgba(201,168,76,.5);margin-bottom:8px">Contrade disponibili (intesa ≥60):</div>
-        ${contradeCambiabili.map(k=>`<button class="btn w" onclick="fNuovoAnno(true,'${k}')" style="margin-bottom:6px;text-align:left;padding:11px">
+        ${contradeCambiabili.map(k=>`<button class="btn w" onclick="fNuovoAnno(true,'${qesc(k)}')" style="margin-bottom:6px;text-align:left;padding:11px">
           Vai con ${k} <span style="font-size:11px;color:rgba(201,168,76,.5);margin-left:6px">Intesa: ${F.intesaCapitani[k]}/100</span>
         </button>`).join('')}`
         :`<div style="font-size:12px;color:rgba(201,168,76,.4)">Nessuna contrada disponibile al cambio (intesa <60).</div>`}
@@ -10626,7 +10629,7 @@ function fShowAnnoSvincolato(){
   setMain('<div class="pad">'+html+'</div>');
   R('SVINC_CT').innerHTML=Object.entries(CDB).map(([k,v])=>{
     const annUlt=fGetUltimaVittoria(k);
-    return `<div class="cc2" onclick="fScegliContrSvinc('${k}')" id="SVINC_${k}">
+    return `<div class="cc2" onclick="fScegliContrSvinc('${qesc(k)}')" id="SVINC_${k}">
       <div class="cc2-name">${k}</div>
       <div class="cc2-desc">Ultima vittoria nel ${annUlt}, riportala alla vittoria!</div>
     </div>`;
@@ -10636,7 +10639,7 @@ function fShowAnnoSvincolato(){
 function fScegliContrSvinc(k){
   document.querySelectorAll('[id^="SVINC_"]').forEach(e=>e.classList.remove('sel'));
   R('SVINC_'+k).classList.add('sel');
-  R('SVINC_BTN').innerHTML=`<button class="btn gold w" onclick="fNuovoAnnoSvincolato('${k}')">⚜ Riparte con ${k} →</button>`;
+  R('SVINC_BTN').innerHTML=`<button class="btn gold w" onclick="fNuovoAnnoSvincolato('${qesc(k)}')">⚜ Riparte con ${k} →</button>`;
 }
 
 function fNuovoAnnoSvincolato(k){
@@ -10752,7 +10755,7 @@ function fRiassegnaRivali(){
 const TUT_CAP=[
   {title:"Benvenuto nel Tutorial Capitano!",text:"Sei il Capitano di una contrada di Legnano. Il tuo obiettivo è vincere il Palio gestendo cavalli, fantini, finanze, il tuo maniero e le alleanze politiche. Ogni anno ti giochi tutto in una sola gara: le scelte che fai nei 5 mesi precedenti fanno la differenza.",btn:"Iniziamo →"},
   {title:"📅 Il Calendario: 5 Mesi",text:"Ogni anno di gioco va da Gennaio a Maggio. Ogni mese puoi compiere azioni nella schermata Mese: raccolta fondi, cena in maniero, rinforzo stalla e altro ancora. Ogni azione è usabile una sola volta al mese. A Maggio si corre il Palio.",btn:"Avanti →"},
-  {title:"💰 Raccolta Fondi",text:"La raccolta fondi ti dà oro extra (+200, oppure +300 se sei SantAmbrogio). Attenzione: costa −5 morale. Usala quando hai bisogno di liquidità ma il morale è alto. Ricorda: il morale conta per la sfilata e per le attività del maniero!",btn:"Avanti →"},
+  {title:"💰 Raccolta Fondi",text:"La raccolta fondi ti dà oro extra (+200, oppure +300 se sei Sant'Ambrogio). Attenzione: costa −5 morale. Usala quando hai bisogno di liquidità ma il morale è alto. Ricorda: il morale conta per la sfilata e per le attività del maniero!",btn:"Avanti →"},
   {title:"🏰 Il Maniero",text:"Ogni mese puoi aprire il Maniero per svolgere fino a 4 attività (ognuna massimo una sola volta al mese): 🍷 Organizza Cena (−100 oro, guadagno variabile in base a morale e condizioni del maniero), 💰 Vendita Gadget (guadagno legato al morale), 🍻 Organizza Evento (scegli tra Giornata Manieri Aperti, Sagra Medioevale o Street Food, ognuna con costi ed effetti diversi), 🔨 Manutenzione (+20 condizioni, −500 oro, +5 morale). Le condizioni del maniero degradano di −5 ogni mese: tienile alte per massimizzare i guadagni della cena!",btn:"Avanti →"},
   {title:"🛡️ Rinforza la Stalla",text:"Spendendo 300 oro aumenti la difesa della stalla (+2, max 5). Una difesa alta riduce la probabilità di subire sabotaggi e imboscate da parte delle contrade nemiche ogni mese.",btn:"Avanti →"},
   {title:"🛒 Mercato",text:"Nel mercato compri cavalli e ingaggi fantini. I cavalli hanno 5 statistiche: Velocità, Accelerazione, Tenuta Curva, Resistenza e Nervosismo. I fantini hanno un ingaggio cge varia in base alla media delle statistiche (1 di media = 600 oro), ma devi cercare di ingaggaiarli al minor prezzo per ottimizzare i costi e hanno 4 attributi: Bravura, Esperienza, Gestione Mossa ed Empatia. Il tuo Prestigio sblocca offerte migliori!",btn:"Avanti →"},
@@ -10870,12 +10873,12 @@ function mostraTutStep(){
 const CONTRADA_COLORS={
   Flora:        {c1:'#C0001A',c2:'#1A3A8C'},   // rosso/blu obliquo
   Legnarello:   {c1:'#C0001A',c2:'#F0C020'},   // rosso/giallo obliquo
-  SanDomenico:  {c1:'#1A7A1A',c2:'#FFFFFF'},   // verde/bianco obliquo
-  SantErasmo:   {c1:'#5BB8E8',c2:'#FFFFFF'},   // azzurro/bianco obliquo
-  SantAmbrogio: {c1:'#1A7A1A',c2:'#F0C020'},   // verde/giallo obliquo
-  SanMartino:   {c1:'#1A3A8C',c2:'#FFFFFF'},   // blu/bianco obliquo
-  SanBernardino:{c1:'#C0001A',c2:'#FFFFFF'},   // rosso/bianco obliquo
-  SanMagno:     {c1:'#C0001A',c2:'#FFFFFF',stripes:true} // rosso/bianco/rosso strisce verticali
+  "San Domenico":  {c1:'#1A7A1A',c2:'#FFFFFF'},   // verde/bianco obliquo
+  "Sant'Erasmo":   {c1:'#5BB8E8',c2:'#FFFFFF'},   // azzurro/bianco obliquo
+  "Sant'Ambrogio": {c1:'#1A7A1A',c2:'#F0C020'},   // verde/giallo obliquo
+  "San Martino":   {c1:'#1A3A8C',c2:'#FFFFFF'},   // blu/bianco obliquo
+  "San Bernardino":{c1:'#C0001A',c2:'#FFFFFF'},   // rosso/bianco obliquo
+  "San Magno":     {c1:'#C0001A',c2:'#FFFFFF',stripes:true} // rosso/bianco/rosso strisce verticali
 };
 
 // Disegna un pallino contrada su canvas 2D
@@ -10885,7 +10888,7 @@ function drawContradaDot(ctx, x, y, r, nome) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI*2);
   ctx.clip();
-  if (nome === 'SanMartino' || nome === 'San Martino') {
+  if (nome === 'San Martino') {
     // Pallino blu pieno con croce bianca — path unico per evitare artefatti all'intersezione
     ctx.fillStyle = '#1A3A8C';
     ctx.fillRect(x-r, y-r, r*2, r*2);
@@ -11389,24 +11392,24 @@ function showAccordiEStrategieCap(fase, onContinue){
     <div class="ct">Scegli la strategia</div>
     <div style="font-size:11px;color:rgba(201,168,76,.4);margin-bottom:8px;font-family:var(--fn)">Puoi scegliere una sola strategia</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn w stratg-btn" onclick="scegliStrategiaCap('tenuta',null,'${fase}')" style="text-align:left;padding:12px">
+      <button class="btn w stratg-btn" onclick="scegliStrategiaCap('tenuta',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:var(--gold-l)">🛡️ Tenersi per l'ultimo giro</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità −1 · Resistenza +2</div>
       </button>`;
   if(hasNemica){
-    html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('contro_nemica',null,'${fase}')" style="text-align:left;padding:12px">
+    html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('contro_nemica',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#E05555">⚔️ Contro la nemica</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Né tu né ${G.nemica} vincete questa corsa</div>
       </button>`;
   }
-  html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('morte',null,'${fase}')" style="text-align:left;padding:12px">
+  html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('morte',null,'${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#E05555">⚡ Alla morte</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">Velocità +2 · Resistenza −1</div>
       </button>`;
   altriInBatt.forEach(n=>{
     const ami=G.amicizia[n]||0;
     const prob=Math.min(95,ami+bonusprest);
-    html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('patti','${n}','${fase}')" style="text-align:left;padding:12px">
+    html+=`<button class="btn w stratg-btn" onclick="scegliStrategiaCap('patti','${qesc(n)}','${qesc(fase)}')" style="text-align:left;padding:12px">
         <div style="font-weight:700;color:#7BC8FF">🤝 Patti con ${n}</div>
         <div style="font-size:11px;color:rgba(201,168,76,.5);margin-top:3px">−300 oro · ${prob}% probabilità accettazione</div>
       </button>`;
